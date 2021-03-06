@@ -1,0 +1,3 @@
+echo -e Running scenario$1-$HOSTNAME-*.sh \\b...
+. scenario$1-$HOSTNAME-*.sh
+echo scenario$1-$HOSTNAME-*.sh over\!

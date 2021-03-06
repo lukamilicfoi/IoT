@@ -1,0 +1,17 @@
+HOW TO USE:
+- currently only compiling and running on Linux is supported
+- currently only installing dependencies on ArchLinux is supported unless you know analogue packages
+- dependencies must be installed before anything else
+- dependencies must be uninstalled manually
+- to build/clean run build.sh/clean.sh
+- to install/uninstall run install.sh/uninstall.sh
+- to initialize/deinitialize run initialize.sh/deinitialize.sh
+- to start/stop run start.sh/stop.sh
+- do not run anything with sudo since sudo will be asked from you when needed
+- do not run anything outside of this directory 
+- everything is done in the current directory
+- installing and uninstalling are actually building & initializing and deinitializing & cleaning
+- building is needed to be done only once (unless your change the program code)
+- initializing is needed to be done only once (unless you want a fresh database)
+- configuration is done on localhost
+- logging is done on stdout

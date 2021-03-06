@@ -1,0 +1,225 @@
+determine_ip() {
+	local ip=virt$1_ip
+	echo "Determining $ip..."
+	ncat -4l 20000 > /tmp/$ip &
+	echo "machinectl | grep virtmach$1 \
+			| grep -Eo '[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}'" \
+			| ncat -4 $PULSE_SERVER 20000
+	wait $!
+	declare -g $ip=`cat /tmp/$ip`
+	echo $ip=${!ip}
+	sleep 0.5
+}
+
+determine_hex_bash() {
+	local hex_bash=virt$1_hex_bash
+	echo "Determining $hex_bash..."
+	ncat -4l 20000 > /tmp/$hex_bash &
+	echo "machinectl | grep virtmach$1 \
+			| grep -Eo '[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}'" \
+			| ncat -4 $PULSE_SERVER 20000
+	wait $!
+	declare -g $hex_bash=\\0\\0\\0\\0
+	for a in `grep -Eo '[0-9]{1,3}' /tmp/$hex_bash`; do
+		declare -g $hex_bash=${!hex_bash}\\x`printf %02X $a`
+	done
+	echo $hex_bash=${!hex_bash}
+}
+
+determine_hex_bytea() {
+	local hex_bytea=virt$1_hex_bytea
+	echo "Determining $hex_bytea..."
+	ncat -4l 20000 > /tmp/$hex_bytea &
+	echo "machinectl | grep virtmach$1 \
+			| grep -Eo '[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}'" \
+			| ncat -4 $PULSE_SERVER 20000
+	wait $!
+	declare -g $hex_bytea=E\'\\\\x00000000
+	for a in `grep -Eo '[0-9]{1,3}' /tmp/$hex_bytea`; do
+		declare -g $hex_bytea=${!hex_bytea}`printf %02X $a`
+	done
+	declare -g $hex_bytea=${!hex_bytea}\'
+	echo $hex_bytea=${!hex_bytea}
+}
+
+send_udp() {
+	echo "Sending $1..."
+	echo -en "$2" | ncat -4u $3 60000
+	echo "Sending complete."
+}
+
+send_tcp_text() {
+	echo "Sending $1..."
+	local LEN=`echo -n "$2" | wc -m`
+	echo LEN=$LEN
+	echo -en "\\x40\\0\\x`printf %02X $LEN`$2" | ncat -4 $3 60000
+	echo "Sending complete."
+}
+
+send_tcp_binary() {
+	echo "Sending $1..."
+	echo -en "$2" > /tmp/PL
+	local LEN=$((`cat /tmp/PL | wc -c` - 1))
+	if [ ${2:1:1} = 0 ]; then
+		local header=64
+	else
+		local header=$(((0x${2:2:1} + 4) * 16 + 0x${2:3:1}))
+	fi
+	if [ $header -ge 128 ]; then
+		LEN=$(($LEN - 1))
+		if [ ${2:5:1} = 0 ]; then
+			local ID=\\0
+		else
+			local ID=\\x${2:6:2}
+		fi
+		local fieldtobegin=3
+	else
+		local ID=
+		local fieldtobegin=2
+	fi
+	if [ $(($header % 64)) -ge 32 ]; then
+		LEN=$(($LEN - 8))
+	fi
+	if [ $(($header % 32)) -ge 16 ]; then
+		LEN=$(($LEN - 8))
+	fi
+	echo LEN=$LEN
+	echo header=$header
+	echo ID=$ID
+	echo fieldtobegin=$fieldtobegin
+	echo -en "\\x`printf %02X $header`$ID\\0\\x`printf %02X $LEN`" > /tmp/msg2
+	echo -en `printf \\\\\\\\x%02X \`cat /tmp/PL \\\\
+			| hexdump -ve "/1 \\\\"%d \\\\"" | cut -d \\\\  -f $fieldtobegin-\`` >> /tmp/msg2
+	cat /tmp/msg2 | ncat -4 $3 60000
+	echo "Sending complete."
+}
+
+disable_clock() {
+	echo "Disabling automatic clock management..."
+	echo "timedatectl set-ntp false" | ncat -4 $PULSE_SERVER 20000
+	sleep 1
+}
+
+enable_clock() {
+	echo "Enabling automatic clock management..."
+	echo "timedatectl set-ntp true" | ncat -4 $PULSE_SERVER 20000
+	sleep 1
+}
+
+insert_imm_DST() {
+	echo "INSERT INTO SRC_oID(SRC, out_ID) VALUES($2, FLOOR(RANDOM() * 256));
+		INSERT INTO SRC_proto(SRC, proto) VALUES($2, '/my0');
+		INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR)
+		VALUES($2, '/my0', $1, LOCALTIMESTAMP);" | psql -U postgres
+}
+
+insert_DST() {
+	echo "INSERT INTO SRC_oID(SRC, out_ID) VALUES($1, FLOOR(RANDOM() * 256));
+		INSERT INTO SRC_proto(SRC, proto) VALUES($1, '/my0');
+		INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR)
+		VALUES($1, '/my0', $1, LOCALTIMESTAMP);" | psql -U postgres
+}
+
+block_ctrlc() {
+	trap "" SIGINT
+	echo "^C blocked"
+}
+
+wait_ctrld() {
+	echo "EOF to exit..."
+	while read var; do
+		echo "EOF to exit..."
+	done
+}
+
+empty() {
+	block_ctrlc
+	echo "This machine does not partake in scenario $1!"
+	wait_ctrld
+}
+
+process_message() {
+	msg=`cat /tmp/msg | hexdump -ve "/1 \\"%d \\""`
+	echo msg=$msg
+	local fieldtobegin=2
+	header=`echo $msg | cut -d \\  -f 1`
+	echo header=$header
+	if [ $header -ge 128 ]; then
+		fieldtobegin=$(($fieldtobegin + 1))
+	fi
+	if [ $(($header % 128)) -ge 64 ]; then
+		fieldtobegin=$(($fieldtobegin + 2))
+	fi
+	if [ $(($header % 64)) -ge 32 ]; then
+		fieldtobegin=$(($fieldtobegin + 8))
+	fi
+	if [ $(($header % 32)) -ge 16 ]; then
+		fieldtobegin=$(($fieldtobegin + 8))
+	fi
+	echo fieldtobegin=$fieldtobegin
+	declare -a arr
+	read -a arr <<< `echo $msg | cut -d \\  -f $fieldtobegin-`
+	if [ $(($header % 16)) -ge 8 ]; then
+		unset arr[-4]
+		unset arr[-3]
+		unset arr[-2]
+		unset arr[-1]
+	fi
+	echo arr=${arr[*]}
+	PL=
+	for a in ${arr[*]}; do
+		PL="$PL`printf %b "\\\\x\`printf %02X $a\`"`"
+	done
+	echo "PL=$PL"
+	echo "Receiving complete."
+}
+
+run_IoT() {
+	../eclipse-workspace/IoT/Debug/IoT &
+	sleep 3
+}
+
+update_IoT() {
+	echo "SELECT load_store(FALSE);" | psql -U postgres
+	sleep 1
+}
+
+if kill -s SIGKILL `ps | grep bashdb | grep -v $$ | sed -E 's/^ *//' | cut -d \\  -f 1` \
+		2>/dev/null; then
+	echo "Killed some bashdbs"
+fi
+
+if kill -s SIGKILL `ps | grep bash | grep -v $$ | tail -n +2 | sed -E 's/^ *//' | cut -d \\  -f 1` \
+		2>/dev/null; then
+	echo "Killed some bashes"
+fi
+
+if [ $# -eq 0 ]; then
+	determine_ip 0
+	determine_hex_bash 0
+	determine_hex_bytea 0
+
+	send_udp "data" "\\0abc" $PULSE_SERVER
+	send_tcp_text "data" "abc" $PULSE_SERVER
+	send_tcp_binary "data" "\\0abc" $PULSE_SERVER
+
+	disable_clock
+	sleep 1; enable_clock
+
+	insert_imm_DST "E'\\\\x00000000000000AB'" "E'\\\\x00000000000000CD'"
+	insert_DST "E'\\\\x00000000000000EF'"
+
+	block_ctrlc
+	wait_ctrld
+
+	empty 0
+	msg="0 3"; process_message
+fi
+
+if killall -s SIGKILL ncat 2>/dev/null; then
+	echo "Killed some ncats"
+fi
+
+if killall -s SIGKILL IoT 2>/dev/null; then
+	echo "Killed some IoTs"
+fi
