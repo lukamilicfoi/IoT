@@ -15,10 +15,7 @@
 #include <atomic>
 #include <memory>
 
-#include <af_ieee802154_cp.h>
-
 #include <cstdio>
-#include <cmath>
 #include <cstring>
 #include <cctype>
 #include <cstdint>
@@ -26,6 +23,8 @@
 #include <csignal>
 
 extern "C" {
+
+#include <af_ieee802154_cp.h>
 
 #include <sys/select.h>
 #include <sys/stat.h>
@@ -36,7 +35,6 @@ extern "C" {
 
 #include <fcntl.h>
 #include <mqueue.h>
-#include <pthread.h>
 #include <unistd.h>
 
 #include <time.h>
@@ -219,11 +217,11 @@ BYTE header::reverse_byte(BYTE B) noexcept {
 	return lookup_table[B & 0x0F] << 4 | lookup_table[(B & 0xF0) >> 4];
 }
 
-extern bool little_endian;//completely necessary forward declaration
+bool little_endian = true;
 
 BYTE header::get_as_byte() const noexcept {
-	return little_endian ? reverse_byte(*reinterpret_cast<const BYTE *>(this)) :
-			*reinterpret_cast<const BYTE *>(this);
+	return little_endian ? reverse_byte(*reinterpret_cast<const BYTE *>(this))
+			: *reinterpret_cast<const BYTE *>(this);
 }
 
 void header::put_as_byte(BYTE B) noexcept {
@@ -241,8 +239,8 @@ struct formatted_message {
 	bool is_encrypted() const noexcept;
 	bool is_signed() const;
 	static void *operator new(size_t sz, int size);
-	formatted_message(const formatted_message &fmsg) = delete;
-	formatted_message &operator=(const formatted_message &fmsg) = delete;
+	formatted_message(const formatted_message &fmsg);
+	formatted_message &operator=(const formatted_message &fmsg);
 	formatted_message(BYTE2 LEN);
 	void encrypt();
 	void decrypt();
@@ -256,10 +254,11 @@ bool formatted_message::is_encrypted() const noexcept {
 	return LEN > 0 && PL[0] == '@';
 }
 
+void *memcpy_endian(void *dst, const void *src, size_t len) noexcept;
+
 bool formatted_message::is_signed() const {
 	regex re(RE_STRING);
 	string str;
-	void *memcpy_endian(void *dst, const void *src, size_t len);//remove this
 	BYTE2 envelope_len = 0, encrypted_key_len;
 
 	if (is_encrypted()) {
@@ -282,11 +281,10 @@ bool formatted_message::is_signed() const {
 	return false;
 }
 
-class protocol;//circular-dependency forward declaration
+class protocol;//forward declaration
 
 struct raw_message {
-	BYTE8 imm_DST;//immediate DeSTination address
-	BYTE8 imm_SRC;//immediate SouRCe address
+	BYTE8 imm_addr;//immediate remote address
 	BYTE2 TML;//Total Message Length
 	my_time_point TWR;//Time When Received
 	protocol *proto;//the encapsulating protocol
@@ -299,7 +297,7 @@ struct raw_message {
 	~raw_message();
 };
 
-raw_message::raw_message(BYTE *msg) : imm_DST(), imm_SRC(), TML(), TWR(), proto(), CCF(),
+raw_message::raw_message(BYTE *msg) : imm_addr(), TML(), TWR(), proto(), CCF(),
 		ACF(), msg(msg) { }
 
 raw_message::~raw_message() {
@@ -353,8 +351,8 @@ struct send_receive_struct {
 	bool send;
 	int message_length;
 	BYTE message_content[1];
-	send_receive_struct(const send_receive_struct &) = delete;
-	send_receive_struct &operator=(const send_receive_struct &) = delete;
+	send_receive_struct(const send_receive_struct &);
+	send_receive_struct &operator=(const send_receive_struct &);
 	static void *operator new(size_t sz, int size);
 	send_receive_struct(int message_length);
 };
@@ -392,8 +390,6 @@ union typedetails {
 	struct { } bytea;
 };
 
-bool little_endian = true;
-
 my_time_point beginning;
 
 PGconn *conn;
@@ -411,8 +407,6 @@ const char text_to_hex[104] = "xxxxxxxx" "xxxxxxxx" "xxxxxxxx" "xxxxxxxx" "xxxxx
 default_random_engine dre;
 
 uniform_int_distribution<int> uid(0, 255);
-
-multimap<protocol *, BYTE8> local_proto_iSRC;
 
 const char hex_to_text[17] = "0123456789abcdef";//converts 0..15 to [0-9a-f]
 
@@ -525,8 +519,6 @@ void refresh_next_timed_rule_time2(const refresh_next_timed_rule_time_struct &rn
 
 ostream &operator<<(ostream &os, const protocol &proto) noexcept;
 
-void *memcpy_endian(void *dst, const void *src, size_t size) noexcept;
-
 void *memcpy_reverse(void *dst, const void *src, size_t size) noexcept;
 
 BYTE4 givecrc32c(const BYTE *msg, BYTE2 len) noexcept;
@@ -553,9 +545,9 @@ bool clean_select(string query);
 
 PGresult *formatsendreturn(PGresult *res, BYTE8 DST);
 
-bool use_CCF(bool C, BYTE8 DST, BYTE8 imm_DST, const protocol *proto);
+bool use_CCF(bool C, BYTE8 imm_DST, const protocol *proto);
 
-bool use_ACF(bool A, BYTE8 DST, BYTE8 imm_DST, const protocol *proto);
+bool use_ACF(bool A, BYTE8 imm_DST, const protocol *proto);
 
 void send_formatted_message(formatted_message *fmsg);
 
@@ -567,10 +559,10 @@ void format_insert(string &data, vector<string> &columns, vector<string> &types,
 		vector<datatypes> &dt, vector<typedetails> &td);
 
 void format_insert_header(sti &iter_begin, sti &iter_end, string &temp, vector<string> &columns,
-		string &first, string &second, bool &no_d, bool &no_t);
+		string &first, string &second, bool &no_t);
 
 void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<datatypes> &dt,
-		vector<typedetails> &td, string &first, string &second, bool &no_d, bool &no_t);
+		vector<typedetails> &td, string &first, string &second, bool &no_t);
 
 bool clean_insert(string data);
 
@@ -594,7 +586,6 @@ in_addr BYTE8_to_ia(BYTE8 address) noexcept;
 
 BYTE8 ia_to_BYTE8(in_addr ia) noexcept;
 
-class protocol;//remove this
 protocol *find_protocol_by_id(string id);
 
 class protocol {
@@ -607,21 +598,21 @@ private:
 
 	string my_id;
 
-	pthread_t recv_all_thread_id;
+	thread *recv_all_thread;
 
-	pthread_t send_all_thread_id;
+	thread *send_all_thread;
 
 	mqd_t my_mq;
 
-	static void *recv_all(void *this_p);
+	static void recv_all(protocol *proto);
 
-	static void *send_all(void *this_p);
+	static void send_all(protocol *proto);
 
 protected:
 
 	static atomic_int highest_sock;
 
-	bool run;
+	atomic_bool run;
 
 	static void check_sock(int new_sock) noexcept;
 
@@ -635,13 +626,11 @@ protected:
 
 public:
 
-	static pthread_barrier_t bar;
-
 	string get_my_id() const noexcept { return my_id; }
 
 	mqd_t get_my_mq() const noexcept { return my_mq; }
 
-	bool is_running() const noexcept { return recv_all_thread_id != 0; }
+	bool is_running() const noexcept { return recv_all_thread != nullptr; }
 
 	virtual bool can_secure_with_C(BYTE8 imm_DST) const noexcept = 0;
 
@@ -657,9 +646,7 @@ public:
 
 };
 
-pthread_barrier_t protocol::bar;
-
-protocol::protocol() : my_id(unique_id()), recv_all_thread_id(0), run(true) { }
+protocol::protocol() : my_id(unique_id()), recv_all_thread(nullptr), run(true) { }
 
 void protocol::start() {
 	mq_attr ma = { 0, 64, sizeof(raw_message *) };
@@ -667,11 +654,9 @@ void protocol::start() {
 	THR(is_running(), system_exception("starting started protocol"));
 	my_mq = mq_open(my_id.c_str(), O_RDWR | O_CREAT, 0777, &ma);
 	THR(my_mq < 0, system_exception("cannot open my_mq"));
-	THR(pthread_create(&recv_all_thread_id, nullptr, recv_all, this) != 0,
-			system_exception("cannot create recv_all thread"));
-	THR(pthread_create(&send_all_thread_id, nullptr, send_all, this) != 0,
-			system_exception("cannot create send_all thread"));
-	LOG_CPP("created threads " << recv_all_thread_id << " and " << send_all_thread_id
+	recv_all_thread = new thread(recv_all, this);
+	send_all_thread = new thread(send_all, this);
+	LOG_CPP("created threads " << recv_all_thread->get_id() << " and " << send_all_thread->get_id()
 			<< " for protocol " << my_id << endl);
 }
 
@@ -684,53 +669,51 @@ protocol::~protocol() {
 void protocol::stop() {
 	THR(!is_running(), system_exception("stopping stopped protocol"));
 	run = false;
-	THR(pthread_join(send_all_thread_id, nullptr) != 0,
-			system_exception("cannot join send_all thread"));
-	THR(pthread_join(recv_all_thread_id, nullptr) != 0,
-			system_exception("cannot join recv_all thread"));
+	kill(getpid(), SIGUSR1);
+	kill(getpid(), SIGUSR2);
+	send_all_thread->join();
+	recv_all_thread->join();
+	delete send_all_thread;
+	delete recv_all_thread;
 	THR(mq_unlink(my_id.c_str()) < 0, system_exception("cannot unlink my_mq"));
-	recv_all_thread_id = 0;
+	recv_all_thread = nullptr;
 }
 
 //this function is executed in another thread!!!
-void *protocol::recv_all(void *this_p) {
+void protocol::recv_all(protocol *proto) {
 	raw_message *rmsg;
-	protocol *proto = static_cast<protocol *>(this_p);
 
-	LOG_CPP("started recv_all thread " << proto->recv_all_thread_id << " for class "
+	LOG_CPP("started recv_all thread " << proto->recv_all_thread->get_id() << " for class "
 			<< typeid(*proto).name() << " and id " << proto->get_my_id() << endl);
 	while (true) {
-		rmsg = static_cast<protocol *>(this_p)->recv_once();
+		rmsg = proto->recv_once();
 		if (!proto->run) {
-			break;
+			return;
 		}
 		THR(rmsg == nullptr, system_exception("recv_all received nullptr"));
-		THR(rmsg->proto != this_p, system_exception("recv_all received other proto's message"));
+		THR(rmsg->proto != proto, system_exception("recv_all received other proto's message"));
 		THR(mq_send(main_mq, reinterpret_cast<char*>(&rmsg), sizeof(rmsg), 0) < 0,
 				system_exception("cannot send to main_mq"));
 	}
-	return nullptr;
 }
 
 //this function is executed in another thread!!!
-void *protocol::send_all(void *this_p) {
+void protocol::send_all(protocol *proto) {
 	raw_message *rmsg;
-	protocol *proto = static_cast<protocol *>(this_p);
 
-	LOG_CPP("started send_all thread " << proto->send_all_thread_id << " for class "
+	LOG_CPP("started send_all thread " << proto->send_all_thread->get_id() << " for class "
 			<< typeid(*proto).name() << " and id " << proto->get_my_id() << endl);
 	while (true) {
-		if (mq_receive(static_cast<protocol *>(this_p)->get_my_mq(),
+		if (mq_receive(proto->get_my_mq(),
 				reinterpret_cast<char *>(&rmsg), sizeof(rmsg), nullptr) < 0) {
 			THR(errno != EINTR, system_exception("cannot receive from my_mq"));
 			continue;
 		}
 		if (!proto->run) {
-			break;
+			return;
 		}
-		static_cast<protocol *>(this_p)->send_once(rmsg);
+		proto->send_once(rmsg);
 	}
-	return nullptr;
 }
 
 atomic_int protocol::current_id(0);
@@ -754,7 +737,7 @@ struct opensock {
 	bool CCF;
 	bool ACF;
 	int sock;
-	BYTE8 imm_SRC;
+	BYTE8 imm_addr;
 	SSL *ssl;
 };
 
@@ -865,8 +848,26 @@ void *formatted_message::operator new(size_t sz, int size) {
 	return ::operator new(sz + size - 1);
 }
 
+formatted_message::formatted_message(const formatted_message &fmsg) {
+	memcpy(this, &fmsg, sizeof(fmsg) - 1 + fmsg.LEN);
+}
+
+formatted_message &formatted_message::operator=(const formatted_message &fmsg) {
+	memcpy(this, &fmsg, sizeof(fmsg) - 1 + fmsg.LEN);
+	return *this;
+}
+
 void *send_receive_struct::operator new(size_t sz, int size) {
 	return ::operator new(sz + size - 1);
+}
+
+send_receive_struct::send_receive_struct(const send_receive_struct &srs) {
+	memcpy(this, &srs, sizeof(srs) - 1 + srs.message_length);
+}
+
+send_receive_struct &send_receive_struct::operator=(const send_receive_struct &srs) {
+	memcpy(this, &srs, sizeof(srs) - 1 + srs.message_length);
+	return *this;
 }
 
 void formatted_message::encrypt() {
@@ -912,7 +913,8 @@ void formatted_message::sign() {
 
 formatted_message::formatted_message(BYTE2 LEN) : CRC(), HD(), ID(), LEN(LEN), DST(), SRC() { }
 
-send_receive_struct::send_receive_struct(int message_length) : CCF(), ACF(), send(), message_length(message_length) { }
+send_receive_struct::send_receive_struct(int message_length) : CCF(), ACF(), send(),
+		message_length(message_length) { }
 
 void formatted_message::verify() {
 	EVP_PKEY *senders_public_key = get_public_key(DST);
@@ -1128,6 +1130,7 @@ extern "C" const char *SSL_error_string(int e, char *buf) {
 
 string SSL_give_error(const SSL *ssl, int ret) {
 	string retval(SSL_error_string(SSL_get_error(ssl, ret), nullptr));
+
 	if (retval == "SYSCALL") {
 		retval += strerror(errno);
 	} else if (retval == "SSL") {
@@ -1136,8 +1139,6 @@ string SSL_give_error(const SSL *ssl, int ret) {
 	return retval;
 }
 
-//todo better error handling
-//todo better code organization
 #define ADVERTISING_INTERVAL_MIN 1024
 
 #define ADVERTISING_INTERVAL_MAX 1024
@@ -1177,7 +1178,7 @@ public:
 };
 
 void ble::send_once(raw_message *rmsg) {
-	to_send_down_later.insert(make_pair(rmsg->imm_DST, rmsg));
+	to_send_down_later.insert(make_pair(rmsg->imm_addr, rmsg));
 }
 
 raw_message *ble::recv_once() {
@@ -1225,8 +1226,7 @@ raw_message *ble::recv_once() {
 	} else {
 		memcpy(reinterpret_cast<BYTE *>(&temp) + 2, &lai->bdaddr, 6);
 	}
-	rmsg->imm_SRC = EUI48_to_EUI64(temp);
-	rmsg->imm_DST = local_SRC;
+	rmsg->imm_addr = EUI48_to_EUI64(temp);
 	memcpy(rmsg->msg, gatt ? lai->data+4 : lai->data, lai->length);
 	rmsg->CCF = false;
 	rmsg->proto = this;
@@ -1234,7 +1234,7 @@ raw_message *ble::recv_once() {
 	rmsg->TML = lai->length;
 	rmsg->TWR = my_now();
 
-	iter = to_send_down_later.find(rmsg->imm_SRC);
+	iter = to_send_down_later.find(rmsg->imm_addr);
 	if (iter != to_send_down_later.end()) {
 		se.enable = 0x00;
 		se.filter_dup = 0x00;
@@ -1393,7 +1393,7 @@ public:
 };
 
 void _154::send_once(raw_message *rmsg) {
-	to_send_down_later.insert(make_pair(rmsg->imm_DST, rmsg));
+	to_send_down_later.insert(make_pair(rmsg->imm_addr, rmsg));
 }
 
 raw_message *_154::recv_once() {
@@ -1419,14 +1419,13 @@ raw_message *_154::recv_once() {
 			reinterpret_cast<socklen_t *>(&sa_len));
 	THR(msg_len < 0, network_exception("cannot recvfrom sock"));
 	THR(msg_len < rmsg->TML, network_exception("cannot recvfrom sock fully"));
-	memcpy_endian(&rmsg->imm_SRC, sa.addr.hwaddr, sizeof(rmsg->imm_SRC));
-	rmsg->imm_DST = local_SRC;
+	memcpy_endian(&rmsg->imm_addr, sa.addr.hwaddr, sizeof(rmsg->imm_addr));
 	rmsg->CCF = false;
 	rmsg->proto = this;
 	rmsg->ACF = false;
 	rmsg->TWR = my_now();
 
-	iter = to_send_down_later.find(rmsg->imm_SRC);
+	iter = to_send_down_later.find(rmsg->imm_addr);
 	if (iter != to_send_down_later.end()) {
 		msg_len = sendto(sock, iter->second->msg, iter->second->TML, 0,
 				reinterpret_cast<sockaddr *>(&sa), sizeof(sa));
@@ -1530,18 +1529,18 @@ void tcp::send_once(raw_message *rmsg) {
 	sockaddr_in sa;
 	int new_sock, retval;
 	bool security = rmsg->CCF || rmsg->ACF;
-	multimap<BYTE8, opensock *>::iterator iter = addr_opensock.find(rmsg->imm_DST),
+	multimap<BYTE8, opensock *>::iterator iter = addr_opensock.find(rmsg->imm_addr),
 			end = addr_opensock.end();
 	BIO *bio;
 
 	THR(rmsg == nullptr, system_exception("send_once received nullptr"));
 	THR(rmsg->proto != this, system_exception("send_once received other proto's message"));
 	sa.sin_family = AF_INET;
-	while (iter != end && iter->first == rmsg->imm_DST
+	while (iter != end && iter->first == rmsg->imm_addr
 			&& (iter->second->CCF != rmsg->CCF || iter->second->ACF != rmsg->ACF)) {
 		iter++;
 	}
-	if (iter == end || iter->first != rmsg->imm_DST) {
+	if (iter == end || iter->first != rmsg->imm_addr) {
 		new_sock = socket(AF_INET, SOCK_STREAM, 0);
 		THR(new_sock < 0, network_exception("cannot socket new_sock"));
 		check_sock(new_sock);
@@ -1550,7 +1549,7 @@ void tcp::send_once(raw_message *rmsg) {
 		THR(bind(new_sock, reinterpret_cast<sockaddr *>(&sa), sizeof(sockaddr)) < 0,
 				network_exception("cannot bind new_sock"));
 		sa.sin_port = htons(security ? TLS_PORT : TCP_PORT);
-		sa.sin_addr = BYTE8_to_ia(rmsg->imm_DST);
+		sa.sin_addr = BYTE8_to_ia(rmsg->imm_addr);
 		retval = connect(new_sock, reinterpret_cast<sockaddr *>(&sa), sizeof(sockaddr));
 		if (retval < 0) {
 			if (security && errno == ECONNREFUSED) {
@@ -1561,9 +1560,9 @@ void tcp::send_once(raw_message *rmsg) {
 			throw network_exception("cannot connect new_sock");
 		}
 
-		iter = addr_opensock.insert(make_pair(rmsg->imm_DST, new opensock));
+		iter = addr_opensock.insert(make_pair(rmsg->imm_addr, new opensock));
 		iter->second->sock = new_sock;
-		iter->second->imm_SRC = rmsg->imm_DST;
+		iter->second->imm_addr = rmsg->imm_addr;
 		sock_opensock[new_sock] = iter->second;
 
 		if (security) {
@@ -1666,9 +1665,9 @@ raw_message *tcp::recv_once() {//TCP message must contain HD and LEN
 
 			os = new opensock;
 			os->sock = new_sock;
-			os->imm_SRC = ia_to_BYTE8(sa.sin_addr);
+			os->imm_addr = ia_to_BYTE8(sa.sin_addr);
 			sock_opensock[new_sock] = os;
-			addr_opensock.insert(make_pair(os->imm_SRC, os));
+			addr_opensock.insert(make_pair(os->imm_addr, os));
 
 			if (sock == tls_sock) {
 				os->ssl = SSL_new(server_ctx);
@@ -1701,7 +1700,7 @@ raw_message *tcp::recv_once() {//TCP message must contain HD and LEN
 				}
 				THR(shutdown(sock, SHUT_WR) < 0, network_exception("cannot shutdown sock"));
 				THR(close(sock) < 0, network_exception("cannot close sock"));
-				for (iter_addr = addr_opensock.find(iter_sock->second->imm_SRC);
+				for (iter_addr = addr_opensock.find(iter_sock->second->imm_addr);
 						iter_addr->second != iter_sock->second; iter_addr++)
 					;
 				delete iter_sock->second;
@@ -1760,8 +1759,7 @@ raw_message *tcp::recv_once() {//TCP message must contain HD and LEN
 					tml += 4;
 				}
 				rmsg->TML = tml;
-				rmsg->imm_DST = local_SRC;
-				rmsg->imm_SRC = iter_sock->second->imm_SRC;
+				rmsg->imm_addr = iter_sock->second->imm_addr;
 				rmsg->TWR = my_now();
 				rmsg->CCF = iter_sock->second->CCF;
 				rmsg->ACF = iter_sock->second->ACF;
@@ -1852,9 +1850,13 @@ void tcp::stop() {
 	SSL_CTX_free(server_ctx);
 }
 
+#define MAX_DEVICE_INDEX 10
+
 #define UDP_PORT 60000
 
 #define DTLS_PORT 60001
+
+#define PRLIMIT 16777216
 
 class udp : public protocol {
 
@@ -1917,18 +1919,18 @@ void udp::send_once(raw_message *rmsg) {
 	sockaddr_in sa;
 	int new_sock, retval;
 	bool security = rmsg->CCF || rmsg->ACF;
-	multimap<BYTE8, opensock *>::iterator iter = addr_opensock.find(rmsg->imm_DST),
+	multimap<BYTE8, opensock *>::iterator iter = addr_opensock.find(rmsg->imm_addr),
 			end = addr_opensock.end();
 	BIO *bio;
 
 	THR(rmsg == nullptr, system_exception("send_once received nullptr"));
 	THR(rmsg->proto != this, system_exception("send_once received other proto's message"));
 	sa.sin_family = AF_INET;
-	while (iter != end && iter->first == rmsg->imm_DST
+	while (iter != end && iter->first == rmsg->imm_addr
 			&& (iter->second->CCF != rmsg->CCF || iter->second->ACF != rmsg->ACF)) {
 		iter++;
 	}
-	if (iter == end || iter->first != rmsg->imm_DST) {
+	if (iter == end || iter->first != rmsg->imm_addr) {
 		new_sock = socket(AF_INET, SOCK_DGRAM, 0);
 		THR(new_sock < 0, network_exception("cannot socket new_sock"));
 		check_sock(new_sock);
@@ -1937,13 +1939,13 @@ void udp::send_once(raw_message *rmsg) {
 		THR(bind(new_sock, reinterpret_cast<sockaddr *>(&sa), sizeof(sockaddr)) < 0,
 				network_exception("cannot bind new_sock"));
 		sa.sin_port = htons(security ? DTLS_PORT : UDP_PORT);
-		sa.sin_addr = BYTE8_to_ia(rmsg->imm_DST);
+		sa.sin_addr = BYTE8_to_ia(rmsg->imm_addr);
 		THR(connect(new_sock, reinterpret_cast<sockaddr *>(&sa), sizeof(sockaddr)) < 0,
 				network_exception("cannot connect new_sock"));
 
-		iter = addr_opensock.insert(make_pair(rmsg->imm_DST, new opensock));
+		iter = addr_opensock.insert(make_pair(rmsg->imm_addr, new opensock));
 		iter->second->sock = new_sock;
-		iter->second->imm_SRC = rmsg->imm_DST;
+		iter->second->imm_addr = rmsg->imm_addr;
 		sock_opensock.insert(make_pair(new_sock, iter->second));
 
 		if (security) {
@@ -2044,12 +2046,12 @@ raw_message *udp::recv_once() {//UDP message can be empty
 			if (sock == dtls_sock) {
 				for (iter = sock_opensock.find(sock), end = sock_opensock.end(),
 						addr = ia_to_BYTE8(sa.sin_addr);
-						iter != end && iter->first == sock && iter->second->imm_SRC != addr; iter++)
+						iter != end && iter->first == sock && iter->second->imm_addr != addr; iter++)
 					;
 				if (iter == end || iter->first != sock) {
 					os = new opensock;
 					os->sock = sock;
-					os->imm_SRC = addr;
+					os->imm_addr = addr;
 					os->ssl = SSL_new(server_ctx);
 					iter = sock_opensock.insert(make_pair(sock, os));
 					addr_opensock.insert(make_pair(addr, os));
@@ -2089,12 +2091,11 @@ raw_message *udp::recv_once() {//UDP message can be empty
 			}
 			THR(retval < 0, network_exception("cannot recv a socket"));
 			THR(retval < msg_len, network_exception("cannot recv a socket fully"));
-			sa.sin_addr = BYTE8_to_ia(iter->second->imm_SRC);
+			sa.sin_addr = BYTE8_to_ia(iter->second->imm_addr);
 		}
 		rmsg = new raw_message(temp);
 		rmsg->TML = msg_len;
-		rmsg->imm_SRC = ia_to_BYTE8(sa.sin_addr);
-		rmsg->imm_DST = local_SRC;
+		rmsg->imm_addr = ia_to_BYTE8(sa.sin_addr);
 		rmsg->CCF = sock == udp_sock ? false : iter->second->CCF;
 		rmsg->ACF = sock == udp_sock ? false : iter->second->ACF;
 		rmsg->TWR = my_now();
@@ -2177,6 +2178,7 @@ void udp::stop() {
 	SSL_CTX_free(client_ctx);
 	SSL_CTX_free(server_ctx);
 }
+
 template<typename type>
 void instantiate_protocol_if_enabled();
 
@@ -2207,17 +2209,17 @@ const char *get_typename(const type_info &type);
  * static_assert
  * put_time, get_time
  * us, s
- * atomic_int
+ * atomic_int, atomic_bool
  * unique_ptr
- * append streams
+ * append streams, append ostreams
  * suffix strings
  */
 int main(int argc, char *argv[]) {
-	stringstream ss(ss.in | ss.out | ss.ate);
+	ostringstream oss(oss.out | oss.ate);
 	PGresult *res;
-	int i, sock = socket(AF_INET, SOCK_STREAM, 0);
+	int i, sock = socket(AF_UNIX, SOCK_SEQPACKET, 0);
 	struct sigaction sa;
-	char cwd_c[PATH_MAX];
+	char cwd[PATH_MAX];
 	ifreq ifr;
 
 	initialize_vars();
@@ -2232,9 +2234,9 @@ int main(int argc, char *argv[]) {
 	sigaddset(&sa.sa_mask, SIGUSR1);
 	sigaddset(&sa.sa_mask, SIGUSR2);
 	sigprocmask(SIG_BLOCK, &sa.sa_mask, nullptr);
-	getcwd(cwd_c, PATH_MAX);
+	getcwd(cwd, PATH_MAX);
 
-	res = execcheckreturn("SELECT * FROM pg_catalog.pg_class WHERE relname = \'users\'");
+	res = execcheckreturn("SELECT TRUE FROM pg_catalog.pg_class WHERE relname = \'users\'");
 	if (PQntuples(res) == 0) {
 		PQclear(execcheckreturn("CREATE TABLE users(username TEXT, password TEXT, "
 				"canViewTables BOOLEAN, canSendMessages BOOLEAN, can_Receive_Messages BOOLEAN, "
@@ -2250,7 +2252,7 @@ int main(int argc, char *argv[]) {
 	}
 	PQclear(res);
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS t"s + BYTE8_to_c17charp(local_SRC)
-			+ "(d numeric(10,0), t timestamp(4) without time zone)"));
+			+ "(t TIMESTAMP(4) WITHOUT TIME ZONE)"));
 	PQclear(execcheckreturn("CREATE INDEX ON t"s + BYTE8_to_c17charp(local_SRC) + "(t)"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS rules(id INTEGER, "
 			"send_receive_seconds SMALLINT, filter TEXT, drop_modify_nothing SMALLINT, "
@@ -2263,7 +2265,7 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS ID_TWR(SRC BYTEA, ID SMALLINT, "
 			"TWR TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(SRC, ID), "
 			"FOREIGN KEY(SRC) REFERENCES SRC_oID(SRC) ON DELETE CASCADE ON UPDATE CASCADE)"));
-	res = execcheckreturn("SELECT * FROM pg_catalog.pg_class WHERE relname = \'proto_name\'");
+	res = execcheckreturn("SELECT TRUE FROM pg_catalog.pg_class WHERE relname = \'proto_name\'");
 	if (PQntuples(res) == 0) {
 		PQclear(execcheckreturn("CREATE TABLE proto_name(proto TEXT, name TEXT NOT NULL, "
 				"PRIMARY KEY(proto))"));
@@ -2280,34 +2282,55 @@ int main(int argc, char *argv[]) {
 	for (protocol *p : protocols) {
 		p->start();
 	}
-	pthread_barrier_wait(&protocol::bar);
-	pthread_barrier_destroy(&protocol::bar);
 	PQclear(res);
 	PQclear(execcheckreturn("TRUNCATE TABLE proto_name"));
-	ss.str("INSERT INTO proto_name(proto, name) VALUES(");
+	oss.str("INSERT INTO proto_name(proto, name) VALUES(");
 	for (const protocol *p : protocols) {
-		ss << '\'' << p->get_my_id() << "\', \'" << get_typename(typeid(*p)) << "\'), (";
+		oss << '\'' << p->get_my_id() << "\', \'" << get_typename(typeid(*p)) << "\'), (";
 	}
-	ss.seekp(-3, ss.end) << '\0';
-	PQclear(execcheckreturn(ss.str()));
+	oss.seekp(-3, oss.end) << '\0';
+	PQclear(execcheckreturn(oss.str()));
 	populate_local_proto_iSRC();
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS formatted_message_for_send_receive("
 			"HD BYTEA, ID BYTEA, LEN BYTEA, DST BYTEA, SRC BYTEA, PL BYTEA, CRC BYTEA, "
 			"ENCRYPTED BOOLEAN, SIGNED BOOLEAN, proto TEXT, imm_addr BYTEA, CCF BOOLEAN, "
 			"ACF BOOLEAN, FOREIGN KEY(proto) REFERENCES proto_name(proto))"));
 	PQclear(execcheckreturn("TRUNCATE TABLE formatted_message_for_send_receive"));
-	res = execcheckreturn("SELECT * FROM pg_catalog.pg_class WHERE relname = \'adapter_name\'");
+	res = execcheckreturn("SELECT TRUE FROM pg_catalog.pg_class WHERE relname = \'adapter_name\'");
 	if (PQntuples(res) == 0) {
-		PQclear(execcheckreturn("CREATE TABLE adapter_name(adapter TEXT, name TEXT NOT NULL, "
+		PQclear(execcheckreturn("CREATE TABLE adapter_name(adapter INTEGER, name TEXT NOT NULL, "
 				"PRIMARY KEY(adapter))"));
-		//enable all adapters and write to database
-		ss.str("INSERT INTO adapter_name(adapter, name) VALUES(");
-		i = 10;
+		oss.str("INSERT INTO adapter_name(adapter, name) VALUES(");
+		i = MAX_DEVICE_INDEX;
+		while (find_next_lower_device(sock, ifr, i) >= 0) {
+			THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
+			if ((ifr.ifr_flags & IFF_UP) == 0) {
+				ifr.ifr_flags |= IFF_UP;
+				THR(ioctl(sock, SIOCSIFFLAGS, &ifr) < 0, system_exception("cannot SIOCSIFFLAGS ioctl"));
+				LOG_CPP("turned on device " << ifr.ifr_name << endl);
+			}
+			oss << i << ", \'" << ifr.ifr_name << "\'), (";
+		}
+		oss.seekp(-3, oss.end) << '\0';
+		PQclear(execcheckreturn(oss.str()));
 	} else {
 		PQclear(res);
-		//disable all disabled adapters and enable all enabled adapters
-		res = execcheckreturn("SELECT adapter FROM adapter_name");
-		i = 10;
+		i = MAX_DEVICE_INDEX;
+		while (find_next_lower_device(sock, ifr, i) >= 0) {
+			THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
+			res = execcheckreturn("SELECT TRUE FROM adapter WHERE name = \'"s + ifr.ifr_name + '\'');
+			if (PQntuples(res) == 0) {
+				if ((ifr.ifr_flags & IFF_UP) != 0) {
+					ifr.ifr_flags &= ~IFF_UP;
+					THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
+					LOG_CPP("turned off device " << ifr.ifr_name << endl);
+				}
+			} else if ((ifr.ifr_flags & IFF_UP) == 0) {
+				ifr.ifr_flags |= IFF_UP;
+				THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOSIFFLAGS ioctl"));
+				LOG_CPP("turned on device " << ifr.ifr_name << endl);
+			}
+		}
 	}
 	PQclear(res);
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS SRC_proto(SRC BYTEA, proto TEXT, "
@@ -2323,15 +2346,14 @@ int main(int argc, char *argv[]) {
 			"nsecs_id INTEGER NOT NULL, nsecs_src INTEGER NOT NULL, trust_everyone BOOLEAN, "
 			"default_gateway BYTEA)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE configuration"));
-	ss.str("INSERT INTO configuration(forward_messages, use_internet_switch_algorithm, nsecs_id, "
+	oss.str("INSERT INTO configuration(forward_messages, use_internet_switch_algorithm, nsecs_id, "
 			"nsecs_src, trust_everyone, default_gateway) VALUES(");
-	ss << BOOLALPHA_UPPERCASE(forward_messages) << ", "
+	oss << BOOLALPHA_UPPERCASE(forward_messages) << ", "
 			<< BOOLALPHA_UPPERCASE(use_internet_switch_algorithm) << ", " << nsecs_id << ", "
 			<< nsecs_src << ", " << BOOLALPHA_UPPERCASE(trust_everyone) << ", E\'\\\\x"
 			<< BYTE8_to_c17charp(default_gateway) << "\')";
-	PQclear(execcheckreturn(ss.str()));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS currentuser(currentuser "
-			"TEXT)"));
+	PQclear(execcheckreturn(oss.str()));
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS currentuser(currentuser TEXT)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE currentuser"));
 	PQclear(execcheckreturn("INSERT INTO currentuser(currentuser) VALUES(NULL)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS ext(addr_id TEXT) CASCADE"));
@@ -2350,17 +2372,17 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS raw_message_for_query_command("
 			"message BYTEA)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
-	PQclear(execcheckreturn("CREATE PROCEDURE ext(addr_id TEXT) AS \'"s + cwd_c
+	PQclear(execcheckreturn("CREATE PROCEDURE ext(addr_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'ext\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE send_receive(message BYTEA, proto_id TEXT, "
-			"imm_addr BYTEA, CCF BOOLEAN, ACF BOOLEAN, send BOOLEAN) AS \'"s + cwd_c
+			"imm_addr BYTEA, CCF BOOLEAN, ACF BOOLEAN, send BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'send_receive\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE load_store(load BOOLEAN) AS \'"s + cwd_c
+	PQclear(execcheckreturn("CREATE PROCEDURE load_store(load BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'load_store\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE config() AS \'"s + cwd_c
+	PQclear(execcheckreturn("CREATE PROCEDURE config() AS \'"s + cwd
 			+ "/libIoT\', \'config\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE refresh_next_timed_rule_time(next_timed_rule BIGINT) "
-			"AS \'"s + cwd_c + "/libIoT\', \'refresh_next_timed_rule_time\' LANGUAGE C"));
+			"AS \'"s + cwd + "/libIoT\', \'refresh_next_timed_rule_time\' LANGUAGE C"));
 	/*
 	 * in SQL standard only RETURNS NULL ON NULL INPUT function specifier exists
 	 *
@@ -2375,19 +2397,19 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE FUNCTION insert_timer() RETURNS trigger AS \'DECLARE "
 			"lastrun TIMESTAMP(0) WITH TIME ZONE; runperiod INTERVAL SECOND(0); BEGIN "
 			"lastrun = CURRENT_TIMESTAMP(0); "
-			"runperiod = CAST(NEW.filter AS INTEGER) * INTERVAL \'\'1 SECOND\'\'; "
+			"runperiod = CAST(NEW.filter AS INTEGER) * INTERVAL \'\'0:0:1\'\'; "
 			"INSERT INTO timers(rule_id, last_run, run_period, next_run) VALUES(NEW.id, lastrun, "
 			"runperiod, CAST(EXTRACT(EPOCH FROM lastrun + runperiod) AS BIGINT)); "
 			"PERFORM refresh_next_timed_rule_time((SELECT MIN(next_run) FROM timers)); "
-			"RETURN NULL; END;\' LANGUAGE PLPGSQL;"));
+			"RETURN NULL; END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER insert_timer AFTER INSERT ON rules FOR ROW "
 			"WHEN (NEW.send_receive_seconds = 2 AND NEW.active IS TRUE) "
-			"EXECUTE PROCEDURE insert_timer();"));
+			"EXECUTE PROCEDURE insert_timer()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS update_timer() CASCADE"));
 	PQclear(execcheckreturn("CREATE FUNCTION update_timer() RETURNS trigger AS \'DECLARE "
 			"lastrun TIMESTAMP(0) WITH TIME ZONE; runperiod INTERVAL SECOND(0); BEGIN "
 			"lastrun = CURRENT_TIMESTAMP(0); "
-			"runperiod = CAST(NEW.filter AS INTEGER) * INTERVAL \'\'1 SECOND\'\'; "
+			"runperiod = CAST(NEW.filter AS INTEGER) * INTERVAL \'\'0:0:1\'\'; "
 			"IF (OLD.send_receive_seconds <> 2 OR OLD.active IS FALSE) "
 			"AND NEW.send_receive_seconds = 2 AND NEW.active IS TRUE THEN "
 			"INSERT INTO timers(rule_id, last_run, run_period, next_run) VALUES(NEW.id, lastrun, "
@@ -2398,12 +2420,12 @@ int main(int argc, char *argv[]) {
 			"ELSIF (OLD.filter <> NEW.filter) THEN UPDATE timers SET (run_period, next_run) "
 			"= (runperiod, CAST(EXTRACT(EPOCH FROM last_run + runperiod) AS BIGINT)) "
 			"WHERE rule_id = NEW.id; END IF; PERFORM refresh_next_timed_rule_time(("
-			"SELECT MIN(next_run) FROM timers)); RETURN NULL; END;\' LANGUAGE PLPGSQL;"));
+			"SELECT MIN(next_run) FROM timers)); RETURN NULL; END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER update_timer AFTER UPDATE ON rules FOR ROW "
 			"EXECUTE PROCEDURE update_timer()"));
 	PQclear(execcheckreturn("TRUNCATE TABLE timers"));
 	PQclear(execcheckreturn("INSERT INTO timers(rule_id, last_run, run_period, next_run) "
-			"SELECT id, CURRENT_TIMESTAMP(0), CAST(filter AS INTEGER) * INTERVAL \'1 SECOND\', "
+			"SELECT id, CURRENT_TIMESTAMP(0), CAST(filter AS INTEGER) * INTERVAL \'0:0:1\', "
 			"NULL FROM rules WHERE send_receive_seconds = 2 AND active IS TRUE"));
 	PQclear(execcheckreturn("UPDATE timers SET next_run "
 			"= CAST(EXTRACT(EPOCH FROM last_run + run_period) AS BIGINT)"));
@@ -2414,7 +2436,6 @@ int main(int argc, char *argv[]) {
 
 	destroy_vars();
 	PQfinish(conn);
-	return 0;
 }
 
 template<typename type>
@@ -2442,19 +2463,18 @@ const char *get_typename(const type_info &type) {
 void initialize_vars() {
 	rlimit rl;
 	mq_attr ma = { 0, 4, sizeof(raw_message *) };
-	mode_t mask = umask(0000);
 	BYTE test[2] = { 1 };
 	random_device rd;
 
 	THR(getrlimit(RLIMIT_MSGQUEUE, &rl) < 0, system_exception("cannot getrlimit"));
 	LOG_CPP("got RLIMIT_MSGQUEUE, rlim_cur = " << rl.rlim_cur << ", rlim_max = " << rl.rlim_max
 			<< endl);
-	if (rl.rlim_cur < 16777216) {
+	if (rl.rlim_cur < PRLIMIT) {
 		LOG_CPP("rlim_cur lower than 16M, raising to 16M" << endl);
-		rl.rlim_cur = 16777216;
-		if (rl.rlim_max < 16777216) {
+		rl.rlim_cur = PRLIMIT;
+		if (rl.rlim_max < PRLIMIT) {
 			LOG_CPP("rlim_max lower than 16M, raising to 16M" << endl);
-			rl.rlim_max = 16777216;
+			rl.rlim_max = PRLIMIT;
 		}
 		THR(setrlimit(RLIMIT_MSGQUEUE, &rl) < 0, system_exception("cannot setrlimit"));
 				//privileged operation!!!
@@ -2462,6 +2482,7 @@ void initialize_vars() {
 				<< endl);
 	}
 
+	umask(0000);
 	main_mq = mq_open("/main", O_RDWR | O_CREAT, 0777, &ma);
 	THR(main_mq < 0, system_exception("cannot open main_mq"));
 	ma.mq_msgsize = sizeof(ext_struct);
@@ -2489,7 +2510,6 @@ void initialize_vars() {
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(refresh_next_timed_rule_time_mq < 0,
 			system_exception("cannot open refresh_next_timed_rule_time_mq"));
-	umask(mask);
 
 	cipherctx = EVP_CIPHER_CTX_new();
 	mdctx = EVP_MD_CTX_new();
@@ -2534,6 +2554,7 @@ void destroy_vars() {
 	for (protocol *p : protocols) {
 		delete p;
 	}
+
 	THR(mq_unlink("/main") < 0, system_exception("cannot unlink main_mq"));
 	THR(mq_unlink("/ext") < 0, system_exception("cannot unlink ext_mq"));
 	THR(mq_unlink("/send_receive") < 0, system_exception("cannot unlink send_receive_mq"));
@@ -2547,6 +2568,7 @@ void destroy_vars() {
 
 	EVP_CIPHER_CTX_free(cipherctx);
 	EVP_MD_CTX_free(mdctx);
+
 #ifdef SIGNAL
 	pthread_mutexattr_destroy(&global_mutexattr);
 	pthread_mutex_destroy(&global_mutex);
@@ -2556,7 +2578,7 @@ void destroy_vars() {
 }
 
 void sig_ign(int sig) {
-	LOG_CPP("handling signal " << strsignal(sig) << " for thread " << pthread_self() << endl);
+	LOG_CPP("handling signal " << strsignal(sig) << " for thread " << this_thread::get_id() << endl);
 }
 
 BYTE8 EUI64_to_EUI48(BYTE8 EUI64) noexcept {
@@ -2564,7 +2586,7 @@ BYTE8 EUI64_to_EUI48(BYTE8 EUI64) noexcept {
 }
 
 void populate_local_proto_iSRC() {
-	int sock = socket(AF_INET, SOCK_STREAM, 0), i = 10;
+	int sock = socket(AF_UNIX, SOCK_SEQPACKET, 0), i = MAX_DEVICE_INDEX;
 	ifreq ifr;
 	BYTE8 addr;
 
@@ -2573,19 +2595,18 @@ void populate_local_proto_iSRC() {
 				system_exception("cannot SIOCGIFADDR ioctl"));
 		if (ifr.ifr_addr.sa_family == AF_INET) {
 			addr = ia_to_BYTE8(reinterpret_cast<sockaddr_in *>(&ifr.ifr_addr)->sin_addr);
-			local_proto_iSRC.insert(make_pair(protocols[0], addr));
-			local_proto_iSRC.insert(make_pair(protocols[1], addr));
 			LOG_CPP("added imm_SRC " << BYTE8_to_c17charp(addr) << " for TCP" << endl);
 			LOG_CPP("added imm_SRC " << BYTE8_to_c17charp(addr) << " for UDP" << endl);
-		} else if (ifr.ifr_addr.sa_family == AF_BLUETOOTH) {
+		} else if (ifr.ifr_addr.sa_family == AF_IEEE802154) {
 
 		}
 	}
+
 	close(sock);
 }
 
 void determine_local_SRC() {
-	int sock = socket(AF_INET, SOCK_STREAM, 0), i = 10;
+	int sock = socket(AF_UNIX, SOCK_SEQPACKET, 0), i = MAX_DEVICE_INDEX;
 	ifreq ifr;
 
 	while (find_next_lower_device(sock, ifr, i) >= 0) {
@@ -2604,6 +2625,7 @@ void determine_local_SRC() {
 
 		}
 	}
+
 	close(sock);
 }
 
@@ -2652,10 +2674,10 @@ extern "C" Datum ext(PG_FUNCTION_ARGS) {
 	text *addr_id_sql = PG_GETARG_TEXT_PP(0);
 	int addr_id_len = VARSIZE_ANY_EXHDR(addr_id_sql);
 	ext_struct es = { { '\0' } };
-
-	memcpy(es.addr_id, VARDATA_ANY(addr_id_sql), addr_id_len < 27 ? addr_id_len : 27);
 	mqd_t ext_mq = mq_open("/ext", O_WRONLY);
+
 	THR(ext_mq < 0, system_exception("cannot open ext_mq"));
+	memcpy(es.addr_id, VARDATA_ANY(addr_id_sql), addr_id_len < 27 ? addr_id_len : 27);
 	THR(mq_send(ext_mq, reinterpret_cast<char *>(&es), sizeof(ext_struct), 0) < 0,
 			system_exception("cannot send to ext_mq"));
 	THR(mq_close(ext_mq) < 0, system_exception("cannot close ext_mq"));
@@ -2664,14 +2686,20 @@ extern "C" Datum ext(PG_FUNCTION_ARGS) {
 
 //this function is executed in another process!!!
 extern "C" Datum send_receive(PG_FUNCTION_ARGS) {
-	bytea *message = PG_GETARG_BYTEA_PP(0);
+	bytea *message = PG_GETARG_BYTEA_PP(0), *imm_addr = PG_GETARG_BYTEA_PP(2);
 	text *proto_id_sql = PG_GETARG_TEXT_PP(1);
-	bytea *imm_addr = PG_GETARG_BYTEA_PP(2);
 	bool CCF = PG_GETARG_BOOL(3), ACF = PG_GETARG_BOOL(4), send = PG_GETARG_BOOL(5);
-	int message_length = VARSIZE_ANY_EXHDR(message);
-	int proto_id_len = VARSIZE_ANY_EXHDR(proto_id_sql);
+	int message_length = VARSIZE_ANY_EXHDR(message), proto_id_len = VARSIZE_ANY_EXHDR(proto_id_sql), fd =
+			open("/tmp/flock_cpp", O_WRONLY | O_CREAT);
 	send_receive_struct *srs = new(message_length) send_receive_struct(message_length);
+	mqd_t prlimit_pid_mq = mq_open("/prlimit_pid", O_WRONLY), prlimit_ack_mq =
+			mq_open("/prlimit_ack", O_RDWR), send_receive_mq = mq_open("/send_receive", O_WRONLY);
+	long pid = getpid(), temp = pid;
 
+	THR(prlimit_pid_mq < 0, system_exception("cannot open prlimit_pid_mq"));
+	THR(prlimit_ack_mq < 0, system_exception("cannot open prlimit_ack_mq"));
+	THR(send_receive_mq < 0, system_exception("cannot open send_receive_mq"));
+	THR(fd < 0, system_exception("cannot open fd"));
 	memset(srs->proto_id, 0, 13);
 	memcpy(srs->proto_id, VARDATA_ANY(proto_id_sql), proto_id_len < 12 ? proto_id_len : 12);
 	memcpy(srs->imm_addr, VARDATA_ANY(imm_addr), 8);
@@ -2680,14 +2708,9 @@ extern "C" Datum send_receive(PG_FUNCTION_ARGS) {
 	srs->send = send;
 	srs->message_length = message_length;
 	memcpy(srs->message_content, VARDATA_ANY(message), message_length);
-	mqd_t prlimit_pid_mq = mq_open("/prlimit_pid", O_WRONLY);
-	THR(prlimit_pid_mq < 0, system_exception("cannot open prlimit_pid_mq"));
-	long pid = getpid(), temp = pid;
 	THR(mq_send(prlimit_pid_mq, reinterpret_cast<char *>(&pid), sizeof(pid), 0) < 0,
 			system_exception("cannot send to prlimit_pid_mq"));
 	THR(mq_close(prlimit_pid_mq) < 0, system_exception("cannot close prlimit_pid_mq"));
-	mqd_t prlimit_ack_mq = mq_open("/prlimit_ack", O_RDWR);
-	THR(prlimit_ack_mq < 0, system_exception("cannot open prlimit_ack_mq"));
 	do {
 		THR(mq_receive(prlimit_ack_mq, reinterpret_cast<char *>(&pid), sizeof(pid), 0) < 0,
 				system_exception("cannot receive from prlimit_ack_mq"));
@@ -2698,10 +2721,6 @@ extern "C" Datum send_receive(PG_FUNCTION_ARGS) {
 				system_exception("cannot send to prlimit_ack_mq"));
 	} while (true);
 	THR(mq_close(prlimit_ack_mq) < 0, system_exception("cannot close prlimit_ack_mq"));
-	mqd_t send_receive_mq = mq_open("/send_receive", O_WRONLY);
-	THR(send_receive_mq < 0, system_exception("cannot open send_receive_mq"));
-	int fd = open("/tmp/flock_cpp", O_WRONLY | O_CREAT);
-	THR(fd < 0, system_exception("cannot open fd"));
 	THR(flock(fd, LOCK_EX) != 0, system_exception("cannot lock fd"));
 	THR(mq_send(send_receive_mq, reinterpret_cast<char *>(&message_length), sizeof(message_length),
 			0) < 0, system_exception("cannot send to send_receive_mq"));
@@ -2758,8 +2777,7 @@ void send_receive2(const send_receive_struct &srs) {
 	unique_ptr<raw_message> dummy(rmsg);
 	rmsg->TML = srs.message_length;
 	rmsg->proto = find_protocol_by_id(proto_id_cpp);
-	rmsg->imm_DST = srs.send ? imm_addr : local_SRC;
-	rmsg->imm_SRC = srs.send ? local_proto_iSRC.find(rmsg->proto)->second : imm_addr;
+	rmsg->imm_addr = imm_addr;
 	memcpy(rmsg->msg, srs.message_content, rmsg->TML);
 	rmsg->TWR = my_now();
 	rmsg->CCF = srs.CCF;
@@ -2897,8 +2915,7 @@ void load_store2_store() {
 			temp = PQgetvalue(res2, k, 0);
 			iter_p_i_T = iter_S_s->second->proto_iSRC_TWR.insert(make_pair(find_protocol_by_id(
 					temp), new map<BYTE8, my_time_point>)).first;
-			res3 = execcheckreturn(
-					"SELECT imm_SRC, TWR FROM iSRC_TWR WHERE SRC = E\'\\\\x"
+			res3 = execcheckreturn("SELECT imm_SRC, TWR FROM iSRC_TWR WHERE SRC = E\'\\\\x"
 					+ SRC + "\' AND proto = \'" + temp + "\' ORDER BY proto ASC");
 			for (m = 0, n = PQntuples(res3); m < n; m++) {
 				iss.str(PQgetvalue(res3, m, 1));
@@ -2987,11 +3004,11 @@ void main_loop() {
 					//no break
 				case '\xF7'://UNSUBSCRIBE=0xF7//ALL=0x85
 					/* UNSUBSCRIBE(_ALL) */
-					iss.str(query.substr(query.front() == '\xF7' ? 1 : 11));
-					if (iss.str() == "\x85" || iss.str() == " ALL;") {
-						iss.str(BYTE8_to_c17charp(fmsg->SRC));
+					query = query.substr(query.front() == '\xF7' ? 1 : 11);
+					if (query == "\x85" || query == " ALL;") {
 						res = execcheckreturn("SELECT SUBSTRING(relname FROM 22) FROM pg_catalog"
-								".pg_class WHERE relname LIKE \'table\\_" + iss.str() + "\\_%\'");
+								".pg_class WHERE relname LIKE \'table\\_"s
+								+ BYTE8_to_c17charp(fmsg->SRC) + "\\_%\'");
 						for (i = PQntuples(res) - 1; i >= 0; i--) {
 							unsub(PQgetvalue(res, i, 0), fmsg->SRC);
 						}
@@ -3018,8 +3035,7 @@ void main_loop() {
 					ins(query, fmsg->SRC);
 				}
 				if (fmsg->HD.K) {
-					query = "K";
-					query += reinterpret_cast<char *>(&fmsg->ID);
+					query = "K"s + reinterpret_cast<char *>(&fmsg->ID);
 					LOG_CPP("sending ACKNOWLEDGMENT for message " << HEX(fmsg->ID, 2) << endl);
 					send_control(query, fmsg->SRC, fmsg->DST);
 				}
@@ -3027,24 +3043,20 @@ void main_loop() {
 			}
 			break;
 		} catch (error_exception &e) {
-			query = "E";
-			query += *reinterpret_cast<char *>(&fmsg->ID);
-			query += e.what();
+			query = "E"s + *reinterpret_cast<char *>(&fmsg->ID) + e.what();
 			LOG_CPP("sending ERROR for message " << HEX(fmsg->ID, 2) << endl);
 			send_control(query, fmsg->SRC, fmsg->DST);
 		} catch (unsupported_exception &e) {
-			query = "N";
-			query += *reinterpret_cast<char *>(&fmsg->ID);
-			query += e.what();
+			query = "N"s + *reinterpret_cast<char *>(&fmsg->ID) + e.what();
 			LOG_CPP("sending UNSUPPORTED for message " << HEX(fmsg->ID, 2) << endl);
 			send_control(query, fmsg->SRC, fmsg->DST);
 		} catch (message_exception &e) {
 			//don't-care
 		} catch (network_exception &e) {
-			cout << e.what() << endl;
+			LOG_CPP(e.what() << endl);
 			return;
 		} catch (database_exception &e) {
-			cout << e.what() << endl;
+			LOG_CPP(e.what() << endl);
 			return;
 		}
 	} while (true);
@@ -3076,7 +3088,8 @@ void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 	memcpy_endian(&fmsg->DST, &DST, 8);
 	memcpy_endian(&fmsg->SRC, &SRC, 8);
 	payload.copy(reinterpret_cast<char *>(fmsg->PL), LEN);
-	fmsg->CRC = givecrc32c(reinterpret_cast<BYTE *>(fmsg.get()) + 4, LEN + fields_MAX);//HD,ID,LEN,DST,SRC
+	fmsg->CRC = givecrc32c(reinterpret_cast<BYTE *>(fmsg.get()) + 4, LEN + fields_MAX);
+			//HD,ID,LEN,DST,SRC
 	if (little_endian) {
 		fmsg->LEN = LEN;
 		fmsg->DST = DST;
@@ -3093,7 +3106,6 @@ formatted_message *receive_formatted_message() {
 	int i;
 	BYTE4 CRC;
 	my_time_point now;
-	string str;
 
 	do {
 		rmsg.reset(receive_raw_message());
@@ -3121,15 +3133,14 @@ formatted_message *receive_formatted_message() {
 				memcpy_endian(&fmsg->DST, rmsg->msg + i, 8);
 				i += 8;
 			} else {
-				fmsg->DST = true ? rmsg->imm_DST :
-						local_SRC;
+				fmsg->DST = local_SRC;
 			}
 			if (fmsg->HD.S) {
 				THR(i + 7 >= rmsg->TML, message_exception("SRC absent"));
 				memcpy_endian(&fmsg->SRC, rmsg->msg + i, 8);
 				i += 8;
 			} else {
-				fmsg->SRC = rmsg->imm_SRC;
+				fmsg->SRC = rmsg->imm_addr;
 			}
 			memcpy(fmsg->PL, rmsg->msg + i, rmsg->TML - i);
 			if (fmsg->HD.R) {
@@ -3166,19 +3177,23 @@ formatted_message *receive_formatted_message() {
 				if (st == nullptr) {
 					st = new map<BYTE8, my_time_point>;
 				}
-				my_time_point &t1 = (*st)[rmsg->imm_SRC];
+				my_time_point &t1 = (*st)[rmsg->imm_addr];
 				if (t1.time_since_epoch() == chrono::system_clock::duration::zero()) {
 					t1 = now;
 				}
 			}
 			my_time_point &t2 = s->ID_TWR[fmsg->ID];
-			if (chrono::duration_cast<chrono::seconds>(now - t2).count() < nsecs_id)
-					{//SRC, DST, ID and approx. time same -> duplicate
+			if (chrono::duration_cast<chrono::seconds>(now - t2).count() < nsecs_id) {
+						//SRC, DST, ID and approx. time same -> duplicate
 				LOG_CPP("received duplicate message of ID " << HEX(static_cast<int>(fmsg->ID), 2) <<
 						" from " << BYTE8_to_c17charp(fmsg->SRC) << endl);
 				continue;
 			}
 			t2 = now;
+			fmsg.reset(apply_rules(fmsg.release(), rmsg.get(), false));
+			if (fmsg == nullptr) {
+				continue;
+			}
 			if (trust_everyone) {
 				LOG_CPP("trusting everyone for receiving" << endl);
 			} else {
@@ -3186,10 +3201,6 @@ formatted_message *receive_formatted_message() {
 						message_exception("security for C and rcv breached"));
 				THR(fmsg->HD.A && !rmsg->ACF && !fmsg->is_signed(),
 						message_exception("security for A and rcv breached"));
-			}
-			fmsg.reset(apply_rules(fmsg.release(), rmsg.get(), false));
-			if (fmsg == nullptr) {
-				continue;
 			}
 			if (fmsg->DST != local_SRC) {
 				if (forward_messages) {
@@ -3202,13 +3213,13 @@ formatted_message *receive_formatted_message() {
 			if (fmsg->LEN > 1) {
 				THR(fmsg->is_encrypted(), message_exception("not decrypted"));
 				THR(fmsg->is_signed(), message_exception("not verified"));
-				LOG_CPP("received DATA/SELECT(_SUBSCRIBE)/UNSUBSCRIBE(_ALL) " << *fmsg << endl);
+				LOG_CPP("received DATA/SELECT(_SUBSCRIBE)/UNSUBSCRIBE(_ALL)"
+						"/ACKNOWLEDGMENT/ERROR/UNSUPPORTED " << *fmsg << endl);
 			} else if (fmsg->LEN > 0) {
 				oss.str("d=");
 				oss << static_cast<int>(*fmsg->PL);
-				str = oss.str();
-				str.copy(reinterpret_cast<char *>(fmsg->PL), 5);//strlen("d=255") = 5
-				fmsg->LEN = str.length();
+				oss.str().copy(reinterpret_cast<char *>(fmsg->PL), 5);//strlen("d=255") = 5
+				fmsg->LEN = oss.tellp();
 				LOG_CPP("received QUICK " << *fmsg << endl);
 			} else {
 				LOG_CPP("received HELLO " << *fmsg << endl);
@@ -3317,10 +3328,10 @@ raw_message *receive_raw_message() {
 				LOG_CPP("received request for RLIMIT_MSGQUEUE assertion from pid " << pid << endl);
 				THR(prlimit(pid, RLIMIT_MSGQUEUE, nullptr, &rl) < 0,
 						system_exception("cannot get prlimit"));
-				if (rl.rlim_cur < 16777216) {
-					rl.rlim_cur = 16777216;
-					if (rl.rlim_max < 16777216) {
-						rl.rlim_max = 16777216;
+				if (rl.rlim_cur < PRLIMIT) {
+					rl.rlim_cur = PRLIMIT;
+					if (rl.rlim_max < PRLIMIT) {
+						rl.rlim_max = PRLIMIT;
 					}
 					THR(prlimit(pid, RLIMIT_MSGQUEUE, &rl, nullptr) < 0,
 							system_exception("cannot set prlimit"));//privileged operation!!!
@@ -3376,12 +3387,9 @@ raw_message *receive_raw_message() {
 			res_rules = execcheckreturn(select + " ORDER BY rules.id ASC");
 			for (i = 0, j = PQntuples(res_rules); i < j; i++) {
 				apply_rule_beginning(res_rules, current_id, i, "timed");
-				ss.str("UPDATE timers SET (last_run, next_run) = (last_run + run_period, "
-						"CAST(EXTRACT(EPOCH FROM last_run + 2 * run_period) AS BIGINT)) "
-						"WHERE rule_id = ");
-				ss.clear();
-				ss << PQgetvalue(res_rules, i, 0);
-				PQclear(execcheckreturn(ss.str()));
+				PQclear(execcheckreturn("UPDATE timers SET (last_run, next_run) = (last_run "
+						"+ run_period, CAST(EXTRACT(EPOCH FROM last_run + 2 * run_period) "
+						"AS BIGINT)) WHERE rule_id = "s + PQgetvalue(res_rules, i, 0)));
 				apply_rule_end(res_rules, current_id, i, j, 0, select);
 			}
 			PQclear(res_rules);
@@ -3459,8 +3467,8 @@ void decode_bytes_from_stream(istream &stream, BYTE *bytes, size_t len) {
 	int i = -1;
 
 	while (++i < static_cast<int>(len)) {
-		bytes[i] = (text_to_hex[static_cast<int>(stream.get())] << 4) +
-				text_to_hex[static_cast<int>(stream.get())];
+		bytes[i] = (text_to_hex[static_cast<int>(stream.get())] << 4)
+				+ text_to_hex[static_cast<int>(stream.get())];
 	}
 }
 
@@ -3506,15 +3514,17 @@ void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
 			<< HEX_NOSHOWB(fmsg.LEN, 4) << "\', E\'\\\\x" << BYTE8_to_c17charp(fmsg.DST) <<
 			"\', E\'\\\\x" << BYTE8_to_c17charp(fmsg.SRC) << "\', E\'\\\\x";
 	encode_bytes_to_stream(oss, fmsg.PL, fmsg.LEN);
-	oss << "\', E\'\\\\x" << HEX_NOSHOWB(fmsg.CRC, 8) << "\', " << BOOLALPHA_UPPERCASE(fmsg.is_encrypted()) << ", " << BOOLALPHA_UPPERCASE(fmsg.is_signed()) << ", "
-			<< '\'' << rmsg.proto->get_my_id() << "\', E\'\\\\x" << BYTE8_to_c17charp(rmsg.imm_SRC) << "\', "
-			<< BOOLALPHA_UPPERCASE(rmsg.CCF) << ", " << BOOLALPHA_UPPERCASE(rmsg.ACF) << ")";
+	oss << "\', E\'\\\\x" << HEX_NOSHOWB(fmsg.CRC, 8) << "\', "
+			<< BOOLALPHA_UPPERCASE(fmsg.is_encrypted()) << ", "
+			<< BOOLALPHA_UPPERCASE(fmsg.is_signed()) << ", \'" << rmsg.proto->get_my_id()
+			<< "\', E\'\\\\x" << BYTE8_to_c17charp(rmsg.imm_addr) << "\', "
+			<< BOOLALPHA_UPPERCASE(rmsg.CCF) << ", " << BOOLALPHA_UPPERCASE(rmsg.ACF) << ')';
 	PQclear(execcheckreturn(oss.str()));
 }
 
 formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool send) {
 	string select("SELECT ");
-	PGresult *res_rules = execcheckreturn(send ?
+	PGresult *res_fields, *res_rules = execcheckreturn(send ?
 			"SELECT id, send_receive_seconds, filter, drop_modify_nothing, modification, "
 			"query_command_nothing, query_command_1, send_inject_query_command_nothing, "
 			"query_command_2, proto_id, imm_addr, CCF, ACF, activate, deactivate, active "
@@ -3522,7 +3532,7 @@ formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool 
 			"SELECT id, send_receive_seconds, filter, drop_modify_nothing, modification, "
 			"query_command_nothing, query_command_1, send_inject_query_command_nothing, "
 			"query_command_2, proto_id, imm_addr, CCF, ACF, activate, deactivate, active "
-			"FROM rules WHERE send_receive_seconds = 1 AND active IS TRUE ORDER BY id ASC"), *res_fields;
+			"FROM rules WHERE send_receive_seconds = 1 AND active IS TRUE ORDER BY id ASC");
 	int i = 0, j = PQntuples(res_rules), current_id;
 	bool to_delete = false;
 	const char *value;
@@ -3542,8 +3552,8 @@ formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool 
 				to_delete = true;
 			} else if (*value == '1') {
 				LOG_CPP("modifying message" << endl);
-				execute_semicolon_separated_commands("UPDATE formatted_message_for_send_receive SET ",
-						*fmsg, *rmsg, PQgetvalue(res_rules, i, 4));
+				execute_semicolon_separated_commands("UPDATE formatted_message_for_send_receive "
+						"SET ", *fmsg, *rmsg, PQgetvalue(res_rules, i, 4));
 			}
 			apply_rule_end(res_rules, current_id, i, j, 3, select);
 		}
@@ -3561,8 +3571,8 @@ formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool 
 }
 
 void select_message(formatted_message &fmsg, raw_message &rmsg) {
-	PGresult *res = execcheckreturn("SELECT HD, ID, LEN, DST, SRC, PL, CRC, proto, imm_addr, CCF, ACF "
-			"FROM formatted_message_for_send_receive");
+	PGresult *res = execcheckreturn("SELECT HD, ID, LEN, DST, SRC, PL, CRC, proto, imm_addr, CCF, "
+			"ACF FROM formatted_message_for_send_receive");
 	istringstream iss(PQgetvalue(res, 0, 0) + 2);
 	int i;
 
@@ -3584,7 +3594,7 @@ void select_message(formatted_message &fmsg, raw_message &rmsg) {
 	iss.clear();
 	iss >> HEX_INP(fmsg.CRC);
 	rmsg.proto = find_protocol_by_id(PQgetvalue(res, 0, 7));
-	rmsg.imm_SRC = c17charp_to_BYTE8(PQgetvalue(res, 0, 8) + 2);
+	rmsg.imm_addr = c17charp_to_BYTE8(PQgetvalue(res, 0, 8) + 2);
 	rmsg.CCF = *PQgetvalue(res, 0, 9) == 't';
 	rmsg.ACF = *PQgetvalue(res, 0, 10) == 't';
 	PQclear(res);
@@ -3614,12 +3624,12 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 		PQclear(execcheckreturn(ss.str() + PQgetvalue(res_rules, i, offset + 4) + "\"\'"));
 	}
 	res_message = execcheckreturn("SELECT message FROM raw_message_for_query_command");
-	if (*value == '0' || *value == '1') {
+	if (*value <= '1') {
 		send_receive_from_rule(PQgetvalue(res_message, 0, 0),
 				PQgetvalue(res_rules, i, offset + 5), PQgetvalue(res_rules, i, offset + 6) + 2,
 				*PQgetvalue(res_rules, i, offset + 7) == 't',
 				*PQgetvalue(res_rules, i, offset + 8) == 't', true);
-	} else if (*value == '2' || *value == '3') {
+	} else if (*value <= '4') {
 		send_receive_from_rule(PQgetvalue(res_message, 0, 0),
 				PQgetvalue(res_rules, i, offset + 5), PQgetvalue(res_rules, i, offset + 6) + 2,
 				*PQgetvalue(res_rules, i, offset + 7) == 't',
@@ -3674,13 +3684,12 @@ BYTE8 c17charp_to_BYTE8(const char *address) {
 }
 
 ostream &operator<<(ostream &os, const raw_message &rmsg) noexcept {
-	os << "raw message of TML " << rmsg.TML <<
-			" for imm_DST " << BYTE8_to_c17charp(rmsg.imm_DST) <<
-			" from imm_SRC " << BYTE8_to_c17charp(rmsg.imm_SRC) << " with payload \"";
+	os << "raw message of TML " << rmsg.TML << " from imm_SRC " << BYTE8_to_c17charp(rmsg.imm_addr)
+			<< " with payload \"";
 	print_message_c(os, rmsg.msg, rmsg.TML);
-	os << "\", relative time " <<
-			chrono::duration_cast<chrono::seconds>(rmsg.TWR - beginning).count() <<
-			" using protocol " << *rmsg.proto << " on a ";
+	os << "\", relative time "
+			<< chrono::duration_cast<chrono::seconds>(rmsg.TWR - beginning).count()
+			<< " using protocol " << *rmsg.proto << " on a ";
 	if (!rmsg.CCF) {
 		os << "non-";
 	}
@@ -4210,8 +4219,7 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 	LOG_CPP("formatting " << endl);
 	LOG_C(PQprint, res, &opt);
 	while (++i < j) {
-		data += PQfname(res, i);
-		data += ',';
+		data = data + PQfname(res, i) + ',';
 	}
 	data.back() = '=';
 	for (k = 0, l = PQntuples(res); k < l; k++) {
@@ -4242,14 +4250,14 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 					break;
 				case BYTEAOID:
 					data += "X\'";
-					for (value = PQgetvalue(res, k, i) + 2; *value != '\0';
-							value++) {//skip beginning "\\x"
+					for (value = PQgetvalue(res, k, i) + 2; *value != '\0'; value++) {
+								//skip beginning "\\x"
 						data += toupper(*value);
 					}
 					data += '\'';
 					break;
 				case BOOLOID:
-					data += *PQgetvalue(res, k, i) == 't' ? "TRUE" : "FALSE";//PostgreSQL prints BOOLEAN as t and f
+					data += BOOLALPHA_UPPERCASE(*PQgetvalue(res, k, i));//PostgreSQL prints BOOLEAN as t and f
 					break;
 				default:
 					throw unsupported_exception("unsupported data type");
@@ -4270,7 +4278,8 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 	memcpy_endian(&fmsg->DST, &DST, 8);
 	memcpy_endian(&fmsg->SRC, &local_SRC, 8);
 	data.copy(reinterpret_cast<char *>(fmsg->PL), LEN);
-	fmsg->CRC = givecrc32c(reinterpret_cast<BYTE *>(fmsg.get()) + 4, LEN + fields_MAX);//HD,ID,LEN,DST,SRC
+	fmsg->CRC = givecrc32c(reinterpret_cast<BYTE *>(fmsg.get()) + 4, LEN + fields_MAX);
+			//HD,ID,LEN,DST,SRC
 	if (little_endian) {
 		fmsg->LEN = LEN;
 		fmsg->DST = DST;
@@ -4281,11 +4290,11 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 	return res;
 }
 
-bool use_CCF(bool C, BYTE8 DST, BYTE8 imm_DST, const protocol *proto) {
+bool use_CCF(bool C, BYTE8 imm_DST, const protocol *proto) {
 	return !trust_everyone && C && proto->can_secure_with_C(imm_DST);
 }
 
-bool use_ACF(bool A, BYTE8 DST, BYTE8 imm_DST, const protocol *proto) {
+bool use_ACF(bool A, BYTE8 imm_DST, const protocol *proto) {
 	return !trust_everyone && A && proto->can_secure_with_A(imm_DST);
 }
 
@@ -4316,18 +4325,18 @@ void send_formatted_message(formatted_message *fmsg) {
 						" seconds" << endl);
 				iter_proto_iDST_TWR->second->erase(iter_iDST_TWR);
 			} else {
-				iter_iSRC = local_proto_iSRC.find(iter_proto_iDST_TWR->first);
-				THR(iter_iSRC == local_proto_iSRC.end(),
-						message_exception("imm_SRC does not exist"));
+				copy.reset(new(fmsg->LEN) formatted_message(*fmsg));
 				msg = new BYTE[fmsg->LEN + fields_MAX];
 				iter_DST_destination = SRC_source.find(fmsg->DST);
 				THR(iter_DST_destination == SRC_source.end(), message_exception("DST does not exist"));
 				rmsg.reset(new raw_message(msg));
-				rmsg->imm_DST = iter_iDST_TWR->first;
-				rmsg->imm_SRC = iter_iSRC->second;
+				rmsg->imm_addr = iter_iDST_TWR->first;
+				rmsg->proto = iter_proto_iDST_TWR->first;
+				rmsg->CCF = use_CCF(fmsg->HD.C, rmsg->imm_addr, rmsg->proto);
+				rmsg->ACF = use_ACF(fmsg->HD.A, rmsg->imm_addr, rmsg->proto);
 				dummy_f.reset(apply_rules(dummy_f.release(), rmsg.get(), true));
 				if (dummy_f == nullptr) {
-					return;
+					continue;
 				}
 				*msg = fmsg->HD.get_as_byte();
 				if (fmsg->HD.I) {
@@ -4352,19 +4361,16 @@ void send_formatted_message(formatted_message *fmsg) {
 					i += 4;
 				}
 				rmsg->TML = i + fmsg->LEN;
-				if (true &&
-						regex_match(reinterpret_cast<char *>(fmsg->PL), re)) {
+				if (true && regex_match(reinterpret_cast<char *>(fmsg->PL), re)) {
 					iss.str(reinterpret_cast<char *>(fmsg->PL) + 2);
 					iss >> i;
 					if (i < 256) {
+						delete[] rmsg->msg;
 						rmsg->msg = new BYTE[1]{ static_cast<BYTE>(i) };
 						rmsg->TML = 1;
 					}
 				}
 				rmsg->TWR = my_now();
-				rmsg->proto = iter_proto_iDST_TWR->first;
-				rmsg->CCF = use_CCF(fmsg->HD.C, fmsg->DST, rmsg->imm_DST, rmsg->proto);
-				rmsg->ACF = use_ACF(fmsg->HD.A, fmsg->DST, rmsg->imm_DST, rmsg->proto);
 				if (trust_everyone) {
 					LOG_CPP("trusting everyone for sending" << endl);
 				} else {
@@ -4387,7 +4393,7 @@ void send_formatted_message(formatted_message *fmsg) {
 
 #ifdef OFFLINE
 void send_raw_message(raw_message *rmsg) {
-	ofstream ofs("test.txt", ofs.ate | ofs.binary);
+	ofstream ofs("test.txt", ofs.out | ofs.ate | ofs.binary);
 	unique_ptr<raw_message> dummy(rmsg);
 
 	ofs.write(reinterpret_cast<char *>(rmsg->msg), rmsg->TML);
@@ -4461,9 +4467,9 @@ void ins(string data, BYTE8 address) {
 					case datatypes::TEXT:
 #define DEFAULT_CHECK_INS(typestr) \
 		do { \
-		THR(strcmp(type, typestr) != 0, error_exception("changed type")); \
-		columns.erase(columns.begin() + i); \
-		types.erase(types.begin() + i); \
+			THR(strcmp(type, typestr) != 0, error_exception("changed type")); \
+			columns.erase(columns.begin() + i); \
+			types.erase(types.begin() + i); \
 		} while (0)
 						DEFAULT_CHECK_INS("text");
 						break;
@@ -4473,31 +4479,31 @@ void ins(string data, BYTE8 address) {
 					case datatypes::TIMESTAMP:
 #define TIMESTAMP_OR_TIME_CHECK_INS(typestr, typelen) \
 		do { \
-		THR(strncmp(type, #typestr "(", typelen) != 0, error_exception("changed type")); \
-		ss.str(type + typelen);/*strlen(#typestr "(") = typelen*/ \
-		ss >> old_td.typestr.precision; \
-		old_td.typestr.with_time_zone = type[typelen + 7] == ' '; \
-		if (old_td.typestr.precision >= td[i].typestr.precision) { \
-			if (old_td.typestr.with_time_zone || !td[i].typestr.with_time_zone) { \
-				columns.erase(columns.begin() + i); \
-				types.erase(columns.begin() + i); \
+			THR(strncmp(type, #typestr "(", typelen) != 0, error_exception("changed type")); \
+			ss.str(type + typelen);/*strlen(#typestr "(") = typelen*/ \
+			ss >> old_td.typestr.precision; \
+			old_td.typestr.with_time_zone = type[typelen + 7] == ' '; \
+			if (old_td.typestr.precision >= td[i].typestr.precision) { \
+				if (old_td.typestr.with_time_zone || !td[i].typestr.with_time_zone) { \
+					columns.erase(columns.begin() + i); \
+					types.erase(columns.begin() + i); \
+				} else { \
+					columns[i].back() += 128; \
+					ss.str(""); \
+					ss.clear(); \
+					ss << old_td.typestr.precision; \
+					types[i] = #typestr "(" + ss.str() + ") with time zone"; \
+				} \
 			} else { \
 				columns[i].back() += 128; \
 				ss.str(""); \
 				ss.clear(); \
-				ss << old_td.typestr.precision; \
-				types[i] = #typestr "(" + ss.str() + ") with time zone"; \
+				ss << td[i].typestr.precision; \
+				types[i] = #typestr "(" + ss.str() + ((old_td.typestr.with_time_zone \
+						|| !td[i].typestr.with_time_zone) ? ") with time zone" \
+						: ") without time zone"); \
 			} \
-		} else { \
-			columns[i].back() += 128; \
-			ss.str(""); \
-			ss.clear(); \
-			ss << td[i].typestr.precision; \
-			types[i] = #typestr "(" + ss.str() + ((old_td.typestr.with_time_zone \
-					|| !td[i].typestr.with_time_zone) ? ") with time zone" \
-							: ") without time zone"); \
-		} \
-		} while (0);
+		} while (0)
 						TIMESTAMP_OR_TIME_CHECK_INS(timestamp, 10);
 						break;
 					case datatypes::TIME:
@@ -4542,16 +4548,16 @@ void format_insert(string &data, vector<string> &columns, vector<string> &types,
 	regex re(RE_STRING "|=|,|;|#");
 	const int m[2] = { -1, 0 };
 	int i, j;
-	bool no_d = true, no_t = true;
+	bool no_t = true;
 	string temp("("), first, second;
 	ostringstream oss;
 	sti iter_begin(data.cbegin(), data.cend(), re, m), iter_end;
 
 	LOG_CPP("formatting INSERT \"" << data);
-	format_insert_header(iter_begin, iter_end, temp, columns, first, second, no_d, no_t);
+	format_insert_header(iter_begin, iter_end, temp, columns, first, second, no_t);
 	temp += ") VALUES(";
 	dt.push_back(static_cast<datatypes>(columns.size()));
-	format_insert_body(iter_begin, iter_end, temp, dt, td, first, second, no_d, no_t);
+	format_insert_body(iter_begin, iter_end, temp, dt, td, first, second, no_t);
 	data = temp + ')';
 	for (i = 0, j = dt.size(); i < j; i++) {
 		switch (dt[i]) {
@@ -4591,7 +4597,7 @@ void format_insert(string &data, vector<string> &columns, vector<string> &types,
 }
 
 void format_insert_header(sti &iter_begin, sti &iter_end, string &temp, vector<string> &columns,
-		string &first, string &second, bool &no_d, bool &no_t) {
+		string &first, string &second, bool &no_t) {
 	bool added = false, loop = true;
 	string second_temp, str;
 	int index = 2;
@@ -4633,9 +4639,7 @@ void format_insert_header(sti &iter_begin, sti &iter_end, string &temp, vector<s
 				case '\"'://add double-quoted header field
 					THR(added, error_exception("crowded header field"));
 					columns.push_back(second);
-					if (second == "\"d\"") {
-						no_d = false;
-					} else if (second == "\"t\"") {
+					if (second == "\"t\"") {
 						no_t = false;
 					}
 					added = true;
@@ -4679,9 +4683,7 @@ void format_insert_header(sti &iter_begin, sti &iter_end, string &temp, vector<s
 					THR(added, error_exception("crowded header field"));
 					columns.push_back(first);
 					temp += first;
-					if (first == "d") {
-						no_d = false;
-					} else if (first == "t") {
+					if (first == "t") {
 						no_t = false;
 					}
 					if (second.front() == '=') {//end of header
@@ -4724,13 +4726,9 @@ void format_insert_header(sti &iter_begin, sti &iter_end, string &temp, vector<s
 			if (columns.size() != 1) {
 				temp.insert(columns.front().length(), 1, '1');
 				columns.front() += '1';
-				no_d = true;
 				no_t = true;
 			}
 		}
-	}
-	if (no_d) {
-		temp += ", d";
 	}
 	if (no_t) {
 		temp += ", t";
@@ -4739,7 +4737,7 @@ void format_insert_header(sti &iter_begin, sti &iter_end, string &temp, vector<s
 
 //the number of columns is sent through a member of var "dt" (cast to type)
 void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<datatypes> &dt,
-		vector<typedetails> &td, string &first, string &second, bool &no_d, bool &no_t) {
+		vector<typedetails> &td, string &first, string &second, bool &no_t) {
 	int max_column = static_cast<int>(dt.back()) - 1, column = 0, period, e, expo;
 	bool added = false, loop = true;
 	istringstream iss;
@@ -4774,9 +4772,6 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 					temp += ", ";
 				} else {//end of data row or end of data
 					THR(column < max_column, error_exception("too little columns"));
-					if (no_d) {
-						temp += ", 0";
-					}
 					if (no_t) {
 						temp += ", LOCALTIMESTAMP";
 					}
@@ -4802,8 +4797,7 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 			new_td.typestr.precision = period == static_cast<int>(string::npos) ? 0 : \
 					second.length() - period - 1; \
 			period = second.rfind(' ');/*reverse for speed*/ \
-			THR(period == static_cast<int>(string::npos), \
-					error_exception("error in " #typestr)); \
+			THR(period == static_cast<int>(string::npos), error_exception("error in " #typestr)); \
 			new_td.typestr.with_time_zone = \
 					second.find_first_of("+-", period) != string::npos; \
 					/*only possible format is uint-uint-uint uint:uint:uint[.uint]{+|-}uint:uint*/ \
@@ -4825,7 +4819,7 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 					#TYPESTR " ") + second;/*"timezoneness" is not recognized by Postgres*/ \
                                            /*(all TIMESTR literals are treated WITHOUTtz)*/ \
                                            /*and needs to be set explicitely when WITHtz*/ \
-		} while (0);
+		} while (0)
 					THR(first.length() < 5, error_exception("malformed timestamp or time"));
 					if (first[4] == 'S') {//add timestamp data field
 						TIMESTAMP_OR_TIME_CHECK_BODY(timestamp, TIMESTAMP);
@@ -4842,7 +4836,7 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 			} else { \
 				THR(dt[column] != datatypes::type, error_exception("changed type")); \
 			} \
-		} while (0);
+		} while (0)
 					DEFAULT_CHECK_BODY(DATE);
 					temp += "DATE " + second;
 					break;
@@ -4850,8 +4844,8 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 					period = second.rfind('.');//reverse for speed
 					new_td.timestamp.precision = period == static_cast<int>(string::npos) ? 0 :
 							second.length() - period - 1;
-					//only possible format is [+|-]uint[-uint| uint[:uint[:uint[.uint]]]}|
-							//[:uint][:uint][.uint]} by the SQL standard
+					//only possible format is [+|-]uint[-uint| uint[:uint[:uint[.uint]]]|
+							//:uint[:uint[.uint]] by the SQL standard
 					if (static_cast<int>(dt.size()) <= column) {
 						dt.push_back(datatypes::INTERVAL);
 						td.push_back(new_td);
@@ -4885,8 +4879,7 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 						dt.push_back(datatypes::TEXT);
 						td.push_back(new_td);
 					} else {
-						THR(dt[column] != datatypes::TEXT,
-								error_exception("changed type"));
+						THR(dt[column] != datatypes::TEXT, error_exception("changed type"));
 					}
 					temp += "U&" + second + uescape;
 					break;
@@ -4909,10 +4902,7 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 					 //(even though IS UNKNOWN predicate _is_ recognized)
 					 //and need to be converted to NULL equivalent form
 					DEFAULT_CHECK_BODY(BOOLEAN);
-					if (static_cast<int>(dt.size()) <= column) {
-						dt.push_back(datatypes::BOOLEAN);
-						td.push_back(new_td);
-					}
+					temp += second;
 				} else {//add number data field
 					e = first.rfind('E');//deliberately not ignoring case
 					period = first.rfind('.');
@@ -4962,9 +4952,6 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 				} else {//end of data row or end of data
 					THR(column < max_column, error_exception("too little columns"));
 					temp += first;
-					if (no_d) {
-						temp += ", 0";
-					}
 					if (no_t) {
 						temp += ", LOCALTIMESTAMP";
 					}
@@ -5000,12 +4987,12 @@ void create_table(string address, vector<string> &columns, vector<string> &types
 	int i = -1, j = columns.size();
 
 	while (++i < j) {
-		if (columns[i] != "d" && columns[i] != "t") {
+		if (columns[i] != "t") {
 			coltyp += columns[i] + ' ' + types[i] + ", ";
 		}
 	}
-	PQclear(execcheckreturn("CREATE TABLE " + address + coltyp + "d numeric(10,0),"
-			" t timestamp(4) without time zone)"));//strlen("4294967296") = 10
+	PQclear(execcheckreturn("CREATE TABLE " + address + coltyp
+			+ "t timestamp(4) without time zone)"));//strlen("4294967296") = 10
 	PQclear(execcheckreturn("CREATE INDEX ON " + address + "(t)"));
 }
 
