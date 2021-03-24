@@ -15,18 +15,12 @@ if ($_SESSION['user'] != 'admin') {
 <?php
 			$dbconn = pgconnect('host=localhost dbname=postgres user=postgres client_encoding=UTF8');
 			if (isset($_GET['update'])) {
-				pg_free_result(pgquery('UPDATE configuration SET (forward_messages, use_internet_switch_algorithm, nsecs_id, nsecs_src) = (' . (isset($_GET['forward_messages']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['use_internet_switch_algorithm']) ? 'TRU' : 'FALS') . "E, {$_GET['nsecs_id']}, {$_GET['nsecs_src']});"));
+				pg_free_result(pgquery('UPDATE configuration SET (forward_messages, use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway) = (' . (isset($_GET['forward_messages']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['use_internet_switch_algorithm']) ? 'TRU' : 'FALS') . "E, {$_GET['nsecs_id']}, {$_GET['nsecs_src']}, " . (isset($_GET['trust_everyone']) ? 'TRU' : 'FALS') . 'E, E\'\\\\x' . substr($_GET['default_gateway'], 2) . ');'));
 				pg_free_result(pgquery('SELECT config();'));
 ?>
 				Configuration updated.<br/>
 <?php
 			}
-			if (isset($_GET['update2'])) {
-				pg_free_result(pgquery('UPDATE proto_name SET (C, A) = (' . (isset($_GET['C']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['A']) ? 'TRU' : 'FALS') . "E) WHERE name = '{$_GET['name']}';"));
-			}
-?>
-			Changing protocols takes effect on next executable run.
-<?php
 			$result = pgquery('TABLE configuration;');
 			$row = pg_fetch_row($result);
 ?>
@@ -38,6 +32,8 @@ if ($_SESSION['user'] != 'admin') {
 						<th>use internet switch algorithm</th>
 						<th>duplicate expiration in seconds</th>
 						<th>address expiration in seconds</th>
+						<th>trust everyone</th>
+						<th>default gateway</th>
 						<th>Actions</th>
 					</tr>
 					<tr>
@@ -62,57 +58,22 @@ if ($_SESSION['user'] != 'admin') {
 ?>
 						</td>
 						<td>
+<?php
+							echo '<input form="update" type="checkbox" name="trust_everyone"', $row[4] == 't' ? ' checked="checked"' : '', "/>\n";
+?>
+						</td>
+						<td>
+<?php
+							echo '<input form="update" type="text" name="default_gateway" value="X\'', substr($row[5], 2), "'\"/>\n";
+?>
+						</td>
+						<td>
 							<form id="update" action="" method="GET">
 								<input type="submit" name="update" value="UPDATE"/>
 								<input type="reset" value="reset"/>
 							</form>
 						</td>
 					</tr>
-				</tbody>
-			</table>
-			Viewing table &quot;proto_name&quot;.
-			<table>
-				<tbody>
-					<tr>
-						<th>protocol</th>
-						<th>C</th>
-						<th>A</th>
-						<th>Actions</th>
-					</tr>
-<?php
-					$result = pgquery('SELECT name FROM proto_name;');
-					for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
-?>
-						<tr>
-							<td>
-<?php
-								echo "<input form=\"update{$row[0]}\" type=\"text\" name=\"protocol\" value=\"{$row[0]}\" disabled=\"disabled\"/>\n";
-?>
-							</td>
-							<td>
-<?php
-								echo "<input form=\"update{$row[0]}\" type=\"checkbox\" name=\"C\"", $row[2] == 't' ? ' checked="checked"' : '', "/>\n";
-?>
-							</td>
-							<td>
-<?php
-								echo "<input form=\"update{$row[0]}\" type=\"checkbox\" name=\"A\"", $row[3] == 't' ? ' checked="checked"' : '', "/>\n";
-?>
-							</td>
-							<td>
-<?php
-								echo "<form id=\"update{$row[0]}\" action=\"\" method=\"GET\">\n";
-?>
-									<input type="submit" name="update" value="UPDATE"/>
-									<input type="reset" value="reset"/>
-<?php
-								echo "</form>\n";
-?>
-							</td>
-					</tr>	
-<?php
-					}
-?>
 				</tbody>
 			</table>
 <?php

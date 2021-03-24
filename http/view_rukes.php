@@ -81,15 +81,15 @@ checkLogin();
 					<tr>
 						<td>INTEGER</td>
 						<td>SMALLINT</td>
-						<td>CHARACTER VARYING(255)</td>
+						<td>CLOB</td>
 						<td>SMALLINT</td>
-						<td>CHARACTER VARYING(255)</td>
+						<td>CLOB</td>
 						<td>SMALLINT</td>
-						<td>CHARACTER VARYING(255)</td>
+						<td>CLOB</td>
 						<td>SMALLINT</td>
-						<td>CHARACTER VARYING(255)</td>
-						<td>CHARACTER VARYING(10)</td>
-						<td>BINARY(8)</td>
+						<td>CLOB</td>
+						<td>CLOB</td>
+						<td>BLOB</td>
 						<td>BOOLEAN</td>
 						<td>BOOLEAN</td>
 						<td>INTEGER</td>

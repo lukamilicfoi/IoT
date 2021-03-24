@@ -31,8 +31,8 @@ $admin = $_SESSION['user'] == 'admin';
 				exit(0);
 			}
 		} else if (isset($_POST['insert'])) {
-			$query = "INSERT INTO users(username, password, canViewTables, canSendMessages, can_Receive_Messages, canSendQueries, canViewRules, canActuallyLogin) VALUES('{$_POST['username']}', '" . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'';
-			$fields = array('canviewtables', 'cansendmessages', 'can_receive_messages', 'cansendqueries', 'canviewrules', 'canactuallylogin');
+			$query = "INSERT INTO users(username, password, can_view_tables, can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_actually_login) VALUES('{$_POST['username']}', '" . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'';
+			$fields = array('can_view_tables', 'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules', 'can_actually_login');
 			for ($i = 0; $i < 6; $i++) {
 				$query .= isset($_POST[$fields[$i]]) ? ', TRUE' : ', FALSE';
 			}
@@ -40,8 +40,8 @@ $admin = $_SESSION['user'] == 'admin';
 			echo 'User ', htmlspecialchars($_POST['username']), " inserted.<br/>\n";
 			pg_free_result($result);
 		} else if (isset($_POST['update'])) {
-			$query = "UPDATE users SET (password, canViewTables, canSendMessages, can_Receive_Messages, canSendQueries, canViewRules, canActuallyLogin) = (" . (isset($_POST['password']) && !empty($_POST['password']) ? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : 'password');
-			$fields = array('canviewtables', 'cansendmessages', 'can_receive_messages', 'cansendqueries', 'canviewrules', 'canactuallylogin');
+			$query = "UPDATE users SET (password, can_view_tables, can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_actually_login) = (" . (isset($_POST['password']) && !empty($_POST['password']) ? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : 'password');
+			$fields = array('can_view_tables', 'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules', 'can_actually_login');
 			for ($i = 0; $i < 6; $i++) {
 				$query .= isset($_POST[$fields[$i]]) ? ', TRUE' : ', FALSE';
 			}
@@ -79,7 +79,7 @@ $admin = $_SESSION['user'] == 'admin';
 					<th>New password?</th>
 					<th>Can view tables</th>
 					<th>Can send messages</th>
-					<th>Can &quot;receive&quot; messages</th>
+					<th>Can inject messages</th>
 					<th>Can send queries</th>
 					<th>Can view rules</th>
 					<th>Can actually login</th>
@@ -98,22 +98,22 @@ $admin = $_SESSION['user'] == 'admin';
 							<input form="insert" type="password" name="password"/>
 						</td>
 						<td>
-							<input form="insert" type="checkbox" name="canviewtables"/>
+							<input form="insert" type="checkbox" name="can_view_tables"/>
 						</td>
 						<td>
-							<input form="insert" type="checkbox" name="cansendmessages"/>
+							<input form="insert" type="checkbox" name="can_send_messages"/>
 						</td>
 						<td>
-							<input form="insert" type="checkbox" name="can_receive_messages"/>
+							<input form="insert" type="checkbox" name="can_inject_messages"/>
 						</td>
 						<td>
-							<input form="insert" type="checkbox" name="cansendqueries"/>
+							<input form="insert" type="checkbox" name="can_send_queries"/>
 						</td>
 						<td>
-							<input form="insert" type="checkbox" name="canviewrules"/>
+							<input form="insert" type="checkbox" name="can_view_rules"/>
 						</td>
 						<td>
-							<input form="insert" type="checkbox" name="canactuallylogin"/>
+							<input form="insert" type="checkbox" name="can_actually_login"/>
 						</td>
 						<td>
 							<input form="insert" type="submit" name="insert" value="INSERT"/><br/>
