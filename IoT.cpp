@@ -291,6 +291,8 @@ struct raw_message {
 	bool CCF;//Confidential Channel Flag
 	bool ACF;//Authentic Channel Flag
 	BYTE *msg;//physical message
+	bool broadcast;
+	bool override_implicit_rules;
 	raw_message(const raw_message &rmsg) = delete;
 	raw_message &operator=(const raw_message &rmsg) = delete;
 	raw_message(BYTE *msg);
@@ -298,7 +300,7 @@ struct raw_message {
 };
 
 raw_message::raw_message(BYTE *msg) : imm_addr(), TML(), TWR(), proto(), CCF(),
-		ACF(), msg(msg) { }
+		ACF(), msg(msg), broadcast(), override_implicit_rules() { }
 
 raw_message::~raw_message() {
 	delete[] msg;
@@ -320,6 +322,8 @@ struct refresh_next_timed_rule_time_struct {
 	time_t next_timed_rule;
 };
 
+struct update_permissions_struct { };
+
 /*
  * array: C array wrapper for easy indexing and hard finding
  * vector: array for easy pushing and popping on one end,
@@ -336,9 +340,9 @@ struct refresh_next_timed_rule_time_struct {
  * span: a pair of iterators
  * colony: array for easy pushing and popping on one end,
  * 		hard indexing and finding, hard inserting, and easy erasing
- *///todo ssl_connect je provižorno, tukalo bi bolje
-struct source {
-	map<BYTE, my_time_point> ID_TWR;//todo vrzi da je duplic ako je isti DST
+ */
+struct remote {
+	map<BYTE8, map<BYTE, my_time_point> *> DST_ID_TWR;
 	BYTE out_ID;
 	map<protocol *, map<BYTE8, my_time_point> *> proto_iSRC_TWR;
 };
@@ -351,6 +355,8 @@ struct send_receive_struct {
 	bool send;
 	int message_length;
 	BYTE message_content[1];
+	bool broadcast;
+	bool override_implicit_rules;
 	send_receive_struct(const send_receive_struct &);
 	send_receive_struct &operator=(const send_receive_struct &);
 	static void *operator new(size_t sz, int size);
@@ -392,13 +398,15 @@ union typedetails {
 
 my_time_point beginning;
 
+map<string, BYTE8> table_address;
+
 PGconn *conn;
 
 string local_FROM(" FROM t");
 
-BYTE8 local_SRC = 0xBABADEDA'DECACECA;
+BYTE8 local_addr = 0xBABADEDA'DECACECA;
 
-map<BYTE8, source *> SRC_source;//user can edit this via web configuration
+map<BYTE8, remote *> addr_remote;//user can edit this via web configuration
 
 const char text_to_hex[104] = "xxxxxxxx" "xxxxxxxx" "xxxxxxxx" "xxxxxxxx" "xxxxxxxx" "xxxxxxxx"
 		"\x00\x01\x02\x03\x04\x05\x06\x07" "\x08\x09xxxxxx" "xxxxxxxx" "xxxxxxxx" "xxxxxxxx"
@@ -419,6 +427,8 @@ bool use_internet_switch_algorithm = true;
 bool override_implicit_rules = false;
 
 mqd_t main_mq;
+
+mqd_t update_permissions_mq;
 
 mqd_t ext_mq;
 
@@ -444,15 +454,17 @@ int nsecs_src = 36000;//10 hours
 
 time_t next_timed_rule = 0;
 
+map<protocol *, BYTE8> local_proto_iaddr;
+
 BYTE8 EUI48_to_EUI64(BYTE8 EUI48) noexcept;
 
 const char *BYTE8_to_c17charp(BYTE8 address);
 
 BYTE8 EUI64_to_EUI48(BYTE8 EUI64) noexcept;//not used
 
-void populate_local_proto_iSRC();
+void populate_local_proto_iaddr();
 
-void determine_local_SRC();
+void determine_local_addr();
 
 PGresult *execcheckreturn(string query);
 
@@ -509,6 +521,8 @@ extern "C" { PG_FUNCTION_INFO_V1(config); }
 
 extern "C" { PG_FUNCTION_INFO_V1(refresh_next_timed_rule_time); }
 
+extern "C" { PG_FUNCTION_INFO_V1(update_permissions); }
+
 void load_store2_load();
 
 void load_store2_store();
@@ -516,6 +530,8 @@ void load_store2_store();
 void config2();
 
 void refresh_next_timed_rule_time2(const refresh_next_timed_rule_time_struct &rntrts);
+
+void update_permissions2();
 
 ostream &operator<<(ostream &os, const protocol &proto) noexcept;
 
@@ -587,6 +603,8 @@ in_addr BYTE8_to_ia(BYTE8 address) noexcept;
 BYTE8 ia_to_BYTE8(in_addr ia) noexcept;
 
 protocol *find_protocol_by_id(string id);
+
+bool check_permissions(string table, BYTE8 address);
 
 class protocol {
 
@@ -914,7 +932,7 @@ void formatted_message::sign() {
 formatted_message::formatted_message(BYTE2 LEN) : CRC(), HD(), ID(), LEN(LEN), DST(), SRC() { }
 
 send_receive_struct::send_receive_struct(int message_length) : CCF(), ACF(), send(),
-		message_length(message_length) { }
+		message_length(message_length), broadcast(), override_implicit_rules() { }
 
 void formatted_message::verify() {
 	EVP_PKEY *senders_public_key = get_public_key(DST);
@@ -1485,7 +1503,7 @@ private:
 	(no socket has multiple connections) */
 	map<int, opensock *> sock_opensock;
 
-	/* multimap of all opensock-s, indexable by opensock::imm_SRC (same content, different index) */
+	/* multimap of all opensock-s, indexable by opensock::imm_addr (same content different index) */
 	multimap<BYTE8, opensock *> addr_opensock;
 
 	/* sigmask for select */
@@ -1550,15 +1568,8 @@ void tcp::send_once(raw_message *rmsg) {
 				network_exception("cannot bind new_sock"));
 		sa.sin_port = htons(security ? TLS_PORT : TCP_PORT);
 		sa.sin_addr = BYTE8_to_ia(rmsg->imm_addr);
-		retval = connect(new_sock, reinterpret_cast<sockaddr *>(&sa), sizeof(sockaddr));
-		if (retval < 0) {
-			if (security && errno == ECONNREFUSED) {
-				THR(close(new_sock) < 0, network_exception("cannot close new_sock"));
-				LOG_CPP("dropping message" << endl);
-				return;
-			}
-			throw network_exception("cannot connect new_sock");
-		}
+		THR(connect(new_sock, reinterpret_cast<sockaddr *>(&sa), sizeof(sockaddr)) < 0,
+				network_exception("cannot connect new_sock"));
 
 		iter = addr_opensock.insert(make_pair(rmsg->imm_addr, new opensock));
 		iter->second->sock = new_sock;
@@ -1875,7 +1886,7 @@ private:
 	(multiple connections on dtls_sock only) */
 	multimap<int, opensock *> sock_opensock;
 
-	/* multimap of all opensock-s, indexable by opensock::imm_SRC (same content, different index) */
+	/* multimap of all opensock-s, indexable by opensock::imm_addr (same content different index) */
 	multimap<BYTE8, opensock *> addr_opensock;
 
 	/* sigmask for select */
@@ -2221,6 +2232,7 @@ int main(int argc, char *argv[]) {
 	struct sigaction sa;
 	char cwd[PATH_MAX];
 	ifreq ifr;
+	hci_dev_info hdi;
 
 	initialize_vars();
 	conn = PQconnectdb("dbname=postgres user=postgres client_encoding=UTF8");
@@ -2239,32 +2251,35 @@ int main(int argc, char *argv[]) {
 	res = execcheckreturn("SELECT TRUE FROM pg_catalog.pg_class WHERE relname = \'users\'");
 	if (PQntuples(res) == 0) {
 		PQclear(execcheckreturn("CREATE TABLE users(username TEXT, password TEXT, "
-				"canViewTables BOOLEAN, canSendMessages BOOLEAN, can_Receive_Messages BOOLEAN, "
-				"canSendQueries BOOLEAN, canViewRules BOOLEAN, canActuallyLogin BOOLEAN, "
+				"can_view_tables BOOLEAN, can_send_messages BOOLEAN, can_inject_messages BOOLEAN, "
+				"can_send_queries BOOLEAN, can_view_rules BOOLEAN, can_actually_login BOOLEAN, "
 				"PRIMARY KEY(username))"));
-		PQclear(execcheckreturn("INSERT INTO users(username, password, canViewTables, "
-				"canSendMessages, can_Receive_Messages, canSendQueries, canViewRules, "
-				"canActuallyLogin) VALUES (\'admin\', "//password_hash('admin', PASSWORD_DEFAULT)
+		PQclear(execcheckreturn("INSERT INTO users(username, password, can_view_tables, "
+				"can_send_messages, can_inject_messages, can_send_queries, can_view_rules, "
+				"can_actually_login) VALUES (\'admin\', "//password_hash('admin', PASSWORD_DEFAULT)
 				"\'$2y$10$JXGXlP8XSpsBd5rnqZt5oeBVODcogiT.14XShJBQHpbSdIwY/cLvW\', TRUE, TRUE, "
 				"TRUE, TRUE, TRUE, TRUE), (\'guest\', "//password_hash('guest', PASSWORD_DEFAULT)
 				"\'$2y$10$iBxU52qtFNOUljPT8iB4ieqX0/I5HhSMxHWO2y72J.Sjf9vk8UkAm\', FALSE, FALSE, "
 				"FALSE, FALSE, FALSE, FALSE)"));
 	}
 	PQclear(res);
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS t"s + BYTE8_to_c17charp(local_SRC)
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS t"s + BYTE8_to_c17charp(local_addr)
 			+ "(t TIMESTAMP(4) WITHOUT TIME ZONE)"));
-	PQclear(execcheckreturn("CREATE INDEX ON t"s + BYTE8_to_c17charp(local_SRC) + "(t)"));
+	PQclear(execcheckreturn("CREATE INDEX ON t"s + BYTE8_to_c17charp(local_addr) + "(t)"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS rules(id INTEGER, "
 			"send_receive_seconds SMALLINT, filter TEXT, drop_modify_nothing SMALLINT, "
 			"modification TEXT, query_command_nothing SMALLINT, query_command_1 TEXT, "
 			"send_inject_query_command_nothing SMALLINT, query_command_2 TEXT, proto_id TEXT, "
 			"imm_addr BYTEA, CCF BOOLEAN, ACF BOOLEAN, activate INTEGER, deactivate INTEGER, "
 			"active BOOLEAN, PRIMARY KEY(id))"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS SRC_oID(SRC BYTEA, "
-			"out_ID SMALLINT NOT NULL, PRIMARY KEY(SRC))"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS ID_TWR(SRC BYTEA, ID SMALLINT, "
-			"TWR TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(SRC, ID), "
-			"FOREIGN KEY(SRC) REFERENCES SRC_oID(SRC) ON DELETE CASCADE ON UPDATE CASCADE)"));
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS addr_oID(addr BYTEA, "
+			"out_ID SMALLINT NOT NULL, PRIMARY KEY(addr))"));
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS SRC_DST(SRC BYTEA, DST BYTEA, "
+			"PRIMARY KEY(SRC, DST), FOREIGN KEY(SRC) REFERENCES addr_oID(addr) "
+			"ON DELETE CASCADE ON UPDATE CASCADE"));
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS ID_TWR(SRC BYTEA, DST BYTEA, ID SMALLINT, "
+			"TWR TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(SRC, DST, ID), "
+			"FOREIGN KEY(SRC, DST) REFERENCES SRC_DST(SRC, DST) ON DELETE CASCADE ON UPDATE CASCADE)"));
 	res = execcheckreturn("SELECT TRUE FROM pg_catalog.pg_class WHERE relname = \'proto_name\'");
 	if (PQntuples(res) == 0) {
 		PQclear(execcheckreturn("CREATE TABLE proto_name(proto TEXT, name TEXT NOT NULL, "
@@ -2290,7 +2305,7 @@ int main(int argc, char *argv[]) {
 	}
 	oss.seekp(-3, oss.end) << '\0';
 	PQclear(execcheckreturn(oss.str()));
-	populate_local_proto_iSRC();
+	populate_local_proto_iaddr();
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS formatted_message_for_send_receive("
 			"HD BYTEA, ID BYTEA, LEN BYTEA, DST BYTEA, SRC BYTEA, PL BYTEA, CRC BYTEA, "
 			"ENCRYPTED BOOLEAN, SIGNED BOOLEAN, proto TEXT, imm_addr BYTEA, CCF BOOLEAN, "
@@ -2306,35 +2321,52 @@ int main(int argc, char *argv[]) {
 			THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
 			if ((ifr.ifr_flags & IFF_UP) == 0) {
 				ifr.ifr_flags |= IFF_UP;
-				THR(ioctl(sock, SIOCSIFFLAGS, &ifr) < 0, system_exception("cannot SIOCSIFFLAGS ioctl"));
+				THR(ioctl(sock, SIOCSIFFLAGS, &ifr) < 0,
+						system_exception("cannot SIOCSIFFLAGS ioctl"));//privileged operation!!!
 				LOG_CPP("turned on device " << ifr.ifr_name << endl);
 			}
 			oss << i << ", \'" << ifr.ifr_name << "\'), (";
 		}
-		oss.seekp(-3, oss.end) << '\0';
+		close(sock);
+		sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+		hdi.dev_id = 0;
+		THR(ioctl(sock, HCIDEVUP, i) < 0, system_exception("cannot HCIDEVUP ioctl"));
+		oss << '\0';
 		PQclear(execcheckreturn(oss.str()));
 	} else {
-		PQclear(res);
 		i = MAX_DEVICE_INDEX;
 		while (find_next_lower_device(sock, ifr, i) >= 0) {
 			THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
+			PQclear(res);
 			res = execcheckreturn("SELECT TRUE FROM adapter WHERE name = \'"s + ifr.ifr_name + '\'');
 			if (PQntuples(res) == 0) {
 				if ((ifr.ifr_flags & IFF_UP) != 0) {
 					ifr.ifr_flags &= ~IFF_UP;
-					THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
+					THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0,
+							system_exception("cannot SIOCGIFFLAGS ioctl"));//privileged operation!!!
 					LOG_CPP("turned off device " << ifr.ifr_name << endl);
 				}
 			} else if ((ifr.ifr_flags & IFF_UP) == 0) {
 				ifr.ifr_flags |= IFF_UP;
 				THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOSIFFLAGS ioctl"));
+						//privileged operation!!!
 				LOG_CPP("turned on device " << ifr.ifr_name << endl);
 			}
 		}
+		PQclear(res);
+		oss.str("SELECT TRUE FROM adapter WHERE adapter = 1");
+		oss << i;
+		res = execcheckreturn(oss.str());
+		if (PQntuples(res) == 0) {
+			close(sock);
+			THR(ioctl(sock, HCIDEVUP, i) < 0, system_exception("cannot HCIDEVUP ioctl"));
+			LOG_CPP("turned on device ble0" << endl);
+		}
 	}
 	PQclear(res);
+	close(sock);
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS SRC_proto(SRC BYTEA, proto TEXT, "
-			"PRIMARY KEY(SRC, proto), FOREIGN KEY(SRC) REFERENCES SRC_oID(SRC) "
+			"PRIMARY KEY(SRC, proto), FOREIGN KEY(SRC) REFERENCES addr_oID(addr) "
 			"ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY(proto) REFERENCES proto_name(proto) "
 			"ON DELETE CASCADE ON UPDATE CASCADE)"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS iSRC_TWR(SRC BYTEA, proto TEXT, "
@@ -2363,6 +2395,7 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS config()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_next_timed_rule_time("
 			"next_timed_rule BIGINT)"));
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS update_permissions()"));
 	PQclear(execcheckreturn("DROP TRIGGER IF EXISTS currentuser ON users"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS currentuser()"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS timers(rule_id INTEGER, "
@@ -2372,6 +2405,9 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS raw_message_for_query_command("
 			"message BYTEA)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_address(table TEXT, address BYTEA, "
+			"PRIMARY KEY(table, address), FOREIGN KEY(table) "
+			"REFERENCES pg_catalog.pg_class(relname) ON UPDATE CASCADE ON DELETE CASCADE)"));
 	PQclear(execcheckreturn("CREATE PROCEDURE ext(addr_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'ext\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE send_receive(message BYTEA, proto_id TEXT, "
@@ -2383,6 +2419,8 @@ int main(int argc, char *argv[]) {
 			+ "/libIoT\', \'config\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE refresh_next_timed_rule_time(next_timed_rule BIGINT) "
 			"AS \'"s + cwd + "/libIoT\', \'refresh_next_timed_rule_time\' LANGUAGE C"));
+	PQclear(execcheckreturn("CREATE PROCEDURE update_permissions() AS \'"s + cwd
+			+ "/libIoT\', \'update_permissions\' LANGUAGE C"));
 	/*
 	 * in SQL standard only RETURNS NULL ON NULL INPUT function specifier exists
 	 *
@@ -2390,7 +2428,7 @@ int main(int argc, char *argv[]) {
 	 */
 	PQclear(execcheckreturn("CREATE FUNCTION currentuser() RETURNS trigger AS \'BEGIN "
 			"IF NEW.username <> (SELECT currentuser FROM currentuser) THEN RETURN NULL; "
-			"ELSE RETURN NEW; END IF; END\' LANGUAGE PLPGSQL"));
+			"ELSE RETURN NEW; END IF; END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER currentuser BEFORE UPDATE ON users "
 			"FOR ROW EXECUTE PROCEDURE currentuser()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS insert_timer() CASCADE"));
@@ -2510,6 +2548,11 @@ void initialize_vars() {
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(refresh_next_timed_rule_time_mq < 0,
 			system_exception("cannot open refresh_next_timed_rule_time_mq"));
+	ma.mq_msgsize = sizeof(update_permissions_struct);
+	update_permissions_mq = mq_open("/update_permissions",
+			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
+	THR(update_permissions_mq < 0,
+			system_exception("cannot open update_permissions_mq"));
 
 	cipherctx = EVP_CIPHER_CTX_new();
 	mdctx = EVP_MD_CTX_new();
@@ -2539,16 +2582,19 @@ void initialize_vars() {
 	}
 	beginning = my_now();
 	dre.seed(rd());
-	determine_local_SRC();
-	local_FROM = local_FROM + BYTE8_to_c17charp(local_SRC) + ' ';
+	determine_local_addr();
+	local_FROM = local_FROM + BYTE8_to_c17charp(local_addr) + ' ';
 }
 
 void destroy_vars() {
-	for (auto p_SRC_source : SRC_source) {
-		for (auto p_proto_iSRC_TWR : p_SRC_source.second->proto_iSRC_TWR) {
+	for (auto p_addr_remote : addr_remote) {
+		for (auto p_DST_ID_TWR : p_addr_remote.second->DST_ID_TWR) {
+			delete p_DST_ID_TWR.second;
+		}
+		for (auto p_proto_iSRC_TWR : p_addr_remote.second->proto_iSRC_TWR) {
 			delete p_proto_iSRC_TWR.second;
 		}
-		delete p_SRC_source.second;
+		delete p_addr_remote.second;
 	}
 
 	for (protocol *p : protocols) {
@@ -2565,6 +2611,8 @@ void destroy_vars() {
 	THR(mq_unlink("/config") < 0, system_exception("cannot unlink config_mq"));
 	THR(mq_unlink("/refresh_next_timed_rule_time") < 0,
 			system_exception("cannot unlink refresh_next_timed_rule_time_mq"));
+	THR(mq_unlink("/update_permissions") < 0,
+			system_exception("cannot unlink update_permissions_mq"));
 
 	EVP_CIPHER_CTX_free(cipherctx);
 	EVP_MD_CTX_free(mdctx);
@@ -2585,7 +2633,7 @@ BYTE8 EUI64_to_EUI48(BYTE8 EUI64) noexcept {
 	return (EUI64 >> 16 & 0x0000FFFF'FFFFFFFF) | (EUI64 & 0x00000000'0000FFFF);
 }
 
-void populate_local_proto_iSRC() {
+void populate_local_proto_iaddr() {
 	int sock = socket(AF_UNIX, SOCK_SEQPACKET, 0), i = MAX_DEVICE_INDEX;
 	ifreq ifr;
 	BYTE8 addr;
@@ -2595,6 +2643,11 @@ void populate_local_proto_iSRC() {
 				system_exception("cannot SIOCGIFADDR ioctl"));
 		if (ifr.ifr_addr.sa_family == AF_INET) {
 			addr = ia_to_BYTE8(reinterpret_cast<sockaddr_in *>(&ifr.ifr_addr)->sin_addr);
+			for (protocol *p : protocols) {
+				if (strcmp(get_typename(typeid(*p)), "tcp") == 0) {
+					local_proto_iaddr[p] = addr;
+				}
+			}
 			LOG_CPP("added imm_SRC " << BYTE8_to_c17charp(addr) << " for TCP" << endl);
 			LOG_CPP("added imm_SRC " << BYTE8_to_c17charp(addr) << " for UDP" << endl);
 		} else if (ifr.ifr_addr.sa_family == AF_IEEE802154) {
@@ -2605,7 +2658,7 @@ void populate_local_proto_iSRC() {
 	close(sock);
 }
 
-void determine_local_SRC() {
+void determine_local_addr() {
 	int sock = socket(AF_UNIX, SOCK_SEQPACKET, 0), i = MAX_DEVICE_INDEX;
 	ifreq ifr;
 
@@ -2614,15 +2667,13 @@ void determine_local_SRC() {
 				system_exception("cannot SIOCGIFHWADDR ioctl"));//cannot cause EADDRNOTAVAIL
 		if (ifr.ifr_hwaddr.sa_family == ARPHRD_ETHER) {
 			if (little_endian) {
-				memcpy_reverse(&local_SRC, ifr.ifr_hwaddr.sa_data, 6);
+				memcpy_reverse(&local_addr, ifr.ifr_hwaddr.sa_data, 6);
 			} else {
-				memcpy(reinterpret_cast<BYTE *>(&local_SRC) + 2, ifr.ifr_hwaddr.sa_data, 6);
+				memcpy(reinterpret_cast<BYTE *>(&local_addr) + 2, ifr.ifr_hwaddr.sa_data, 6);
 			}
-			local_SRC = EUI48_to_EUI64(local_SRC);
-			LOG_CPP("determined local_SRC to " << BYTE8_to_c17charp(local_SRC) << endl);
+			local_addr = EUI48_to_EUI64(local_addr);
+			LOG_CPP("determined local_SRC to " << BYTE8_to_c17charp(local_addr) << endl);
 			break;
-		} else if (ifr.ifr_addr.sa_family == AF_IEEE802154) {
-
 		}
 	}
 
@@ -2810,8 +2861,8 @@ extern "C" Datum load_store(PG_FUNCTION_ARGS) {
 //this function is executed in another process!!!
 extern "C" Datum config(PG_FUNCTION_ARGS) {
 	config_struct cs;
-
 	mqd_t config_mq = mq_open("/config", O_WRONLY);
+
 	THR(config_mq < 0, system_exception("cannot open config_mq"));
 	THR(mq_send(config_mq, reinterpret_cast<char *>(&cs), sizeof(config_struct), 0) < 0,
 			system_exception("cannot send to config_mq"));
@@ -2822,8 +2873,8 @@ extern "C" Datum config(PG_FUNCTION_ARGS) {
 //this function is executed in another process!!!
 extern "C" Datum refresh_next_timed_rule_time(PG_FUNCTION_ARGS) {
 	refresh_next_timed_rule_time_struct rntrts = { PG_GETARG_INT64(0) };
-
 	mqd_t refresh_next_timed_rule_time_mq = mq_open("/refresh_next_timed_rule_time", O_WRONLY);
+
 	THR(refresh_next_timed_rule_time_mq < 0,
 			system_exception("cannot open refresh_next_timed_rule_time_mq"));
 	THR(mq_send(refresh_next_timed_rule_time_mq, reinterpret_cast<char *>(&rntrts),
@@ -2834,33 +2885,53 @@ extern "C" Datum refresh_next_timed_rule_time(PG_FUNCTION_ARGS) {
 	PG_RETURN_VOID();
 }
 
+//this function is executed in another process!!!
+extern "C" Datum update_permissions(PG_FUNCTION_ARGS) {
+	struct update_permissions_struct ups;
+	mqd_t update_permissions_mq = mq_open("/update_permissions", O_WRONLY);
+
+	THR(update_permissions_mq < 0,
+			system_exception("cannot open update_permissions_mq"));
+	THR(mq_send(update_permissions_mq, reinterpret_cast<char *>(&ups),
+			sizeof(update_permissions_struct), 0) < 0,
+			system_exception("cannot send to update_permissions_mq"));
+	THR(mq_close(update_permissions_mq) < 0,
+			system_exception("cannot close update_permissions_mq"));
+	PG_RETURN_VOID();
+}
+
 void load_store2_load() {
 	ostringstream oss(oss.out | oss.ate);
-	string SRC;
+	string addr;
 
-	PQclear(execcheckreturn("TRUNCATE TABLE SRC_oID CASCADE"));
-	for (auto S_s : SRC_source) {
-		oss.str("INSERT INTO SRC_oID(SRC, out_ID) VALUES(E\'\\\\x");
-		SRC = BYTE8_to_c17charp(S_s.first);
-		oss << SRC << "\', " << static_cast<int>(S_s.second->out_ID) << ')';
+	PQclear(execcheckreturn("TRUNCATE TABLE addr_oID CASCADE"));
+	for (auto a_r : addr_remote) {
+		oss.str("INSERT INTO addr_oID(addr, out_ID) VALUES(E\'\\\\x");
+		addr = BYTE8_to_c17charp(a_r.first);
+		oss << addr << "\', " << static_cast<int>(a_r.second->out_ID) << ')';
 		PQclear(execcheckreturn(oss.str()));
-		if (!S_s.second->ID_TWR.empty()) {
-			oss.str("INSERT INTO ID_TWR(SRC, ID, TWR) VALUES(E\'\\\\x");
-			for (auto I_T : S_s.second->ID_TWR) {
-				oss << SRC << "\', " << static_cast<int>(I_T.first) << ", TIMESTAMP \'"
-						<< I_T.second << "\'), (E\'\\\\x";
-			}
-			oss.seekp(-8, oss.end) << '\0';
+		for (auto D_I_T : a_r.second->DST_ID_TWR) {
+			oss.str("INSERT INTO SRC_DST(SRC, DST) VALUES(E\'\\\\x");
+			oss << addr << "\', E\'\\\\x" << BYTE8_to_c17charp(D_I_T.first) << "\')";
 			PQclear(execcheckreturn(oss.str()));
+			if (!D_I_T.second->empty()) {
+				oss.str("INSERT INTO ID_TWR(SRC, DST, ID, TWR) VALUES(E\'\\\\x");
+				for (auto I_T : *D_I_T.second) {
+					oss << addr << "\', " << static_cast<int>(I_T.first) << ", TIMESTAMP \'"
+							<< I_T.second << "\'), (E\'\\\\x";
+				}
+				oss.seekp(-8, oss.end) << '\0';
+				PQclear(execcheckreturn(oss.str()));
+			}
 		}
-		for (auto p_i_T : S_s.second->proto_iSRC_TWR) {
+		for (auto p_i_T : a_r.second->proto_iSRC_TWR) {
 			oss.str("INSERT INTO SRC_proto(SRC, proto) VALUES(E\'\\\\x");
-			oss << SRC << "\', \'" << p_i_T.first->get_my_id() << "\')";
+			oss << addr << "\', \'" << p_i_T.first->get_my_id() << "\')";
 			PQclear(execcheckreturn(oss.str()));
 			if (!p_i_T.second->empty()) {
 				oss.str("INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR) VALUES(E\'\\\\x");
 				for (auto i_T : *p_i_T.second) {
-					oss << SRC << "\', \'" << p_i_T.first->get_my_id() << "\', E\'\\\\x"
+					oss << addr << "\', \'" << p_i_T.first->get_my_id() << "\', E\'\\\\x"
 							<< BYTE8_to_c17charp(i_T.first) << "\', TIMESTAMP \'" << i_T.second
 							<< "\'), (E\'\\\\x";
 				}
@@ -2873,50 +2944,61 @@ void load_store2_load() {
 
 void load_store2_store() {
 	istringstream iss;
-	string temp, SRC;
+	const char *temp, *addr;
 	PGresult *res, *res2, *res3;
 	BYTE ID;
-	map<BYTE8, source *>::iterator iter_S_s;
+	map<BYTE8, remote *>::iterator iter_a_r;
+	map<BYTE8, map<BYTE, my_time_point> *>::iterator iter_D_I_T;
 	map<protocol *, map<BYTE8, my_time_point> *>::iterator iter_p_i_T;
 	my_time_point TWR;
 	int i = 0, j, k, l, m, n, id;
 
-	for (auto S_s : SRC_source) {
-		for (auto p_i_T : S_s.second->proto_iSRC_TWR) {
+	for (auto a_r : addr_remote) {
+		for (auto D_I_T : a_r.second->DST_ID_TWR) {
+			delete D_I_T.second;
+		}
+		for (auto p_i_T : a_r.second->proto_iSRC_TWR) {
 			delete p_i_T.second;
 		}
-		delete S_s.second;
+		delete a_r.second;
 	}
-	SRC_source.clear();
-	res = execcheckreturn("TABLE SRC_oID ORDER BY SRC ASC");
+	addr_remote.clear();
+	res = execcheckreturn("TABLE addr_oID ORDER BY addr ASC");
 	for (j = PQntuples(res); i < j; i++) {
-		SRC = PQgetvalue(res, i, 0) + 2;
-		iter_S_s = SRC_source.insert(make_pair(c17charp_to_BYTE8(SRC.c_str()), new source)).first;
-		res2 = execcheckreturn("SELECT ID, TWR FROM ID_TWR WHERE SRC = E\'\\\\x" + SRC
-				+ "\' ORDER BY ID ASC");
+		addr = PQgetvalue(res, i, 0) + 2;
+		iter_a_r = addr_remote.insert(make_pair(c17charp_to_BYTE8(addr), new remote)).first;
+		res2 = execcheckreturn("SELECT DST FROM SRC_DST WHERE SRC = E\'\\\\x"s + addr
+				+ "\' ORDER BY DST ASC");
 		for (k = 0, l = PQntuples(res2); k < l; k++) {
-			iss.str(PQgetvalue(res2, k, 0));
-			iss >> id;
-			ID = id;
-			iss.clear();
-			iss.str(PQgetvalue(res2, k, 1));
-			iss >> TWR;
-			iss.clear();
-			iter_S_s->second->ID_TWR.insert(make_pair(ID, TWR));
+			temp = PQgetvalue(res2, k, 0) + 2;
+			iter_D_I_T = iter_a_r->second->DST_ID_TWR.insert(make_pair(c17charp_to_BYTE8(
+					temp), new map<BYTE, my_time_point>)).first;
+			res3 = execcheckreturn("SELECT ID, TWR FROM ID_TWR WHERE SRC = E\'\\\\x"s + addr
+					+ "\' AND DST = E\'\\\\x" + temp + "\' ORDER BY ID ASC");
+			for (m = 0, n = PQntuples(res3); m < n; m++) {
+				iss.str(PQgetvalue(res3, m, 0));
+				iss >> ID;
+				iss.clear();
+				iss.str(PQgetvalue(res3, m, 1));
+				iss >> TWR;
+				iss.clear();
+				iter_D_I_T->second->insert(make_pair(ID, TWR));
+			}
+			PQclear(res3);
 		}
 		PQclear(res2);
 		iss.str(PQgetvalue(res, i, 1));
 		iss >> id;
-		iter_S_s->second->out_ID = id;
+		iter_a_r->second->out_ID = id;
 		iss.clear();
-		res2 = execcheckreturn("SELECT proto FROM SRC_proto WHERE SRC = E\'\\\\x" + SRC +
-				"\' ORDER BY proto ASC");
+		res2 = execcheckreturn("SELECT proto FROM SRC_proto WHERE SRC = E\'\\\\x"s + addr
+				+ "\' ORDER BY proto ASC");
 		for (k = 0, l = PQntuples(res2); k < l; k++) {
 			temp = PQgetvalue(res2, k, 0);
-			iter_p_i_T = iter_S_s->second->proto_iSRC_TWR.insert(make_pair(find_protocol_by_id(
+			iter_p_i_T = iter_a_r->second->proto_iSRC_TWR.insert(make_pair(find_protocol_by_id(
 					temp), new map<BYTE8, my_time_point>)).first;
-			res3 = execcheckreturn("SELECT imm_SRC, TWR FROM iSRC_TWR WHERE SRC = E\'\\\\x"
-					+ SRC + "\' AND proto = \'" + temp + "\' ORDER BY proto ASC");
+			res3 = execcheckreturn("SELECT imm_SRC, TWR FROM iSRC_TWR WHERE SRC = E\'\\\\x"s
+					+ addr + "\' AND proto = \'" + temp + "\' ORDER BY imm_SRC ASC");
 			for (m = 0, n = PQntuples(res3); m < n; m++) {
 				iss.str(PQgetvalue(res3, m, 1));
 				iss >> TWR;
@@ -2950,6 +3032,17 @@ void config2() {
 void refresh_next_timed_rule_time2(const refresh_next_timed_rule_time_struct &rntrts) {
 	next_timed_rule = rntrts.next_timed_rule;
 	LOG_CPP("next timed rule " << next_timed_rule - time(nullptr) << " seconds from now" << endl);
+}
+
+void update_permissions2() {
+	PGresult *res = execcheckreturn("TABLE table_address ORDER BY table DESC");
+	int i = PQntuples(res);
+
+	table_address.clear();
+	while (--i >= 0) {
+		table_address.insert(make_pair(PQgetvalue(res, i, 0),
+				c17charp_to_BYTE8(PQgetvalue(res, i, 1))));
+	}
 }
 
 void main_loop() {
@@ -3035,21 +3128,20 @@ void main_loop() {
 					ins(query, fmsg->SRC);
 				}
 				if (fmsg->HD.K) {
-					query = "K"s + reinterpret_cast<char *>(&fmsg->ID);
 					LOG_CPP("sending ACKNOWLEDGMENT for message " << HEX(fmsg->ID, 2) << endl);
-					send_control(query, fmsg->SRC, fmsg->DST);
+					send_control("K"s + *reinterpret_cast<char *>(fmsg->ID), fmsg->SRC, fmsg->DST);
 				}
 				continue;
 			}
 			break;
 		} catch (error_exception &e) {
-			query = "E"s + *reinterpret_cast<char *>(&fmsg->ID) + e.what();
 			LOG_CPP("sending ERROR for message " << HEX(fmsg->ID, 2) << endl);
-			send_control(query, fmsg->SRC, fmsg->DST);
+			send_control("E"s + *reinterpret_cast<char *>(fmsg->ID) + e.what(), fmsg->SRC,
+					fmsg->DST);
 		} catch (unsupported_exception &e) {
-			query = "N"s + *reinterpret_cast<char *>(&fmsg->ID) + e.what();
 			LOG_CPP("sending UNSUPPORTED for message " << HEX(fmsg->ID, 2) << endl);
-			send_control(query, fmsg->SRC, fmsg->DST);
+			send_control("N"s + *reinterpret_cast<char *>(fmsg->ID) + e.what(), fmsg->SRC,
+					fmsg->DST);
 		} catch (message_exception &e) {
 			//don't-care
 		} catch (network_exception &e) {
@@ -3078,11 +3170,11 @@ istream &operator>>(istream &is, my_time_point &point) noexcept {
 
 void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 	unique_ptr<formatted_message> fmsg(new(payload.length()) formatted_message(payload.length()));
-	map<BYTE8, source *>::const_iterator iter = SRC_source.find(DST);
+	map<BYTE8, remote *>::const_iterator iter = addr_remote.find(DST);
 	BYTE2 LEN = payload.length();
 
 	fmsg->HD.put_as_byte(0b11111011);//ID,LEN,DST,SRC,CRC,CONF,AUTH
-	THR(iter == SRC_source.cend(), message_exception("DST does not exist"));
+	THR(iter == addr_remote.cend(), message_exception("DST does not exist"));
 	fmsg->ID = iter->second->out_ID++;
 	memcpy_endian(&fmsg->LEN, &LEN, 2);
 	memcpy_endian(&fmsg->DST, &DST, 8);
@@ -3133,7 +3225,7 @@ formatted_message *receive_formatted_message() {
 				memcpy_endian(&fmsg->DST, rmsg->msg + i, 8);
 				i += 8;
 			} else {
-				fmsg->DST = local_SRC;
+				fmsg->DST = local_addr;
 			}
 			if (fmsg->HD.S) {
 				THR(i + 7 >= rmsg->TML, message_exception("SRC absent"));
@@ -3167,26 +3259,30 @@ formatted_message *receive_formatted_message() {
 				throw message_exception("wrong LEN");
 			}
 			now = my_now();
-			source *&s = SRC_source[fmsg->SRC];
-			if (s == nullptr) {
-				s = new source;
-				s->out_ID = uid(dre);
+			remote *&r = addr_remote[fmsg->SRC];
+			if (r == nullptr) {
+				r = new remote;
+				r->out_ID = uid(dre);
 			}
 			if (use_internet_switch_algorithm) {
-				map<BYTE8, my_time_point> *&st = s->proto_iSRC_TWR[rmsg->proto];
-				if (st == nullptr) {
-					st = new map<BYTE8, my_time_point>;
+				map<BYTE8, my_time_point> *&iT = r->proto_iSRC_TWR[rmsg->proto];
+				if (iT == nullptr) {
+					iT = new map<BYTE8, my_time_point>;
 				}
-				my_time_point &t1 = (*st)[rmsg->imm_addr];
+				my_time_point &t1 = (*iT)[rmsg->imm_addr];
 				if (t1.time_since_epoch() == chrono::system_clock::duration::zero()) {
 					t1 = now;
 				}
 			}
-			my_time_point &t2 = s->ID_TWR[fmsg->ID];
+			map<BYTE, my_time_point> *&IT = r->DST_ID_TWR[fmsg->DST];
+			if (IT == nullptr) {
+				IT = new map<BYTE, my_time_point>;
+			}
+			my_time_point &t2 = (*IT)[fmsg->ID];
 			if (chrono::duration_cast<chrono::seconds>(now - t2).count() < nsecs_id) {
 						//SRC, DST, ID and approx. time same -> duplicate
-				LOG_CPP("received duplicate message of ID " << HEX(static_cast<int>(fmsg->ID), 2) <<
-						" from " << BYTE8_to_c17charp(fmsg->SRC) << endl);
+				LOG_CPP("received duplicate message of ID " << HEX(static_cast<int>(fmsg->ID), 2)
+						<< " from " << BYTE8_to_c17charp(fmsg->SRC) << endl);
 				continue;
 			}
 			t2 = now;
@@ -3202,10 +3298,10 @@ formatted_message *receive_formatted_message() {
 				THR(fmsg->HD.A && !rmsg->ACF && !fmsg->is_signed(),
 						message_exception("security for A and rcv breached"));
 			}
-			if (fmsg->DST != local_SRC) {
+			if (fmsg->DST != local_addr || rmsg->broadcast) {
 				if (forward_messages) {
-					LOG_CPP("forwarding message from SRC " << BYTE8_to_c17charp(fmsg->SRC) <<
-							" to DST " << BYTE8_to_c17charp(fmsg->DST) << endl);
+					LOG_CPP("forwarding message from SRC " << BYTE8_to_c17charp(fmsg->SRC)
+							<< " to DST " << BYTE8_to_c17charp(fmsg->DST) << endl);
 					send_formatted_message(fmsg.release());
 				}
 				continue;
@@ -3375,6 +3471,14 @@ raw_message *receive_raw_message() {
 		} else {
 			refresh_next_timed_rule_time2(rntrts);
 		}
+		update_permissions_struct ups;
+		if (mq_receive(update_permissions_mq, reinterpret_cast<char *>(&ups),
+				sizeof(ups), nullptr) < 0) {
+			THR(errno != EAGAIN,
+					system_exception("cannot receive from update_permissions_mq"));
+		} else {
+			update_permissions2();
+		}
 		if (next_timed_rule <= ts.tv_sec++ && next_timed_rule > 0) {
 			LOG_CPP("checking for rules" << endl);
 			ss.str("SELECT rules.id, rules.query_command_nothing, rules.query_command_1, "
@@ -3410,10 +3514,11 @@ raw_message *receive_raw_message() {
 		break;
 	} while (true);
 	LOG_CPP("received " << *rmsg << endl);
-
 	return dummy.release();
 }
 #endif /* OFFLINE */
+
+bool check_permissions(string table, BYTE8 address) { }
 
 void encode_bytes_to_stream(ostream &stream, const BYTE *bytes, size_t len) {
 	int i = -1;
@@ -3491,8 +3596,8 @@ void send_receive_from_rule(const char *message, const char *proto_id, const cha
 	THR(flock(fd, LOCK_EX) != 0, system_exception("cannot lock fd"));
 	THR(mq_send(send_receive_mq, reinterpret_cast<char *>(&message_length), sizeof(message_length),
 			0) < 0, system_exception("cannot send to send_receive_mq"));
-	THR(mq_send(send_receive_mq, reinterpret_cast<char *>(srs), sizeof(send_receive_struct) - 1 +
-			message_length, 0) < 0, system_exception("cannot send to send_receive_mq"));
+	THR(mq_send(send_receive_mq, reinterpret_cast<char *>(srs), sizeof(send_receive_struct) - 1
+			+ message_length, 0) < 0, system_exception("cannot send to send_receive_mq"));
 	THR(close(fd) < 0, system_exception("cannot close fd"));
 	delete[] srs;
 }
@@ -3511,8 +3616,8 @@ void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
 
 	oss << HEX_NOSHOWB(static_cast<int>(fmsg.HD.get_as_byte()), 2) << "\', E\'\\\\x"
 			<< HEX_NOSHOWB(static_cast<int>(fmsg.ID), 2) << "\', E\'\\\\x"
-			<< HEX_NOSHOWB(fmsg.LEN, 4) << "\', E\'\\\\x" << BYTE8_to_c17charp(fmsg.DST) <<
-			"\', E\'\\\\x" << BYTE8_to_c17charp(fmsg.SRC) << "\', E\'\\\\x";
+			<< HEX_NOSHOWB(fmsg.LEN, 4) << "\', E\'\\\\x" << BYTE8_to_c17charp(fmsg.DST)
+			<< "\', E\'\\\\x" << BYTE8_to_c17charp(fmsg.SRC) << "\', E\'\\\\x";
 	encode_bytes_to_stream(oss, fmsg.PL, fmsg.LEN);
 	oss << "\', E\'\\\\x" << HEX_NOSHOWB(fmsg.CRC, 8) << "\', "
 			<< BOOLALPHA_UPPERCASE(fmsg.is_encrypted()) << ", "
@@ -3640,8 +3745,8 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	value = PQgetvalue(res_rules, i, offset + 9);
 	if (*value != '\0') {
 		LOG_CPP("activating rule " << value << endl);
+		PQclear(execcheckreturn("UPDATE rules SET active = TRUE WHERE id = "s + value));
 		ss.str(value);
-		PQclear(execcheckreturn("UPDATE rules SET active = TRUE WHERE id = " + ss.str()));
 		ss >> new_id;
 		if (new_id > current_id) {
 			LOG_CPP("marking rules for refreshing" << endl);
@@ -3651,8 +3756,8 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	value = PQgetvalue(res_rules, i, offset + 10);
 	if (*value != '\0') {
 		LOG_CPP("deactivating rule " << value << endl);
+		PQclear(execcheckreturn("UPDATE rules SET active = FALSE WHERE id = "s + value));
 		ss.str(value);
-		PQclear(execcheckreturn("UPDATE rules SET active = FALSE WHERE id = " + ss.str()));
 		ss.clear();
 		ss >> new_id;
 		if (new_id > current_id) {
@@ -3792,7 +3897,8 @@ BYTE4 givecrc32c(const BYTE *msg, BYTE2 len) noexcept {
 			} while (msB4 > 0 && msb < 0);
 			if (msB4 > 0) {
 				//00 00 9B' 8B' 7B' 6B' 5B 4B is the first thing put into 64-bit register
-				*reinterpret_cast<BYTE8 *>(temp + msB4++ - 1) ^= polynome << msb;//unaligned pointer!
+				*reinterpret_cast<BYTE8 *>(temp + msB4++ - 1) ^= polynome << msb;
+						//unaligned pointer!
 			}
 		} while (msB4 > 0);
 		for (i = 3; i >= 0; i--) {
@@ -3830,21 +3936,21 @@ BYTE4 givecrc32c(const BYTE *msg, BYTE2 len) noexcept {
 }
 
 ostream &operator<<(ostream &os, const formatted_message &fmsg) noexcept {
-	os << "formatted message of HD " << fmsg.HD <<
-			", ID " << HEX(static_cast<int>(fmsg.ID), 2) <<
-			" and LEN " << fmsg.LEN <<
-			" for DST " << BYTE8_to_c17charp(fmsg.DST) <<
-			" from SRC " << BYTE8_to_c17charp(fmsg.SRC) << " with payload \"";
+	os << "formatted message of HD " << fmsg.HD
+			<< ", ID " << HEX(static_cast<int>(fmsg.ID), 2)
+			<< " and LEN " << fmsg.LEN
+			<< " for DST " << BYTE8_to_c17charp(fmsg.DST)
+			<< " from SRC " << BYTE8_to_c17charp(fmsg.SRC) << " with payload \"";
 	print_message_c(os, fmsg.PL, fmsg.LEN);
 	return os << "\" and CRC " << HEX(fmsg.CRC, 8);
 }
 
 ostream &operator<<(ostream &os, const header &HD) noexcept {
-	return os << HEX(static_cast<int>(HD.get_as_byte()), 2) << " (" <<
-			(HD.I ? 'I' : 'i') << (HD.L ? 'L' : 'l') <<
-			(HD.D ? 'D' : 'd') << (HD.S ? 'S' : 's') <<
-			(HD.R ? 'R' : 'r') << (HD.K ? 'K' : 'k') <<
-			(HD.C ? 'C' : 'c') << (HD.A ? 'A' : 'a') << ')';
+	return os << HEX(static_cast<int>(HD.get_as_byte()), 2) << " ("
+			<< (HD.I ? 'I' : 'i') << (HD.L ? 'L' : 'l')
+			<< (HD.D ? 'D' : 'd') << (HD.S ? 'S' : 's')
+			<< (HD.R ? 'R' : 'r') << (HD.K ? 'K' : 'k')
+			<< (HD.C ? 'C' : 'c') << (HD.A ? 'A' : 'a') << ')';
 }
 
 void convert_select(string &query, string remote_FROM) {
@@ -3912,7 +4018,7 @@ void convert_select(string &query, string remote_FROM) {
 			re_unique("\\bUNIQUE\\b", regex_constants::nosubs | regex_constants::icase),
 			re_corresp("\\bCORRESPONDING\\b", regex_constants::nosubs | regex_constants::icase),
 			re_match("\\bMATCH\\b", regex_constants::nosubs | regex_constants::icase),
-			re_g("\\bGROUP\\s+BY\\s+DISTINCT\\b", regex_constants::nosubs | regex_constants::icase),
+			re_ties("\\bTIES\\b", regex_constants::nosubs | regex_constants::icase),
 			re_when("\\bWHEN\\b", regex_constants::nosubs | regex_constants::icase),
 			re_then("\\bTHEN\\b|,|\\(|\\)", regex_constants::nosubs | regex_constants::icase);
 	const int m[2] = { -1, 0 };
@@ -3949,7 +4055,7 @@ void convert_select(string &query, string remote_FROM) {
 		THR(regex_search(iter_split_str, re_unique), unsupported_exception("F291 not supported"));
 		THR(regex_search(iter_split_str, re_corresp), unsupported_exception("F301 not supported"));
 		THR(regex_search(iter_split_str, re_match), unsupported_exception("F741 not supported"));
-		THR(regex_search(iter_split_str, re_g), unsupported_exception("T434 not supported"));
+		THR(regex_search(iter_split_str, re_ties), unsupported_exception("F867 not supported"));
 
 		/* checking for potential F263 */
 		iter_search_from = iter_split_str.begin();
@@ -4093,7 +4199,7 @@ void convert_select(string &query, string remote_FROM) {
 	//F841: LIKE_REGEX predicate
 	//F846: Octet support in regular expression operators
 	//F847: Nonconstant regular expressions
-	//T434: GROUP BY DISTINCT
+	//F867: FETCH FIRST clause: WITH TIES option
 }
 
 void print_message_cpp(ostream &os, string msg) noexcept {
@@ -4209,7 +4315,7 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 	string data;
 	unique_ptr<formatted_message> fmsg;
 	PQprintOpt opt = { 0 };
-	map<BYTE8, source *>::const_iterator iter = SRC_source.find(DST);
+	map<BYTE8, remote *>::const_iterator iter = addr_remote.find(DST);
 	const char *value;
 	BYTE2 LEN;
 
@@ -4257,7 +4363,8 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 					data += '\'';
 					break;
 				case BOOLOID:
-					data += BOOLALPHA_UPPERCASE(*PQgetvalue(res, k, i));//PostgreSQL prints BOOLEAN as t and f
+					data += BOOLALPHA_UPPERCASE(*PQgetvalue(res, k, i));
+							//PostgreSQL prints BOOLEAN as t and f
 					break;
 				default:
 					throw unsupported_exception("unsupported data type");
@@ -4271,19 +4378,19 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 	LOG_CPP(" to \"" << data << '\"' << endl);
 	fmsg.reset(new(data.length()) formatted_message(data.length()));
 	fmsg->HD.put_as_byte(0b11111011);//ID,LEN,DST,SRC,CRC,CONF,AUTH
-	THR(iter == SRC_source.cend(), message_exception("DST does not exist"));
+	THR(iter == addr_remote.cend(), message_exception("DST does not exist"));
 	fmsg->ID = iter->second->out_ID++;
 	LEN = data.length();
 	memcpy_endian(&fmsg->LEN, &LEN, 2);
 	memcpy_endian(&fmsg->DST, &DST, 8);
-	memcpy_endian(&fmsg->SRC, &local_SRC, 8);
+	memcpy_endian(&fmsg->SRC, &local_addr, 8);
 	data.copy(reinterpret_cast<char *>(fmsg->PL), LEN);
 	fmsg->CRC = givecrc32c(reinterpret_cast<BYTE *>(fmsg.get()) + 4, LEN + fields_MAX);
 			//HD,ID,LEN,DST,SRC
 	if (little_endian) {
 		fmsg->LEN = LEN;
 		fmsg->DST = DST;
-		fmsg->SRC = local_SRC;
+		fmsg->SRC = local_addr;
 	}
 	LOG_CPP("sending " << *fmsg << endl);
 	send_formatted_message(fmsg.release());
@@ -4302,7 +4409,7 @@ void send_formatted_message(formatted_message *fmsg) {
 	unique_ptr<raw_message> rmsg;
 	int i = 1;
 	BYTE *msg;
-	map<BYTE8, source *>::iterator iter_DST_destination;
+	map<BYTE8, remote *>::iterator iter_DST_destination;
 	multimap<protocol *, BYTE8>::iterator iter_iSRC;
 	bool failed = true;
 	my_time_point now = my_now();
@@ -4327,8 +4434,8 @@ void send_formatted_message(formatted_message *fmsg) {
 			} else {
 				copy.reset(new(fmsg->LEN) formatted_message(*fmsg));
 				msg = new BYTE[fmsg->LEN + fields_MAX];
-				iter_DST_destination = SRC_source.find(fmsg->DST);
-				THR(iter_DST_destination == SRC_source.end(), message_exception("DST does not exist"));
+				iter_DST_destination = addr_remote.find(fmsg->DST);
+				THR(iter_DST_destination == addr_remote.end(), message_exception("DST does not exist"));
 				rmsg.reset(new raw_message(msg));
 				rmsg->imm_addr = iter_iDST_TWR->first;
 				rmsg->proto = iter_proto_iDST_TWR->first;
@@ -4361,7 +4468,7 @@ void send_formatted_message(formatted_message *fmsg) {
 					i += 4;
 				}
 				rmsg->TML = i + fmsg->LEN;
-				if (true && regex_match(reinterpret_cast<char *>(fmsg->PL), re)) {
+				if (regex_match(reinterpret_cast<char *>(fmsg->PL), re)) {
 					iss.str(reinterpret_cast<char *>(fmsg->PL) + 2);
 					iss >> i;
 					if (i < 256) {
@@ -4528,9 +4635,7 @@ void ins(string data, BYTE8 address) {
 						}
 						break;
 					default://datatypes::BYTEA
-						columns.erase(columns.begin() + i);
-						types.erase(types.begin() + i);
-						THR(strcmp(type, "bytea") != 0, error_exception("changed type"));
+						DEFAULT_CHECK_INS("bytea");
 					}
 					break;
 				}
@@ -4858,12 +4963,7 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 					temp += "INTERVAL " + second;
 					break;
 				case 'X'://add binary data field
-					if (static_cast<int>(dt.size()) <= column) {
-						dt.push_back(datatypes::BYTEA);
-						td.push_back(new_td);
-					} else {
-						THR(dt[column] != datatypes::BYTEA, error_exception("changed type"));
-					}
+					DEFAULT_CHECK_BODY(BYTEA);
 					temp += "E\'\\\\x" + second.substr(1);
 					break;
 				case 'U'://add unicode data field
@@ -4992,7 +5092,7 @@ void create_table(string address, vector<string> &columns, vector<string> &types
 		}
 	}
 	PQclear(execcheckreturn("CREATE TABLE " + address + coltyp
-			+ "t timestamp(4) without time zone)"));//strlen("4294967296") = 10
+			+ "t TIMESTAMP(4) WITHOUT time zone)"));//strlen("4294967296") = 10
 	PQclear(execcheckreturn("CREATE INDEX ON " + address + "(t)"));
 }
 
@@ -5003,11 +5103,11 @@ void alter_table(string address, vector<string> &columns, const vector<string> &
 	while (++i < j) {
 		if (columns[i].back() < 0) {
 			columns[i].back() -= 128;
-			PQclear(execcheckreturn("ALTER TABLE " + address + " ALTER COLUMN "
-					+ columns[i] + " SET DATA TYPE " + types[i]));
+			PQclear(execcheckreturn("ALTER TABLE " + address + " ALTER COLUMN " + columns[i]
+					+ " SET DATA TYPE " + types[i]));
 		} else {
-			PQclear(execcheckreturn("ALTER TABLE " + address + " ADD COLUMN "
-					+ columns[i] + ' ' + types[i]));
+			PQclear(execcheckreturn("ALTER TABLE " + address + " ADD COLUMN " + columns[i]
+					+ ' ' + types[i]));
 		}
 	}
 }
