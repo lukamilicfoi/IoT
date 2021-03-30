@@ -16,11 +16,10 @@ $admin = $_SESSION['user'] == 'admin';
 		$dbconn = pgconnect('host=localhost dbname=postgres user=' . ($admin ? 'postgres' : 'luka') . ' client_encoding=UTF8');
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
-				$result = pgquery('DELETE FROM users WHERE username <> \'admin\';');
+				pg_free_result(pgquery('DELETE FROM users WHERE username <> \'admin\';'));
 ?>
 				Table &quot;users&quot; truncated.<br/>
 <?php
-				pg_free_result($result);
 			} else {
 ?>
 				Are you sure?
@@ -36,23 +35,20 @@ $admin = $_SESSION['user'] == 'admin';
 			for ($i = 0; $i < 6; $i++) {
 				$query .= isset($_POST[$fields[$i]]) ? ', TRUE' : ', FALSE';
 			}
-			$result = pgquery($query . ');');
+			pg_free_result(pgquery($query . ');'));
 			echo 'User ', htmlspecialchars($_POST['username']), " inserted.<br/>\n";
-			pg_free_result($result);
-		} else if (isset($_POST['update'])) {
+		} else if (isset($_POST['update1'])) {
 			$query = "UPDATE users SET (password, can_view_tables, can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_actually_login) = (" . (isset($_POST['password']) && !empty($_POST['password']) ? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : 'password');
 			$fields = array('can_view_tables', 'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules', 'can_actually_login');
 			for ($i = 0; $i < 6; $i++) {
 				$query .= isset($_POST[$fields[$i]]) ? ', TRUE' : ', FALSE';
 			}
-			$result = pgquery($query . ") WHERE username = '{$_POST['username']}';");
+			pg_free_result(pgquery($query . ") WHERE username = '{$_POST['username']}';"));
 			echo 'User ', htmlspecialchars($_POST['username']), " updated.<br/>\n";
-			pg_free_result($result);
 		} else if (isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
-				$result = pgquery("DELETE FROM users WHERE username = '{$_GET['username']}';");
+				pg_free_result(pgquery("DELETE FROM users WHERE username = '{$_GET['username']}';"));
 				echo 'User ', htmlspecialchars($_GET['username']), " deleted.<br/>\n";
-				pg_free_result($result);
 			} else {
 ?>
 				Are you sure?
@@ -63,11 +59,10 @@ $admin = $_SESSION['user'] == 'admin';
 				exit(0);
 			}
 		} else if (isset($_POST['update2']) && isset($_POST['password'])) {
-			$result = pgquery('UPDATE users SET password = \'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . "' WHERE username = '{$_SESSION['user']}';");
+			pg_free_result(pgquery('UPDATE users SET password = \'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . "' WHERE username = '{$_SESSION['user']}';"));
 ?>
 			Password updated.<br/>
 <?php
-			pg_free_result($result);
 		}
 		$result = pgquery('SELECT * FROM users WHERE username ' . ($admin ? '<> \'admin' : "= '{$_SESSION['user']}") . '\' ORDER BY username ASC;');
 ?>
@@ -90,9 +85,7 @@ $admin = $_SESSION['user'] == 'admin';
 ?>
 					<tr>
 						<td>
-							<form id="insert" action="" method="POST">
-								<input type="text" name="username"/>
-							</form>
+							<input form="insert" type="text" name="username"/>
 						</td>
 						<td>
 							<input form="insert" type="password" name="password"/>
@@ -116,8 +109,10 @@ $admin = $_SESSION['user'] == 'admin';
 							<input form="insert" type="checkbox" name="can_actually_login"/>
 						</td>
 						<td>
-							<input form="insert" type="submit" name="insert" value="INSERT"/><br/>
-							<input form="insert" type="reset" value="reset"/>
+							<form id="insert" action="" method="POST">
+								<input type="submit" name="insert" value="INSERT"/><br/>
+								<input type="reset" value="reset"/>
+							</form>
 							<form action="" method="GET">
 								<input type="submit" name="truncate" value="TRUNCATE"/>
 							</form>
@@ -132,12 +127,8 @@ $admin = $_SESSION['user'] == 'admin';
 ?>
 							<td>
 <?php
-								echo "<form id=\"update", htmlspecialchars($row[0]), "\" action=\"\" method=\"POST\">\n";
-									echo '<input type="hidden" name="username" value="', htmlspecialchars($row[0]), "\"/>\n";
-?>
-									<input type="text" name="password"/>
-<?php
-								echo "</form>\n";
+								echo '<input form="update', htmlspecialchars($row[0]), '" type="hidden" name="username" value="', htmlspecialchars($row[0]), "\"/>\n";
+								echo '<input form="update', htmlspecialchars($row[0]), "\" type=\"text\" name=\"password\"/>\n";
 ?>
 							</td>
 <?php
@@ -153,8 +144,12 @@ $admin = $_SESSION['user'] == 'admin';
 ?>
 							<td>
 <?php
-								echo '<input form="update', htmlspecialchars($row[0]), "\" type=\"submit\" name=\"update\" value=\"UPDATE\"/><br/>\n";
-								echo '<input form="update', htmlspecialchars($row[0]), "\" type=\"reset\" value=\"reset\"/>\n";
+								echo '<form id="update', htmlspecialchars($row[0]), "\" action=\"\" method=\"POST\"><br/>\n";
+?>
+									<input type="submit" name="update1" value="UPDATE"/><br/>
+									<input type="reset" value="reset"/>
+<?php
+								echo "</form>\n";
 ?>
 								<form action="" method="GET">
 <?php
@@ -174,9 +169,7 @@ $admin = $_SESSION['user'] == 'admin';
 						echo '<td>', htmlspecialchars($row[0]), "</td>\n";
 ?>
 						<td>
-							<form id="update2" action="" method="POST">
-								<input type="password" name="password"/>
-							</form>
+							<input form="update2" type="password" name="password"/>
 						</td>
 <?php
 						for ($i = 2; $i < 8; $i++) {
@@ -190,7 +183,9 @@ $admin = $_SESSION['user'] == 'admin';
 						}
 ?>
 						<td>
-							<input form="update2" type="submit" name="update2" value="UPDATE"/>
+							<form id="update2" action="" method="POST">
+								<input form="update2" type="submit" name="update2" value="UPDATE"/>
+							</form>
 						</td>
 					</tr>
 <?php

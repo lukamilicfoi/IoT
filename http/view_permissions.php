@@ -49,7 +49,7 @@ if ($_SESSION['user'] != 'admin') {
 					}
 				}
 			}
-			$result = pgquery('TABLE table_address ORDER BY table, address ASC;');
+			$result = pgquery('TABLE table_address ORDER BY table ASC, address ASC;');
 ?>
 			Viewing table &quot;table_address&quot;.
 			<table border="1">
@@ -67,7 +67,7 @@ if ($_SESSION['user'] != 'admin') {
 							<input form="insert" type="text" name="address"/>
 						</td>
 						<td>
-							<form id="insert" action="" method="GET"/>
+							<form id="insert" action="" method="GET">
 								<input type="submit" name="insert" value="INSERT"/><br/>
 								<input type="reset" value="reset"/>
 							</form>
@@ -82,19 +82,20 @@ if ($_SESSION['user'] != 'admin') {
 						<tr>
 							<td>
 <?php
-								echo "<input form=\"update{$row[0]}\" type=\"text\" name=\"table\" value=\"{$row[0]}\"/>\n";
+								$str = substr($row[1], 2);
+								echo "<input form=\"update{$row[0]}{$str}\" type=\"text\" name=\"table\" value=\"{$row[0]}\"/>\n";
 ?>
 							</td>
 							<td>
 <?php
-								echo "<input form=\"update{$row[1]}\" type=\"text\" name=\"address\" value=\"{$row[1]}\"/>\n";
+								echo "<input form=\"update{$str}\" type=\"text\" name=\"address\" value=\"{$str}\"/>\n";
 ?>
 							</td>
 							<td>
 <?php
-								echo "<form id=\"update{$row[0]}{$row[1]}\" action=\"\" method=\"GET\">
-								echo "<input type=\"hidden\" name=\"key1\" value=\"{$row[0]}\"/>\n";
-								echo "<input type=\"hidden\" name=\"key2\" value=\"{$row[1]}\"/>\n";
+								echo "<form id=\"update{$row[0]}{$str}\" action=\"\" method=\"GET\">\n";
+									echo "<input type=\"hidden\" name=\"key1\" value=\"{$row[0]}\"/>\n";
+									echo "<input type=\"hidden\" name=\"key2\" value=\"{$str}\"/>\n";
 									echo "<input type=\"submit\" name=\"update\" value=\"UPDATE\"/>\n";
 									echo "<input type=\"reset\" value=\"reset\"/>\n";
 								echo "</form>\n";
@@ -102,7 +103,7 @@ if ($_SESSION['user'] != 'admin') {
 								<form action="" method="GET">
 <?php
 									echo "<input type=\"hidden\" name=\"key1\" value=\"{$row[0]}\"/>\n";
-									echo "<input type=\"hidden\" name=\"key2\" value=\"{$row[1]}\"/>\n";
+									echo "<input type=\"hidden\" name=\"key2\" value=\"{$str}\"/>\n";
 									echo "<input type=\"submit\" name=\"delete\" value=\"DELETE\"/>\n";
 ?>
 								</form>

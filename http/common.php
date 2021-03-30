@@ -4,7 +4,7 @@ function pgconnect($string) {
 	if ($dbconn) {
 		return $dbconn;
 	}
-	exit('Could not connect: ' . pg_last_error());
+	exit('Could not connect - ' . pg_last_error());
 }
 
 function pgquery($string) {
@@ -12,7 +12,7 @@ function pgquery($string) {
 	if ($result) {
 		return $result;
 	}
-	exit('Query failed: ' . pg_last_error());
+	exit('Query failed - ' . pg_last_error());
 }
 
 function checkLogin() {

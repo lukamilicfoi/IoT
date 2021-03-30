@@ -44,7 +44,7 @@ if ($SESSION['user'] != 'admin') {
 							Are you sure?
 <?php
 							echo '<a href=?SRC=', urlencode($_GET['SRC']), '&amp;DST=', urlencode($_GET['DST']), '&amp;key=', urlencode($_GET['key']), "&amp;delete&amp;confirm\"Yes</a>\n";
-							echo '<a href=?SRC=', urlencode($_GET['SRC']), '&amp;DST=', urlencode(%_GET['DST']), '&amp;key=', urlencode($_GET['key']), "\"No</a>\n";
+							echo '<a href=?SRC=', urlencode($_GET['SRC']), '&amp;DST=', urlencode($_GET['DST']), '&amp;key=', urlencode($_GET['key']), "\"No</a>\n";
 							pg_close($dbconn);
 							exit(0);
 						}
@@ -68,7 +68,7 @@ if ($SESSION['user'] != 'admin') {
 								<input form="insert" type="text" name="TWR"/>
 							</td>
 							<td>
-								<form id="insert" action="" method="GET"/>
+								<form id="insert" action="" method="GET">
 <?php
 									echo '<input type="hidden" name="SRC" value="', htmlspecialchars($_GET['SRC']), "\"/>\n";
 									echo '<input type="hidden" name="DST" value="', htmlspecialchars($_GET['DST']), "\"/>\n";
@@ -76,7 +76,7 @@ if ($SESSION['user'] != 'admin') {
 									<input type="submit" name="insert" value="Insert new mapping for this SRC and this DST"/><br/>
 									<input type="reset" value="reset"/>
 								</form>
-								<form action="" method="GET"/>
+								<form action="" method="GET">
 <?php
 									echo '<input type="hidden" name="SRC" value="', htmlspecialchars($_GET['SRC']), "\"/>\n";
 									echo '<input type="hidden" name="DST" value="', htmlspecialchars($_GET['DST']), "\"/>\n";
@@ -113,7 +113,7 @@ if ($SESSION['user'] != 'admin') {
 									<form action="" method="GET">
 <?php
 										echo '<input type="hidden" name="SRC" value="', htmlspecialchars($_GET['SRC']), "\"/>\n";
-										echo '<input type="hidden" name="DST" value="', htmlspecailchars($_GET['DST']), "\"/>\n";
+										echo '<input type="hidden" name="DST" value="', htmlspecialchars($_GET['DST']), "\"/>\n";
 										echo "<input type=\"hidden\" name=\"key\" value=\"{$str}\"/>\n";
 ?>
 										<input type="submit" name="delete" value="Delete this mapping for this SRC and this DST"/>
@@ -126,7 +126,7 @@ if ($SESSION['user'] != 'admin') {
 					</tbody>
 				</table>
 <?php
-				echo '<a href="view_source_details.php?SRC=', urlencode($_GET['SRC']), "\">Done</a>\n";
+				echo '<a href="view_remote_details.php?SRC=', urlencode($_GET['SRC']), "\">Done</a>\n";
 				pg_free_result($result);
 				pg_close($dbconn);
 			}

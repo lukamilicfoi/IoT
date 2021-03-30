@@ -37,7 +37,7 @@ $admin = $_SESSION['user'] == 'admin';
 <?php
 		if (checkAuthorization(3, 'send messages')) {
 			if (isset($_GET['msgtosend'])) {
-				$result = pgquery('SELECT send_receive(E\'\\\\x' . substr($_GET['msgtosend'], 2) . ", '{$_GET['proto_id']}', E'\\\\x" . substr($_GET['imm_DST'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, TRUE);');
+				$result = pgquery('SELECT send_inject(E\'\\\\x' . substr($_GET['msgtosend'], 2) . ", '{$_GET['proto_id']}', E'\\\\x" . substr($_GET['imm_DST'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, TRUE);');
 				pg_free_result($result);
 				echo 'Message ', htmlspecialchars($_GET['msgtosend']), " sent.\n";
 			}
@@ -58,16 +58,16 @@ $admin = $_SESSION['user'] == 'admin';
 			</form>
 <?php
 		}
-		if (checkAuthorization(4, '&quot;receive&quot; messages')) {
-			if (isset($_GET['msgtoreceive'])) {
-				$result = pgquery('SELECT send_receive(E\'\\\\x' . substr($_GET['msgtoreceive'], 2) . ", '{$_GET['proto_id']}', E'\\\\x" . substr($_GET['imm_SRC'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : ' FALS') . 'E, FALSE);');
+		if (checkAuthorization(4, 'inject messages')) {
+			if (isset($_GET['msgtoinject'])) {
+				$result = pgquery('SELECT send_inject(E\'\\\\x' . substr($_GET['msgtoinject'], 2) . ", '{$_GET['proto_id']}', E'\\\\x" . substr($_GET['imm_SRC'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : ' FALS') . 'E, FALSE);');
 				pg_free_result($result);
-				echo 'Message ', htmlspecialchars($_GET['msgtoreceive']), " &quot;received&quot;.\n";
+				echo 'Message ', htmlspecialchars($_GET['msgtoinject']), " injected.\n";
 			}
 ?>
 			<form action="" method="GET">
-				&quot;Receive&quot; message
-				<input type="text" name="msgtoreceive"/>
+				Inject message
+				<input type="text" name="msgtoinject"/>
 				using protocol id
 				<input type="text" name="proto_id"/>
 				and imm_SRC
@@ -144,6 +144,7 @@ $admin = $_SESSION['user'] == 'admin';
 ?>
 			<a href="view_sources.php">View sources</a><br/>
 			<a href="view_configuration.php">View configuration</a><br/>
+			<a href="view_permissions.php">View permissions</a><br/>
 <?php
 		}
 ?>

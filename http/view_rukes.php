@@ -62,14 +62,14 @@ checkLogin();
 				<tbody>
 					<tr>
 						<td>id</td>
-						<td>sendReceiveSeconds</td>
+						<td>send_receive_seconds</td>
 						<td>filter</td>
-						<td>dropModifyNothing</td>
+						<td>drop_modify_nothing</td>
 						<td>modification</td>
-						<td>queryCommandNothing</td>
-						<td>queryCommand1</td>
-						<td>sendInjectQueryCommandNothing</td>
-						<td>queryCommand2</td>
+						<td>query_command_nothing</td>
+						<td>query_command_1</td>
+						<td>send_inject_query_command_nothing</td>
+						<td>query_command_2</td>
 						<td>proto_id</td>
 						<td>imm_addr</td>
 						<td>CCF</td>
@@ -369,6 +369,7 @@ checkLogin();
 			bash commands are NOT executed as /root/, but as the user who started the database.<br/>
 			Deactivating a rule deletes its timer. Changing a period does not.<br/>
 			Id must be unique. Smaller value indicates bigger priority.<br/>
+			When broadcasting a message any imm_DST is ignored.<br/>
 			<a href="index.php">Done</a>
 <?php
 			pg_free_result($result);

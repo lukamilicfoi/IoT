@@ -27,11 +27,11 @@ if ($_SESSION['user'] != 'admin') {
 				Stored sources to running program.
 <?php
 			} else if (isset($_GET['add'])) {
-				pg_free_result(pgquery("INSERT INTO SRC_oID(SRC, out_ID) VALUES(E'\\\\x{$_GET['add']}', " . rand(0, 255) . ');'));
+				pg_free_result(pgquery("INSERT INTO addr_oID(addr, out_ID) VALUES(E'\\\\x{$_GET['add']}', " . rand(0, 255) . ');'));
 				echo 'Source ', htmlspecialchars($_GET['add']), " added.\n";
 			} else if (isset($_GET['remove'])) {
 				if (isset($_GET['confirm'])) {
-					pg_free_result(pgquery("DELETE FROM SRC_oID WHERE SRC = E'\\\\x{$_GET['remove']}';"));
+					pg_free_result(pgquery("DELETE FROM addr_oID WHERE addr = E'\\\\x{$_GET['remove']}';"));
 					echo 'Source ', htmlspecialchars($_GET['remove']), " removed.\n";
 				} else {
 ?>
@@ -46,14 +46,14 @@ if ($_SESSION['user'] != 'admin') {
 				}
 			}
 			if (isset($_SESSION['loaded'])) {
-				$result = pgquery('SELECT SRC FROM SRC_oID ORDER BY SRC ASC;');
+				$result = pgquery('SELECT addr FROM addr_oID ORDER BY addr ASC;');
 ?>
 				<form action="" method="GET">
 					View source:
 <?php
 					for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 						$str = substr($row[0], 2);
-						echo "<a href=\"view_source_details.php?SRC={$str}\">{$str}</a>\n";
+						echo "<a href=\"view_source_details.php?addr={$str}\">{$str}</a>\n";
 						echo "<a href=\"?remove={$str}\">(remove)</a>\n";
 					}
 ?>

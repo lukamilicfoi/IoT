@@ -126,7 +126,7 @@ if ($_SESSION['user'] != 'admin') {
 					</tbody>
 				</table>
 <?php
-				echo '<a href="view_source_details.php?SRC=', urlencode($_GET['SRC']), "\">Done</a>\n";
+				echo '<a href="view_source_details.php?addr=', urlencode($_GET['SRC']), "\">Done</a>\n";
 				pg_free_result($result);
 				pg_close($dbconn);
 			}
