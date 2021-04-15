@@ -8,7 +8,7 @@ if ($_SESSION['user'] != 'admin') {
 	<!DOCTYPE html>
 	<html>
 		<head>
-			<title>View sources (as administrator)</title>
+			<title>View remotes (as administrator)</title>
 			<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 		</head>
 		<body>
@@ -18,21 +18,21 @@ if ($_SESSION['user'] != 'admin') {
 				pg_free_result(pgquery('SELECT load_store(TRUE);'));
 				$_SESSION['loaded'] = true;
 ?>
-				Loaded sources from running program.
+				Loaded remotes from running program.
 <?php
 			} else if (isset($_GET['store'])) {
 				pg_free_result(pgquery('SELECT load_store(FALSE);'));
 				unset($_SESSION['loaded']);
 ?>
-				Stored sources to running program.
+				Stored remotes to running program.
 <?php
 			} else if (isset($_GET['add'])) {
 				pg_free_result(pgquery("INSERT INTO addr_oID(addr, out_ID) VALUES(E'\\\\x{$_GET['add']}', " . rand(0, 255) . ');'));
-				echo 'Source ', htmlspecialchars($_GET['add']), " added.\n";
+				echo 'Remote ', htmlspecialchars($_GET['add']), " added.\n";
 			} else if (isset($_GET['remove'])) {
 				if (isset($_GET['confirm'])) {
 					pg_free_result(pgquery("DELETE FROM addr_oID WHERE addr = E'\\\\x{$_GET['remove']}';"));
-					echo 'Source ', htmlspecialchars($_GET['remove']), " removed.\n";
+					echo 'Remote ', htmlspecialchars($_GET['remove']), " removed.\n";
 				} else {
 ?>
 					Are you sure?
@@ -49,25 +49,25 @@ if ($_SESSION['user'] != 'admin') {
 				$result = pgquery('SELECT addr FROM addr_oID ORDER BY addr ASC;');
 ?>
 				<form action="" method="GET">
-					View source:
+					View remote:
 <?php
 					for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 						$str = substr($row[0], 2);
-						echo "<a href=\"view_source_details.php?addr={$str}\">{$str}</a>\n";
+						echo "<a href=\"view_remote_details.php?addr={$str}\">{$str}</a>\n";
 						echo "<a href=\"?remove={$str}\">(remove)</a>\n";
 					}
 ?>
 					<input type="text" name="add"/>
 					<input type="submit" value="(add)"/>
 				</form>
-				<a href="?load">Reload sources from running program</a><br/>
-				<a href="?store">Store sources to running program</a><br/>
+				<a href="?load">Reload remotes from running program</a><br/>
+				<a href="?store">Store remotes to running program</a><br/>
 <?php
 				pg_free_result($result);
 			} else {
 ?>
-				<br/><a href="?load">Load sources from running program</a><br/>
-				<a href="?store">Delete sources from running program</a><br/>
+				<br/><a href="?load">Load remotes from running program</a><br/>
+				<a href="?store">Delete remotes from running program</a><br/>
 <?php
 			}
 			pg_close($dbconn);

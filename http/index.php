@@ -37,7 +37,7 @@ $admin = $_SESSION['user'] == 'admin';
 <?php
 		if (checkAuthorization(3, 'send messages')) {
 			if (isset($_GET['msgtosend'])) {
-				$result = pgquery('SELECT send_inject(E\'\\\\x' . substr($_GET['msgtosend'], 2) . ", '{$_GET['proto_id']}', E'\\\\x" . substr($_GET['imm_DST'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, TRUE);');
+				$result = pgquery('SELECT send_inject(E\'\\\\x' . substr($_GET['msgtosend'], 2) . ", '{$_GET['proto_id']}', E'\\\\x" . substr($_GET['imm_DST'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, TRUE);');
 				pg_free_result($result);
 				echo 'Message ', htmlspecialchars($_GET['msgtosend']), " sent.\n";
 			}
@@ -53,6 +53,10 @@ $admin = $_SESSION['user'] == 'admin';
 				<input type="checkbox" name="CCF"/>
 				and ACF
 				<input type="checkbox" name="ACF"/>
+				using broadcast
+				<input type="checkbox" name="broadcast"/>
+				and override implicit rules
+				<input type="checkbox" name="override_implicit_rules"/>
 				<input type="submit" value="submit"/>
 				<input type="reset" value="reset"/>
 			</form>
@@ -60,7 +64,7 @@ $admin = $_SESSION['user'] == 'admin';
 		}
 		if (checkAuthorization(4, 'inject messages')) {
 			if (isset($_GET['msgtoinject'])) {
-				$result = pgquery('SELECT send_inject(E\'\\\\x' . substr($_GET['msgtoinject'], 2) . ", '{$_GET['proto_id']}', E'\\\\x" . substr($_GET['imm_SRC'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : ' FALS') . 'E, FALSE);');
+				$result = pgquery('SELECT send_inject(E\'\\\\x' . substr($_GET['msgtoinject'], 2) . ", '{$_GET['proto_id']}', E'\\\\x" . substr($_GET['imm_SRC'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : ' FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, FALSE);');
 				pg_free_result($result);
 				echo 'Message ', htmlspecialchars($_GET['msgtoinject']), " injected.\n";
 			}
@@ -76,6 +80,10 @@ $admin = $_SESSION['user'] == 'admin';
 				<input type="checkbox" name="CCF"/>
 				and ACF
 				<input type="checkbox" name="ACF"/>
+				using broadcast
+				<input type="checkbox" name="broadcast"/>
+				and override implicit rules
+				<input type="checkbox" name="override_implicit_rules"/>
 				<input type="submit" value="submit"/>
 				<input type="reset" value="reset"/>
 			</form>
@@ -142,7 +150,7 @@ $admin = $_SESSION['user'] == 'admin';
 		}
 		if ($admin) {
 ?>
-			<a href="view_sources.php">View sources</a><br/>
+			<a href="view_remotes.php">View remotes</a><br/>
 			<a href="view_configuration.php">View configuration</a><br/>
 			<a href="view_permissions.php">View permissions</a><br/>
 <?php

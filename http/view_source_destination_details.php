@@ -126,7 +126,7 @@ if ($SESSION['user'] != 'admin') {
 					</tbody>
 				</table>
 <?php
-				echo '<a href="view_remote_details.php?SRC=', urlencode($_GET['SRC']), "\">Done</a>\n";
+				echo '<a href="view_remote_details.php?addr=', urlencode($_GET['SRC']), "\">Done</a>\n";
 				pg_free_result($result);
 				pg_close($dbconn);
 			}

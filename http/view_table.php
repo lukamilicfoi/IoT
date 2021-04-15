@@ -8,16 +8,16 @@ function postgresqlOutputToStandard($data, $oid) {
 	switch ($oid) {
 	case 1700://NUMERIC
 		return $data;
-	case 1266://TIME WITH TIME ZONE
-	case 1083://TIME WITHOUT TIME ZONE
-		return 'TIME \'' . $data . '\'';
 	case 1186://INTERVAL
 		return 'INTERVAL \'' . $data . '\'';
-	case 1082://DATE
-		return 'DATE \'' . $data . '\'';
 	case 1184://TIMESTAMP WITH TIME ZONE
 	case 1114://TIMESTAMP WITHOUT TIME ZONE
 		return 'TIMESTAMP \'' . $data . '\'';
+	case 1266://TIME WITH TIME ZONE
+	case 1083://TIME WITHOUT TIME ZONE
+		return 'TIME \'' . $data . '\'';
+	case 1082://DATE
+		return 'DATE \'' . $data . '\'';
 	case 25://TEXT
 		return '\'' . $data . '\'';
 	case 17://BYTEA
@@ -35,14 +35,14 @@ function standardToPostgresqlInput($data, $oid) {
 	case 1700://NUMERIC
 	case 1266://TIME WITH TIME ZONE
 		return 'TIME WITH TIME ZONE' . substr($data, 5);
-	case 1083://TIME WITHOUT TIME ZONE
-	case 1186://INTERVAL
-	case 1082://DATE
-	case 1114://TIMESTAMP WITHOUT TIME ZONE
-	case 25://TEXT
-		return $data;
 	case 1184://TIMESTAMP WITH TIME ZONE
 		return 'TIMESTAMP WITH TIME ZONE' . substr($data, 10);
+	case 1186://INTERVAL
+	case 1114://TIMESTAMP WITHOUT TIME ZONE
+	case 1083://TIME WITHOUT TIME ZONE
+	case 1082://DATE
+	case 25://TEXT
+		return $data;
 	case 17://BYTEA
 		return 'E\'\\\\x' . substr($data, 2);
 	default://16//BOOLEAN
