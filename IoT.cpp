@@ -398,7 +398,7 @@ union typedetails {
 
 my_time_point beginning;
 
-map<string, BYTE8> table_address;
+multimap<string, BYTE8> table_address;
 
 PGconn *conn;
 
@@ -452,7 +452,7 @@ int nsecs_src = 36000;//10 hours
 
 time_t next_timed_rule = 0;
 
-map<protocol *, BYTE8> local_proto_iaddr;
+multimap<protocol *, BYTE8> local_proto_iaddr;
 
 BYTE8 EUI48_to_EUI64(BYTE8 EUI48) noexcept;
 
@@ -527,17 +527,25 @@ void load_store2_store();
 
 void config2();
 
+void encode_message(formatted_message &fmsg, raw_message &rmsg);
+
 void refresh_next_timed_rule_time2(const refresh_next_timed_rule_time_struct &rntrts);
 
 void update_permissions2();
+
+void decode_message(raw_message &rmsg, formatted_message &fmsg);
 
 ostream &operator<<(ostream &os, const protocol &proto) noexcept;
 
 void *memcpy_reverse(void *dst, const void *src, size_t size) noexcept;
 
+void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg);
+
 BYTE4 givecrc32c(const BYTE *msg, BYTE2 len) noexcept;
 
 ostream &operator<<(ostream &os, const formatted_message &fmsg) noexcept;
+
+void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg);
 
 ostream &operator<<(ostream &os, const header &HD) noexcept;
 
@@ -590,6 +598,8 @@ void destroy_vars();
 
 int find_next_lower_device(int sock, ifreq &ifr, int &i);
 
+int find_next_lower_bluetooth(int sock, hci_dev_info &hdi, int &i);
+
 void sig_ign(int sig);
 
 extern "C" const char *SSL_error_string(int e, char *buf);
@@ -601,6 +611,8 @@ in_addr BYTE8_to_ia(BYTE8 address) noexcept;
 BYTE8 ia_to_BYTE8(in_addr ia) noexcept;
 
 protocol *find_protocol_by_id(const char *id);
+
+protocol *find_protocol_by_name(const char *name);
 
 bool check_permissions(const char *table, BYTE8 address);
 
@@ -654,13 +666,18 @@ public:
 
 	virtual void start();
 
-	protocol();
-
 	virtual void stop();
+
+	protocol();
 
 	virtual ~protocol();
 
 };
+
+template<typename type>
+void instantiate_protocol_if_enabled();
+
+const char *get_typename(const type_info &type);
 
 protocol::protocol() : my_id(unique_id()), recv_all_thread(nullptr), run(true) { }
 
@@ -689,9 +706,11 @@ void protocol::stop() {
 	run = false;
 	kill(pid, SIGUSR1);
 	send_all_thread->join();
+	LOG_CPP("stopped thread " << send_all_thread->get_id() << endl);
 	delete send_all_thread;
 	kill(pid, SIGUSR2);
 	recv_all_thread->join();
+	LOG_CPP("stopped thread " << recv_all_thread->get_id() << endl);
 	delete recv_all_thread;
 	THR(mq_unlink(my_id.c_str()) < 0, system_exception("cannot unlink my_mq"));
 	recv_all_thread = nullptr;
@@ -842,7 +861,7 @@ void verify_digital_signature(EVP_PKEY *senders_public_key, const BYTE *plaintex
 		int plaintext_len, const BYTE *signature, int signature_len);
 
 BYTE8 ia_to_BYTE8(in_addr ia) noexcept {
-	BYTE8 address = 0x0000000000000000;
+	BYTE8 address = 0x00000000'00000000;
 
 	if (little_endian) {
 		memcpy_reverse(&address, &ia, 4);
@@ -1169,7 +1188,7 @@ string SSL_give_error(const SSL *ssl, int ret) {
 
 #define CHAN_MAP 0b00000001
 
-#define BROADCAST_PLACEHOLDER 0xFFFFFFFFFFFFFFFF
+#define BROADCAST_PLACEHOLDER 0xFFFFFFFF'FFFFFFFF
 
 class ble : public protocol {
 
@@ -1778,8 +1797,8 @@ raw_message *tcp::recv_once() {//TCP message must contain HD and LEN
 					tml += retval;
 				}
 				if (HD.R) {
-					retval = security ? SSL_read(iter_sock->second->ssl, rmsg->msg + tml, 4) :
-							recv(sock, rmsg->msg + tml, 4, 0);
+					retval = security ? SSL_read(iter_sock->second->ssl, rmsg->msg + tml, 4)
+							: recv(sock, rmsg->msg + tml, 4, 0);
 					THR(retval < 0, network_exception("cannot recv a socket"));
 					THR(retval < 4, network_exception("cannot recv a socket fully"));
 					tml += 4;
@@ -2166,6 +2185,7 @@ bool udp::can_secure_with_A(raw_message &rmsg) const noexcept { return !rmsg.bro
 
 void udp::start() {
 	sockaddr_in sa;
+	int a = 1;
 
 	THR(is_running(), system_exception("starting started protocol"));
 
@@ -2208,7 +2228,6 @@ void udp::start() {
 			network_exception("cannot bind dtls_sock"));
 	FD_SET(dtls_sock, &socks);
 
-	int a = 1;
 	broadcast_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	THR(broadcast_sock < 0, network_exception("cannot socket broadcast_sock"));
 	check_sock(broadcast_sock);
@@ -2247,11 +2266,6 @@ void udp::stop() {
 	SSL_CTX_free(client_ctx);
 	SSL_CTX_free(server_ctx);
 }
-
-template<typename type>
-void instantiate_protocol_if_enabled();
-
-const char *get_typename(const type_info &type);
 
 /*
  * C++11/14:
@@ -2340,6 +2354,7 @@ int main(int argc, char *argv[]) {
 			"TWR TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(SRC, DST, ID), "
 			"FOREIGN KEY(SRC, DST) REFERENCES SRC_DST(SRC, DST) "
 			"ON DELETE CASCADE ON UPDATE CASCADE)"));
+
 	res = execcheckreturn("SELECT TRUE FROM pg_class WHERE relname = \'proto_name\'");
 	if (PQntuples(res) == 0) {
 		PQclear(execcheckreturn("CREATE TABLE proto_name(proto TEXT, name TEXT NOT NULL, "
@@ -2365,6 +2380,7 @@ int main(int argc, char *argv[]) {
 	}
 	oss.seekp(-3, oss.end) << '\0';
 	PQclear(execcheckreturn(oss.str()));
+
 	populate_local_proto_iaddr();
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS formatted_message_for_send_receive("
 			"HD BYTEA, ID BYTEA, LEN BYTEA, DST BYTEA, SRC BYTEA, PL BYTEA, CRC BYTEA, "
@@ -2372,6 +2388,7 @@ int main(int argc, char *argv[]) {
 			"imm_addr BYTEA, CCF BOOLEAN, ACF BOOLEAN, "
 			"FOREIGN KEY(proto) REFERENCES proto_name(proto))"));
 	PQclear(execcheckreturn("TRUNCATE TABLE formatted_message_for_send_receive"));
+
 	res = execcheckreturn("SELECT TRUE FROM pg_class WHERE relname = \'adapter_name\'");
 	if (PQntuples(res) == 0) {
 		PQclear(execcheckreturn("CREATE TABLE adapter_name(adapter INTEGER, name TEXT NOT NULL, "
@@ -2390,21 +2407,22 @@ int main(int argc, char *argv[]) {
 		}
 		close(sock);
 		sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-		hdi.dev_id = 0;
+		hdi.dev_id = i;
 		THR(ioctl(sock, HCIGETDEVINFO, &hdi) < 0, system_exception("cannot HCIGETDEVINFO ioctl"));
 		if (!hci_test_bit(HCI_UP, &hdi.flags)) {
 			THR(ioctl(sock, HCIDEVUP, 0) < 0, system_exception("cannot HCIDEVUP ioctl"));
 					//privileged operation!!!
 			LOG_CPP("turned on device " << hdi.name << endl);
 		}
-		oss << MAX_DEVICE_INDEX << ", \'" << hdi.name << "\')";
+		oss << MAX_DEVICE_INDEX + i << ", \'" << hdi.name << "\'), ";
+		oss.seekp(-3, oss.end) << '\0';
 		PQclear(execcheckreturn(oss.str()));
 	} else {
 		i = MAX_DEVICE_INDEX;
 		while (find_next_lower_device(sock, ifr, i) >= 0) {
 			THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
 			PQclear(res);
-			res = execcheckreturn("SELECT TRUE FROM adapter WHERE name = \'"s + ifr.ifr_name + '\'');
+			res = execcheckreturn("SELECT TRUE FROM adapter_name WHERE name = \'"s + ifr.ifr_name + '\'');
 			if (PQntuples(res) == 0) {
 				if ((ifr.ifr_flags & IFF_UP) != 0) {
 					ifr.ifr_flags &= ~IFF_UP;
@@ -2420,18 +2438,20 @@ int main(int argc, char *argv[]) {
 			}
 		}
 		PQclear(res);
-		oss.str("SELECT TRUE FROM adapter WHERE adapter = ");
-		oss << MAX_DEVICE_INDEX;
-		res = execcheckreturn(oss.str());
 		close(sock);
 		sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+		oss.str("SELECT TRUE FROM adapter_name WHERE name = ");
+		oss << hdi.name;
+		hdi.dev_id = i;
+		THR(ioctl(sock, HCIGETDEVINFO, &hdi) < 0, system_exception("cannot HCIGETDEVINFO ioctl"));
+		res = execcheckreturn(oss.str());
 		if (PQntuples(res) == 0) {
 			if (!hci_test_bit(HCI_UP, &hdi.flags)) {
 				THR(ioctl(sock, HCIDEVUP, 0) < 0, system_exception("cannot HCIDEVUP ioctl"));
 						//privileged operation!!!
 				LOG_CPP("turned on device " << hdi.name << endl);
 			}
-		} else {
+		} else if (hci_test_bit(HCI_UP, &hdi.flags)) {
 			THR(ioctl(sock, HCIDEVDOWN, 0) < 0, system_exception("cannot HCIDEVDOWN ioctl"));
 					//privileged operation!!!
 			LOG_CPP("turned off device " << hdi.name << endl);
@@ -2439,6 +2459,7 @@ int main(int argc, char *argv[]) {
 	}
 	PQclear(res);
 	close(sock);
+
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS SRC_proto(SRC BYTEA, proto TEXT, "
 			"PRIMARY KEY(SRC, proto), FOREIGN KEY(SRC) REFERENCES addr_oID(addr) "
 			"ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY(proto) REFERENCES proto_name(proto) "
@@ -2476,11 +2497,19 @@ int main(int argc, char *argv[]) {
 			"last_run TIMESTAMP(0) WITH TIME ZONE, run_period INTERVAL SECOND(0), next_run BIGINT, "
 			"PRIMARY KEY(rule_id), FOREIGN KEY(rule_id) REFERENCES rules(id) "
 			"ON DELETE CASCADE ON UPDATE CASCADE)"));
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS rule_user(rule_id INTEGER, "
+			"user TEXT, PRIMARY KEY(rule_id), FOREIGN KEY(rule_id) REFERENCES rules(id) "
+			"ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY(user) REFERENCES users(username) "
+			"ON DELETE CASCADE ON UPDATE CASCADE)"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS raw_message_for_query_command("
 			"message BYTEA)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_address(table NAME, address BYTEA, "
 			"PRIMARY KEY(table, address), FOREIGN KEY(table) REFERENCES pg_class(relname) "
+			"ON UPDATE CASCADE ON DELETE CASCADE)"));
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_user(table NAME, user TEXT, "
+			"PRIMARY KEY(table, user), FOREIGN KEY(table) REFERENCES pg_class(relname) "
+			"ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY(user) REFERENCES user(username) "
 			"ON UPDATE CASCADE ON DELETE CASCADE)"));
 	PQclear(execcheckreturn("CREATE PROCEDURE ext(addr_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'ext\' LANGUAGE C"));
@@ -2517,7 +2546,7 @@ int main(int argc, char *argv[]) {
 			"RETURN NULL; END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER insert_timer AFTER INSERT ON rules FOR ROW "
 			"WHEN (NEW.send_receive_seconds = 2 AND NEW.active IS TRUE) "
-			"EXECUTE PROCEDURE insert_timer()"));//creorreplace?
+			"EXECUTE PROCEDURE insert_timer()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS update_timer() CASCADE"));
 	PQclear(execcheckreturn("CREATE FUNCTION update_timer() RETURNS trigger AS \'DECLARE "
 			"lastrun TIMESTAMP(0) WITH TIME ZONE; runperiod INTERVAL SECOND(0); BEGIN "
@@ -2536,7 +2565,7 @@ int main(int argc, char *argv[]) {
 			"SELECT MIN(next_run) FROM timers)); RETURN NULL; END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER update_timer AFTER UPDATE ON rules FOR ROW "
 			"EXECUTE PROCEDURE update_timer()"));
-	PQclear(execcheckreturn("TRUNCATE TABLE timers"));//sqlstandardprocedures?
+	PQclear(execcheckreturn("TRUNCATE TABLE timers"));
 	PQclear(execcheckreturn("INSERT INTO timers(rule_id, last_run, run_period, next_run) "
 			"SELECT id, CURRENT_TIMESTAMP(0), CAST(filter AS INTEGER) * INTERVAL \'0:0:1\', "
 			"NULL FROM rules WHERE send_receive_seconds = 2 AND active IS TRUE"));
@@ -2700,7 +2729,8 @@ void destroy_vars() {
 }
 
 void sig_ign(int sig) {
-	LOG_CPP("handling signal " << strsignal(sig) << " for thread " << this_thread::get_id() << endl);
+	LOG_CPP("handling signal " << strsignal(sig) << " for thread " << this_thread::get_id()
+			<< endl);
 }
 
 BYTE8 EUI64_to_EUI48(BYTE8 EUI64) noexcept {
@@ -2711,36 +2741,41 @@ void populate_local_proto_iaddr() {
 	int sock = socket(AF_UNIX, SOCK_SEQPACKET, 0), i = MAX_DEVICE_INDEX;
 	ifreq ifr;
 	BYTE8 addr;
+	hci_dev_info hdi;
+	int dd;
+	bdaddr_t bdaddr_any = { { 0 } };
 
 	while (find_next_lower_device(sock, ifr, i) >= 0) {
-		THR(ioctl(sock, SIOCGIFADDR, &ifr) < 0 && errno != EADDRNOTAVAIL,
-				system_exception("cannot SIOCGIFADDR ioctl"));
-		if (ifr.ifr_addr.sa_family == AF_INET) {
+		if (ioctl(sock, SIOCGIFADDR, &ifr) < 0) {
+			THR(errno != EADDRNOTAVAIL, system_exception("cannot SIOCGIFADDR ioctl"));
+		} else if (ifr.ifr_addr.sa_family == AF_INET) {
 			addr = ia_to_BYTE8(reinterpret_cast<sockaddr_in *>(&ifr.ifr_addr)->sin_addr);
-			for (protocol *p : protocols) {
-				if (strcmp(get_typename(typeid(*p)), "tcp") == 0) {
-					local_proto_iaddr[p] = addr;
-				}
+			local_proto_iaddr.insert(make_pair(find_protocol_by_name("tcp"), addr));
+			LOG_CPP("added imm_addr " << BYTE8_to_c17charp(addr) << " for TCP" << endl);
+			local_proto_iaddr.insert(make_pair(find_protocol_by_name("udp"), addr));
+			LOG_CPP("added imm_addr " << BYTE8_to_c17charp(addr) << " for UDP" << endl);
+		} else {
+			THR(ioctl(sock, SIOCGIFHWADDR, &ifr) < 0,
+					system_exception("cannot SIOCGIFADDR ioctl"));//cannot cause EADDRNOTAVAIL
+			if (ifr.ifr_hwaddr.sa_family == ARPHRD_IEEE802154) {
+				memcpy_endian(&addr,
+						reinterpret_cast<sockaddr_ieee802154 *>(&ifr.ifr_hwaddr)->addr.hwaddr, 8);
+				local_proto_iaddr.insert(make_pair(find_protocol_by_name("154"), addr));
+				LOG_CPP("added imm_addr " << BYTE8_to_c17charp(addr) << " for 154" << endl);
 			}
-			LOG_CPP("added imm_SRC " << BYTE8_to_c17charp(addr) << " for TCP" << endl);
-			LOG_CPP("added imm_SRC " << BYTE8_to_c17charp(addr) << " for UDP" << endl);
-		} else if (ifr.ifr_addr.sa_family == AF_IEEE802154) {
-			//todo _154
-			for (protocol *p : protocols) {
-				if (strcmp(get_typename(typeid(*p)), "_154") == 0) {
-					local_proto_iaddr[p] = addr;
-				}
-			}
-			LOG_CPP("added imm_SRC " << BYTE8_to_c17charp(addr) << " for 154" << endl);
 		}
 	}
-	//todo blee
-	for (protocol *p : protocols) {
-		if (strcmp(get_typename(typeid(*p)), "ble") == 0) {
-			local_proto_iaddr[p] = addr;
-		}
+	close(sock);
+	sock = socket(AF_BLUETOOTH, SOCK_RAW, 0);
+	hdi.dev_id = 0;
+	THR(ioctl(sock, HCIGETDEVINFO, &hdi) < 0, system_exception("cannot HCIGETDEVINFO ioctl"));
+	if (hci_test_bit(HCI_RAW, &hdi.flags) && !bacmp(&hdi.bdaddr, &bdaddr_any)) {
+		dd = hci_open_dev(0);
+		hci_read_bd_addr(dd, reinterpret_cast<bdaddr_t *>(&addr), 8);
+		hci_close_dev(dd);
+		local_proto_iaddr.insert(make_pair(find_protocol_by_name("ble"), addr));
+		LOG_CPP("added imm_addr " << BYTE8_to_c17charp(addr) << " for BLE" << endl);
 	}
-	LOG_CPP("added imm_SRC " << BYTE8_to_c17charp(addr) << " for BLE" << endl);
 	close(sock);
 }
 
@@ -2879,6 +2914,18 @@ void ext2(const ext_struct &es) {
 			c17charp_to_BYTE8(es.addr_id)));
 }
 
+int find_next_lower_bluetooth(int sock, hci_dev_info &hdi, int &i) {
+	while (--i >= 0) {
+		hdi.dev_id = i;
+		if (ioctl(sock, HCIGETDEVINFO, &hdi) < 0) {
+			THR(errno != ENODEV, system_exception("cannot HCIGETDEVINFO ioctl"));
+			continue;
+		}
+		LOG_CPP("found bluetooth " << hdi.name << " at index " << i << endl);
+	}
+	return i;
+}
+
 protocol *find_protocol_by_id(const char *id) {
 	for (protocol *p : protocols) {
 		if (p->get_my_id() == id) {
@@ -2886,6 +2933,15 @@ protocol *find_protocol_by_id(const char *id) {
 		}
 	}
 	throw system_exception("protocol not found");
+}
+
+protocol *find_protocol_by_name(const char *name) {
+	for (protocol *p : protocols) {
+		if (strcmp(get_typename(typeid(*p)), name) == 0) {
+			return p;
+		}
+	}
+	return nullptr;
 }
 
 int find_next_lower_device(int sock, ifreq &ifr, int &i) {
@@ -2901,19 +2957,21 @@ int find_next_lower_device(int sock, ifreq &ifr, int &i) {
 }
 
 void send_inject2(const send_inject_struct &sis) {
-	BYTE8 imm_addr;
 	raw_message *rmsg = new raw_message(new BYTE[sis.message_length]);
 	unique_ptr<raw_message> dummy(rmsg);
+	unique_ptr<formatted_message> fmsg(new (sis.message_length)
+			formatted_message(sis.message_length));
 
-	memcpy_endian(&imm_addr, sis.imm_addr, 8);
+	memcpy_endian(&rmsg->imm_addr, sis.imm_addr, 8);
 	LOG_CPP("received for " << (sis.send ? "sending" : "injecting") << ": \"");
 	LOG_CP(print_message_c, sis.message_content, sis.message_length);
 	LOG_CPP("\" with protocol id \"" << sis.proto_id << "\" and imm_" << (sis.send ? "DST" : "SRC")
-			<< ' ' << BYTE8_to_c17charp(imm_addr) << " with " << (sis.CCF ? "CCF" : "!CCF")
-			<< " and " << (sis.ACF ? "ACF" : "!ACF") << endl);
+			<< ' ' << BYTE8_to_c17charp(rmsg->imm_addr) << " with " << (sis.CCF ? "CCF" : "!CCF")
+			<< " and " << (sis.ACF ? "ACF" : "!ACF") << " and broadcast = "
+			<< BOOLALPHA_UPPERCASE(sis.broadcast) << " and override_implicit_rules = "
+			<< BOOLALPHA_UPPERCASE(sis.override_implicit_rules) << endl);
 	rmsg->TML = sis.message_length;
 	rmsg->proto = find_protocol_by_id(sis.proto_id);
-	rmsg->imm_addr = imm_addr;
 	memcpy(rmsg->msg, sis.message_content, rmsg->TML);
 	rmsg->TWR = my_now();
 	rmsg->broadcast = sis.broadcast;
@@ -2921,15 +2979,11 @@ void send_inject2(const send_inject_struct &sis) {
 	rmsg->CCF = sis.CCF;
 	rmsg->ACF = sis.ACF;
 	if (sis.send) {
-		if (trust_everyone) {
-		} else if (rmsg->override_implicit_rules) {
-		} else {
-		}
-		send_raw_message(rmsg);
-	} else {
-		THR(mq_send(main_mq, reinterpret_cast<char *>(&rmsg), sizeof(rmsg), 0) < 0,
-				system_exception("cannot send to queue"));
+		decode_message(*rmsg, *fmsg);
+		security_check_for_sending(*fmsg, *rmsg);
 	}
+	THR(mq_send(sis.send ? rmsg->proto->get_my_mq() : main_mq, reinterpret_cast<char *>(&rmsg),
+			sizeof(rmsg), 0) < 0, system_exception("cannot send to queue"));
 	dummy.release();
 }
 
@@ -3123,6 +3177,35 @@ void config2() {
 	PQclear(res);
 }
 
+void encode_message(formatted_message &fmsg, raw_message &rmsg) {
+	int i;
+
+	*rmsg.msg = fmsg.HD.get_as_byte();
+	i = 1;
+	if (fmsg.HD.I) {
+		rmsg.msg[1] = fmsg.ID;
+		i = 2;
+	}
+	if (fmsg.HD.L) {
+		memcpy_endian(rmsg.msg + i, &fmsg.LEN, 2);
+		i += 2;
+	}
+	if (fmsg.HD.D) {
+		memcpy_endian(rmsg.msg + i, &fmsg.DST, 8);
+		i += 8;
+	}
+	if (fmsg.HD.S) {
+		memcpy_endian(rmsg.msg + i, &fmsg.SRC, 8);
+		i += 8;
+	}
+	memcpy(rmsg.msg + i, fmsg.PL, fmsg.LEN);
+	if (fmsg.HD.R) {
+		memcpy_endian(rmsg.msg + i, &fmsg.CRC, 4);
+		i += 4;
+	}
+	rmsg.TML = i + fmsg.LEN;
+}
+
 void refresh_next_timed_rule_time2(const refresh_next_timed_rule_time_struct &rntrts) {
 	next_timed_rule = rntrts.next_timed_rule;
 	LOG_CPP("next timed rule " << next_timed_rule - time(nullptr) << " seconds from now" << endl);
@@ -3136,6 +3219,66 @@ void update_permissions2() {
 	while (--i >= 0) {
 		table_address.insert(make_pair(PQgetvalue(res, i, 0),
 				c17charp_to_BYTE8(PQgetvalue(res, i, 1))));
+	}
+}
+
+void decode_message(raw_message &rmsg, formatted_message &fmsg) {
+	int i;
+	BYTE4 CRC;
+	if (rmsg.TML > 1) {
+		fmsg.HD.put_as_byte(*rmsg.msg);
+		i = 1;
+	} else {
+		fmsg.HD.put_as_byte(0b00000000);
+		i = 0;
+	}
+	if (fmsg.HD.I) {
+		THR(1 >= rmsg.TML, message_exception("ID absent"));
+		fmsg.ID = rmsg.msg[1];
+		i = 2;
+	}
+	if (fmsg.HD.L) {
+		THR(i + 1 >= rmsg.TML, message_exception("LEN absent"));
+		memcpy_endian(&fmsg.LEN, rmsg.msg + i, 2);
+		i += 2;
+	}
+	if (fmsg.HD.D) {
+		THR(i + 7 >= rmsg.TML, message_exception("DST absent"));
+		memcpy_endian(&fmsg.DST, rmsg.msg + i, 8);
+		i += 8;
+	} else {
+		fmsg.DST = local_addr;
+	}
+	if (fmsg.HD.S) {
+		THR(i + 7 >= rmsg.TML, message_exception("SRC absent"));
+		memcpy_endian(&fmsg.SRC, rmsg.msg + i, 8);
+		i += 8;
+	} else {
+		fmsg.SRC = rmsg.imm_addr;
+	}
+	memcpy(fmsg.PL, rmsg.msg + i, rmsg.TML - i);
+	if (fmsg.HD.R) {
+		THR(i + 3 >= rmsg.TML, message_exception("CRC absent"));
+		memcpy_endian(&fmsg.CRC, rmsg.msg + rmsg.TML - 4, 4);
+		CRC = givecrc32c(rmsg.msg, rmsg.TML - 4);
+		if (fmsg.CRC != CRC) {
+			LOG_CPP("received CRC " << HEX(fmsg.CRC, 8)
+					<< " != calculated CRC " << HEX(CRC, 8) << endl);
+			throw message_exception("wrong CRC");
+		}
+		i += 4;
+	} else {
+		fmsg.CRC = givecrc32c(rmsg.msg, rmsg.TML);
+	}
+	if (!fmsg.HD.I) {
+		fmsg.ID = fmsg.CRC;
+	}
+	if (!fmsg.HD.L) {
+		fmsg.LEN = rmsg.TML - i;
+	} else if (fmsg.LEN != rmsg.TML - i) {
+		LOG_CPP("received LEN " << fmsg.LEN
+				<< " != calculated LEN " << rmsg.TML - i << endl);
+		throw message_exception("wrong LEN");
 	}
 }
 
@@ -3162,9 +3305,9 @@ void main_loop() {
 				case 'W'://WITH
 				case 'S'://SELECT
 				case '('://nested queries
-				case '\xEB'://TABLE
+				case '\xEA'://TABLE
 				case '\xFD'://WITH
-				case '\xBF'://SELECT
+				case '\xBE'://SELECT
 					/* SELECT(_SUBSCRIBE) */
 					convert_select(query, remote_FROM_prefix + BYTE8_to_c17charp(fmsg->SRC) + ' ');
 					format_select(query);
@@ -3189,9 +3332,9 @@ void main_loop() {
 						ins(query, fmsg->SRC);
 					}
 					//no break
-				case '\xF7'://UNSUBSCRIBE=0xF7//ALL=0x85
+				case '\xF6'://UNSUBSCRIBE=0xF6//ALL=0x85
 					/* UNSUBSCRIBE(_ALL) */
-					query = query.substr(query.front() == '\xF7' ? 1 : 11);
+					query = query.substr(query.front() == '\xF6' ? 1 : 11);
 					if (query == "\x85" || query == " ALL;") {
 						res = execcheckreturn("SELECT SUBSTRING(relname FROM 22) FROM pg_class "
 								"WHERE relname LIKE \'table\\_"s + BYTE8_to_c17charp(fmsg->SRC)
@@ -3211,11 +3354,12 @@ void main_loop() {
 				case 'K':
 					LOG_CPP("received ACKNOWLEDGMENT for message " << HEX(fmsg->ID, 2) << endl);
 					break;
-				case 'E':
-					LOG_CPP("received ERROR for message " << HEX(fmsg->ID, 2) << endl);
+				case 'P':
+					LOG_CPP("received PAYLOAD_ERROR for message " << HEX(fmsg->ID, 2) << endl);
 					break;
-				case 'N':
-					LOG_CPP("received UNSUPPORTED for message " << HEX(fmsg->ID, 2) << endl);
+				case 'O':
+					LOG_CPP("received OPERATION_UNSUPPORTED for message " << HEX(fmsg->ID, 2)
+							<< endl);
 					break;
 				default://data
 					LOG_CPP("calling insert" << endl);
@@ -3229,12 +3373,12 @@ void main_loop() {
 			}
 			break;
 		} catch (error_exception &e) {
-			LOG_CPP("sending ERROR for message " << HEX(fmsg->ID, 2) << endl);
-			send_control("E"s + *reinterpret_cast<char *>(fmsg->ID) + e.what(), fmsg->SRC,
+			LOG_CPP("sending PAYLOAD_ERROR for message " << HEX(fmsg->ID, 2) << endl);
+			send_control("P"s + *reinterpret_cast<char *>(fmsg->ID) + e.what(), fmsg->SRC,
 					fmsg->DST);
 		} catch (unsupported_exception &e) {
-			LOG_CPP("sending UNSUPPORTED for message " << HEX(fmsg->ID, 2) << endl);
-			send_control("N"s + *reinterpret_cast<char *>(fmsg->ID) + e.what(), fmsg->SRC,
+			LOG_CPP("sending OPERATION_UNSUPPORTED for message " << HEX(fmsg->ID, 2) << endl);
+			send_control("O"s + *reinterpret_cast<char *>(fmsg->ID) + e.what(), fmsg->SRC,
 					fmsg->DST);
 		} catch (message_exception &e) {
 			//don't-care
@@ -3252,6 +3396,19 @@ ostream &operator<<(ostream &os, const my_time_point &point) noexcept {
 	time_t t = chrono::system_clock::to_time_t(point);
 
 	return os << put_time(localtime(&t), "%Y-%m-%d %H:%M:%S");
+}
+
+void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg) {
+	if (trust_everyone) {
+		LOG_CPP("trusting everyone for sending" << endl);
+	} else if (rmsg.override_implicit_rules) {
+		LOG_CPP("overriding rules for sending" << endl);
+	} else {
+		THR(fmsg.HD.C && !rmsg.CCF && !fmsg.is_encrypted(),
+				message_exception("security for C and snd breached"));
+		THR(fmsg.HD.A && !rmsg.ACF && !fmsg.is_signed(),
+				message_exception("security for A and snd breached"));
+	}
 }
 
 istream &operator>>(istream &is, my_time_point &point) noexcept {
@@ -3285,73 +3442,31 @@ void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 	send_formatted_message(fmsg.release());
 }
 
+void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg) {
+	if (trust_everyone) {
+		LOG_CPP("trusting everyone for receiving" << endl);
+	} else if (rmsg.override_implicit_rules) {
+		LOG_CPP("overriding checks for receiving" << endl);
+	} else {
+		THR(fmsg.HD.C && !rmsg.CCF && !fmsg.is_encrypted(),
+				message_exception("security for C and rcv breached"));
+		THR(fmsg.HD.A && !rmsg.ACF && !fmsg.is_signed(),
+				message_exception("security for A and rcv breached"));
+	}
+}
+
 formatted_message *receive_formatted_message() {
+	ostringstream oss(oss.out | oss.ate);
 	unique_ptr<raw_message> rmsg;
 	unique_ptr<formatted_message> fmsg;
-	ostringstream oss(oss.out | oss.ate);
-	int i;
-	BYTE4 CRC;
 	my_time_point now;
+	multimap<protocol *, BYTE8>::const_iterator iter;
 
 	do {
 		rmsg.reset(receive_raw_message());
 		if (rmsg != nullptr) {
 			fmsg.reset(new(rmsg->TML) formatted_message(rmsg->TML));
-			if (rmsg->TML > 1) {
-				fmsg->HD.put_as_byte(*rmsg->msg);
-				i = 1;
-			} else {
-				fmsg->HD.put_as_byte(0b00000000);
-				i = 0;
-			}
-			if (fmsg->HD.I) {
-				THR(1 >= rmsg->TML, message_exception("ID absent"));
-				fmsg->ID = rmsg->msg[1];
-				i = 2;
-			}
-			if (fmsg->HD.L) {
-				THR(i + 1 >= rmsg->TML, message_exception("LEN absent"));
-				memcpy_endian(&fmsg->LEN, rmsg->msg + i, 2);
-				i += 2;
-			}
-			if (fmsg->HD.D) {
-				THR(i + 7 >= rmsg->TML, message_exception("DST absent"));
-				memcpy_endian(&fmsg->DST, rmsg->msg + i, 8);
-				i += 8;
-			} else {
-				fmsg->DST = local_addr;
-			}
-			if (fmsg->HD.S) {
-				THR(i + 7 >= rmsg->TML, message_exception("SRC absent"));
-				memcpy_endian(&fmsg->SRC, rmsg->msg + i, 8);
-				i += 8;
-			} else {
-				fmsg->SRC = rmsg->imm_addr;
-			}
-			memcpy(fmsg->PL, rmsg->msg + i, rmsg->TML - i);
-			if (fmsg->HD.R) {
-				THR(i + 3 >= rmsg->TML, message_exception("CRC absent"));
-				memcpy_endian(&fmsg->CRC, rmsg->msg + rmsg->TML - 4, 4);
-				CRC = givecrc32c(rmsg->msg, rmsg->TML - 4);
-				if (fmsg->CRC != CRC) {
-					LOG_CPP("received CRC " << HEX(fmsg->CRC, 8)
-							<< " != calculated CRC " << HEX(CRC, 8) << endl);
-					throw message_exception("wrong CRC");
-				}
-				i += 4;
-			} else {
-				fmsg->CRC = givecrc32c(rmsg->msg, rmsg->TML);
-			}
-			if (!fmsg->HD.I) {
-				fmsg->ID = fmsg->CRC;
-			}
-			if (!fmsg->HD.L) {
-				fmsg->LEN = rmsg->TML - i;
-			} else if (fmsg->LEN != rmsg->TML - i) {
-				LOG_CPP("received LEN " << fmsg->LEN
-						<< " != calculated LEN " << rmsg->TML - i << endl);
-				throw message_exception("wrong LEN");
-			}
+			decode_message(*rmsg, *fmsg);
 			now = my_now();
 			remote *&r = addr_remote[fmsg->SRC];
 			if (r == nullptr) {
@@ -3384,18 +3499,14 @@ formatted_message *receive_formatted_message() {
 			if (fmsg == nullptr) {
 				continue;
 			}
-			if (trust_everyone) {
-				LOG_CPP("trusting everyone for receiving" << endl);
-			} else if (rmsg->override_implicit_rules) {
-				LOG_CPP("overriding checks for receiving" << endl);
-			} else {
-				THR(fmsg->HD.C && !rmsg->CCF && !fmsg->is_encrypted(),
-						message_exception("security for C and rcv breached"));
-				THR(fmsg->HD.A && !rmsg->ACF && !fmsg->is_signed(),
-						message_exception("security for A and rcv breached"));
+			security_check_for_receiving(*rmsg, *fmsg);
+			if (fmsg->DST != local_addr) {
+				for (iter = local_proto_iaddr.find(rmsg->proto); iter != local_proto_iaddr.cend()
+						&& iter->first == rmsg->proto && iter->second != fmsg->DST; iter++)
+					;
 			}
-			if ((fmsg->DST != local_addr && fmsg->DST != local_proto_iaddr[rmsg->proto])
-					|| rmsg->broadcast) {
+			if ((fmsg->DST != local_addr && iter != local_proto_iaddr.cend() && iter->first
+					== rmsg->proto && iter->second == fmsg->DST) || rmsg->broadcast) {
 				if (forward_messages) {
 					LOG_CPP("forwarding message from SRC " << BYTE8_to_c17charp(fmsg->SRC)
 							<< " to DST " << BYTE8_to_c17charp(fmsg->DST) << endl);
@@ -3407,7 +3518,7 @@ formatted_message *receive_formatted_message() {
 				THR(fmsg->is_encrypted(), message_exception("not decrypted"));
 				THR(fmsg->is_signed(), message_exception("not verified"));
 				LOG_CPP("received DATA/SELECT(_SUBSCRIBE)/UNSUBSCRIBE(_ALL)"
-						"/ACKNOWLEDGMENT/ERROR/UNSUPPORTED " << *fmsg << endl);
+						"/ACKNOWLEDGMENT/PAYLOAD_ERROR/OPERATION_UNSUPPORTED " << *fmsg << endl);
 			} else if (fmsg->LEN > 0) {
 				oss.str("d=");
 				oss << static_cast<int>(*fmsg->PL);
@@ -3447,8 +3558,8 @@ raw_message *receive_raw_message() {
 		false,
 		false,
 		nullptr,
-		const_cast<BYTE *>(reinterpret_cast<const BYTE *>("\0\xDF\x85""a.d\xAD""t"
-				TIMES8("\xAB") "\x87""a\xD2\x8F""a.t\xA0\xA9\xAB""1\xDB\xD0\xE7""1"))
+		const_cast<BYTE *>(reinterpret_cast<const BYTE *>("\0\xDE\x85""a.d\xAC""t"
+				TIMES8("\xAB") "\x87""a\xD1\x8F""a.t\x9F\xA8\xAA""1\xDA\xCF\xE6""1"))
 		},
 		{
 		c17charp_to_BYTE8(TIMES8("ab")),
@@ -3631,19 +3742,16 @@ raw_message *receive_raw_message() {
 #endif /* OFFLINE */
 
 bool check_permissions(const char *table, BYTE8 address) {
-	PGresult *res = execcheckreturn("SELECT TRUE FROM table_address WHERE table = \'"s + table
-			+ '\'');
+	multimap<string, BYTE8>::const_iterator iter = table_address.find(table);
 
-	if (PQntuples(res) != 0) {
-		PQclear(res);
-		res = execcheckreturn("SELECT TRUE FROM table_address WHERE table = \'"s + table
-				+ " AND address = E\'\\\\x" + BYTE8_to_c17charp(address) + '\'');
-	if (PQntuples(res) == 0) {
-			PQclear(res);
-			return false;
+	if (iter != table_address.cend()) {
+		for (; iter != table_address.cend() && iter->first == table; iter++) {
+			if (iter->second == address) {
+				return true;
+			}
 		}
+		return false;
 	}
-	PQclear(res);
 	return true;
 }
 
@@ -3751,9 +3859,10 @@ void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
 	oss << "\', E\'\\\\x" << HEX_NOSHOWB(fmsg.CRC, 8) << "\', "
 			<< BOOLALPHA_UPPERCASE(fmsg.is_encrypted()) << ", "
 			<< BOOLALPHA_UPPERCASE(fmsg.is_signed()) << ", " << BOOLALPHA_UPPERCASE(rmsg.broadcast)
-			<< BOOLALPHA_UPPERCASE(rmsg.override_implicit_rules) << ", \'" << rmsg.proto->get_my_id()
-			<< "\', E\'\\\\x" << BYTE8_to_c17charp(rmsg.imm_addr) << "\', "
-			<< BOOLALPHA_UPPERCASE(rmsg.CCF) << ", " << BOOLALPHA_UPPERCASE(rmsg.ACF) << ')';
+			<< BOOLALPHA_UPPERCASE(rmsg.override_implicit_rules) << ", \'"
+			<< rmsg.proto->get_my_id() << "\', E\'\\\\x" << BYTE8_to_c17charp(rmsg.imm_addr)
+			<< "\', " << BOOLALPHA_UPPERCASE(rmsg.CCF) << ", " << BOOLALPHA_UPPERCASE(rmsg.ACF)
+			<< ')';
 	PQclear(execcheckreturn(oss.str()));
 }
 
@@ -4084,7 +4193,9 @@ ostream &operator<<(ostream &os, const formatted_message &fmsg) noexcept {
 			<< " for DST " << BYTE8_to_c17charp(fmsg.DST)
 			<< " from SRC " << BYTE8_to_c17charp(fmsg.SRC) << " with payload \"";
 	print_message_c(os, fmsg.PL, fmsg.LEN);
-	return os << "\" and CRC " << HEX(fmsg.CRC, 8);
+	return os << "\" and CRC " << HEX(fmsg.CRC, 8) << " (encrypted = "
+			<< BOOLALPHA_UPPERCASE(fmsg.is_encrypted()) << ") (signed = "
+			<< BOOLALPHA_UPPERCASE(fmsg.is_signed()) << ')';
 }
 
 ostream &operator<<(ostream &os, const header &HD) noexcept {
@@ -4108,37 +4219,37 @@ void convert_select(string &query, string remote_FROM) {
 			" COUNT ", " CROSS ", " CUBE ", " CURRENT_DATE ",
 			//0x98-0x9F:
 			" CURRENT_TIME ", " CURRENT_TIMESTAMP ", " CYCLE ", " DATE ",
-			" DATETIME ", " DAY ", " DEFAULT ", " DEPTH ",
+			" DAY ", " DEFAULT ", " DEPTH ", " DESC ",
 			//0xA0-0xA7:
-			" DESC ", " DISTINCT ", " ELSE ", " ESCAPE ",
-			" END ", " EVERY ", " EXCEPT ", " EXISTS ",
+			" DISTINCT ", " ELSE ", " ESCAPE ", " END ",
+			" EVERY ", " EXCEPT ", " EXISTS ", " FALSE ",
 			//0xA8-0xAF:
-			" FALSE "," FETCH ", " FILTER ", " FIRST ",
-			" FLAG ", " FROM ", " FULL ", " GROUP ",
+			" FETCH ", " FILTER ", " FIRST "," FLAG ",
+			" FROM ", " FULL ", " GROUP ", " GROUPING ",
 			//0xB0-0xB7:
-			" GROUPING ", " HAVING ", " HOUR ", " IN ",
-			" INNER ", " INTERSECT ", " INTERVAL ", " IS ",
+			" HAVING ", " HOUR ", " IN ", " INNER ",
+			" INTERSECT ", " INTERVAL ", " IS ", " JOIN ",
 			//0xB8-0xBF:
-			" JOIN ", " LAST ", " LATERAL ", " LEFT ",
-			" LIKE ", " LIKE_REGEX ", " LOCAL ", " LOCALTIME ",
+			" LAST ", " LATERAL ", " LEFT ", " LIKE ",
+			" LIKE_REGEX ", " LOCAL ", " LOCALTIME ", " LOCALTIMESTAMP ",
 			//0xC0-0xC7:
-			" LOCALTIMESTAMP ", " MATCH ", " MAX ", " MIN ",
-			" MINUTE ", " MONTH ", " NATURAL ", " NEXT ",
+			" MATCH ", " MAX ", " MIN ", " MINUTE ",
+			" MONTH ", " NATURAL ", " NEXT ", " NORMALIZED ",
 			//0xC8-0xCF:
-			" NORMALIZED ", " NOT ", " NULL ", " NULLIF ",
-			" NULLS ", " OF ", " OFFSET ", " ON ",
+			" NOT ", " NULL ", " NULLIF ", " NULLS ",
+			" OF ", " OFFSET ", " ON ", " ONLY ",
 			//0xD0-0xD7:
-			" ONLY ", " OR ", " ORDER ", " OUTER ",
-			" OVERLAPS ", " PARTIAL ", " PERCENT ", " RECURSIVE ",
+			" OR ", " ORDER ", " OUTER ", " OVERLAPS ",
+			" PARTIAL ", " PERCENT ", " RECURSIVE ", " REPEATABLE ",
 			//0xD8-0xDF:
-			" REPEATABLE ", " RIGHT ", " ROLLUP ", " ROW ",
-			" ROWS ", " SEARCH ", " SECOND ", " SELECT ",
+			" RIGHT ", " ROLLUP ", " ROW ", " ROWS ",
+			" SEARCH ", " SECOND ", " SELECT ", " SET ",
 			//0xE0-0xE7:
-			" SET ", " SETS ", " SIMILAR ", " SIMPLE ",
-			" SOME ", " STDDEV_POP ", " STDDEV_SAMP ", " SUBSCRIBE ",
+			" SETS ", " SIMILAR ", " SIMPLE ", " SOME ",
+			" STDDEV_POP ", " STDDEV_SAMP ", " SUBSCRIBE ", " SUM ",
 			//0xE8-0xEF:
-			" SUM ", " SYMMETRIC ", " SYSTEM ", " TABLE ",
-			" TABLESAMPLE ", " THEN ", " TIES ", " TIME ",
+			" SYMMETRIC ", " SYSTEM ", " TABLE ", " TABLESAMPLE ",
+			" THEN ", " TIES ", " TIME ", " TIMESTAMP ",
 			//0xF0-0xF7:
 			" TO ", " TRUE ", " UESCAPE ", " UNION ", " UNIQUE ",
 			" UNKNOWN ", " USING ", " UNSUBSCRIBE ",
@@ -4173,11 +4284,10 @@ void convert_select(string &query, string remote_FROM) {
 	LOG_CPP("converting SELECT \"");
 	LOG_CP(print_message_cpp, query);
 	while (++i < j) {
-		if ((query[i] == '\xAD' || query[i] == '\xB8') && i + 9 < j
-				&& query[i + 1] == 't') {//"\xADt" or "\xB8t" imply a short address
+		if ((query[i] == '\xAC' || query[i] == '\xB7') && i + 9 < j
+				&& query[i + 1] == 't') {//"\xACt" or "\xB7t" imply a short address
 			memcpy_endian(&addr, &query[i + 2], 8);
-			temp = temp + table[query[i] + 128] + 't';
-			temp += BYTE8_to_c17charp(addr);
+			temp = temp + table[query[i] + 128] + 't' + BYTE8_to_c17charp(addr);
 			i += 9;
 		} else if (query[i] < 0) {//cannot be shortened using ? :
 			temp += table[query[i] + 128];
@@ -4284,7 +4394,7 @@ void convert_select(string &query, string remote_FROM) {
 						if (iter_search_from == iter_search_to || *iter_search_from == ')'
 								|| isupper(*iter_search_from)) {
 							/* FROM clause ended abruptly and no table name provided */
-							query += remote_FROM + "AS a ";
+							query += remote_FROM;
 							LOG_CPP("remote FROM inserted" << endl);
 						}
 						search_select = true;
@@ -4298,7 +4408,7 @@ void convert_select(string &query, string remote_FROM) {
 						 * insert local FROM
 						 */
 						query.append(iter_search_from, iter_other->first);
-						query += local_FROM + "AS a ";
+						query += local_FROM;
 						LOG_CPP("local FROM inserted" << endl);
 						iter_search_from = iter_other->first;
 						search_select = true;
@@ -4367,7 +4477,7 @@ void format_select(string &query) {
 
 void sub(string query, string _id, BYTE8 address) {
 	string addr_id(BYTE8_to_c17charp(address) + _id);
-	regex re(" (t[0-9a-f]{16}) AS ");//deliberately not ignoring case
+	regex re("(?:FROM|JOIN) +([a-z0-9]+)");//deliberately not ignoring case
 	sti iter_begin(query.begin(), query.end(), re, 1), iter_end;
 
 	unsub(_id, address);
@@ -4424,22 +4534,23 @@ void unsub(string _id, BYTE8 address) {
 }
 
 void sel(string query, BYTE8 address) {
-	regex re("(FROM|JOIN) +([a-z0-9]+)", regex_constants::icase);//must ignore case for security
+	regex re("(?:FROM|JOIN) +([a-z0-9]+)", regex_constants::icase);//must ignore case for security
 
 	/* is not SELECT if doesn't start with "SELECT ", "WITH ", "TABLE ", or '('s before those */
 	THR(!is_select(query), error_exception("error in query"));
 	/* is not clean if contains I/U/D in pre-queries, multi-queries, SELECT INTO or SELECT FOR */
 	THR(!clean_select(query), error_exception("error in SELECT"));
-	for (sti iter_begin(query.begin(), query.end(), re, 2), iter_end; iter_begin != iter_end;
+	for (sti iter_begin(query.begin(), query.end(), re, 1), iter_end; iter_begin != iter_end;
 			iter_begin++) {
-		THR(!check_permissions(iter_begin->str().c_str(), address), error_exception("unauth'd"));
+		THR(!check_permissions(iter_begin->str().c_str(), address),
+				error_exception("unauthorized"));
 	}
 	PQclear(formatsendreturn(execcheckreturn(query), address));
 }
 
 bool is_select(string query) {
-	regex re("\\(*(SELECT|WITH|TABLE) (.|\\n|\\r)*",
-			regex_constants::nosubs);//deliberately not ignoring case
+	regex re("\\(*(SELECT|WITH|TABLE) (.|\\n|\\r)*", regex_constants::nosubs);
+			//deliberately not ignoring case
 
 	return regex_match(query, re);
 }
@@ -4523,11 +4634,11 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 	}
 	data.pop_back();
 	LOG_CPP(" to \"" << data << '\"' << endl);
-	fmsg.reset(new(data.length()) formatted_message(data.length()));
+	LEN = data.length();
+	fmsg.reset(new(LEN) formatted_message(LEN));
 	fmsg->HD.put_as_byte(0b11111011);//ID,LEN,DST,SRC,CRC,CONF,AUTH
 	THR(iter == addr_remote.cend(), message_exception("DST does not exist"));
 	fmsg->ID = iter->second->out_ID++;
-	LEN = data.length();
 	memcpy_endian(&fmsg->LEN, &LEN, 2);
 	memcpy_endian(&fmsg->DST, &DST, 8);
 	memcpy_endian(&fmsg->SRC, &local_addr, 8);
@@ -4581,15 +4692,14 @@ void send_formatted_message(formatted_message *fmsg) {
 				iter_proto_iDST_TWR->second->erase(iter_iDST_TWR);
 			} else {
 				copy.reset(new(fmsg->LEN) formatted_message(*fmsg));
-				i = 1;
 				iter_DST_destination = addr_remote.find(fmsg->DST);
 				THR(iter_DST_destination == addr_remote.end(),
 						message_exception("DST does not exist"));
 				rmsg.reset(new raw_message(new BYTE[fmsg->LEN + fields_MAX]));
 				rmsg->imm_addr = iter_iDST_TWR->first;
 				rmsg->proto = iter_proto_iDST_TWR->first;
-				rmsg->CCF = use_CCF(*rmsg.get());
-				rmsg->ACF = use_ACF(*rmsg.get());
+				rmsg->CCF = use_CCF(*rmsg);
+				rmsg->ACF = use_ACF(*rmsg);
 				dummy_f.reset(apply_rules(dummy_f.release(), rmsg.get(), true));
 				if (dummy_f == nullptr) {
 					continue;
@@ -4597,45 +4707,15 @@ void send_formatted_message(formatted_message *fmsg) {
 				if (regex_match(reinterpret_cast<char *>(fmsg->PL), re)) {
 					iss.str(reinterpret_cast<char *>(fmsg->PL) + 2);
 					iss >> i;
+					iss.clear();
 					if (i < 256) {
 						fmsg->PL[0] = i;
 						fmsg->LEN = 1;
 					}
 				}
-				*rmsg->msg = fmsg->HD.get_as_byte();
-				if (fmsg->HD.I) {
-					rmsg->msg[1] = fmsg->ID;
-					i = 2;
-				}
-				if (fmsg->HD.L) {
-					memcpy_endian(rmsg->msg + i, &fmsg->LEN, 2);
-					i += 2;
-				}
-				if (fmsg->HD.D) {
-					memcpy_endian(rmsg->msg + i, &fmsg->DST, 8);
-					i += 8;
-				}
-				if (fmsg->HD.S) {
-					memcpy_endian(rmsg->msg + i, &fmsg->SRC, 8);
-					i += 8;
-				}
-				memcpy(rmsg->msg + i, fmsg->PL, fmsg->LEN);
-				if (fmsg->HD.R) {
-					memcpy_endian(rmsg->msg + i + fmsg->LEN, &fmsg->CRC, 4);
-					i += 4;
-				}
-				rmsg->TML = i + fmsg->LEN;
+				encode_message(*fmsg, *rmsg);
 				rmsg->TWR = my_now();
-				if (trust_everyone) {
-					LOG_CPP("trusting everyone for sending" << endl);
-				} else if (rmsg->override_implicit_rules) {
-					LOG_CPP("overriding rules for sending");
-				} else {
-					THR(fmsg->HD.C && !rmsg->CCF && !fmsg->is_encrypted(),
-							message_exception("security for C and snd breached"));
-					THR(fmsg->HD.A && !rmsg->ACF && !fmsg->is_signed(),
-							message_exception("security for A and snd breached"));
-				}
+				security_check_for_sending(*fmsg, *rmsg);
 				LOG_CPP("sending " << *rmsg << endl);
 				send_raw_message(rmsg.release());
 				failed = false;
@@ -5070,9 +5150,9 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 				} \
 			} \
 			temp += (td.back().typestr.with_time_zone ? #TYPESTR " WITH TIME ZONE " \
-					: #TYPESTR " ") + second;/*"timezoneness" is not recognized by Postgres*/ \
-                                             /*(all TIMESTR literals are treated WITHOUTtz)*/ \
-                                             /*and needs to be set explicitely when WITHtz*/ \
+					: #TYPESTR " ") + second;/*"timezonedness" is not recognized by Postgres*/ \
+                                             /*(all TYPESTR literals are treated WITHOUTtz)*/ \
+                                             /*and needs to be set explicitly when WITHtz*/ \
 		} while (0)
 					THR(first.length() < 5, error_exception("malformed timestamp or time"));
 					if (first[4] == 'S') {//add timestamp data field
@@ -5082,6 +5162,7 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 					}
 					break;
 				case 'D'://add date data field
+				case '\x9B'://DATE
 #define DEFAULT_CHECK_BODY(type) \
 		do { \
 			if (static_cast<int>(dt.size()) <= column) { \
@@ -5094,7 +5175,11 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 					DEFAULT_CHECK_BODY(DATE);
 					temp += "DATE " + second;
 					break;
+				case '\xEF'://TIMESTAMP
+					TIMESTAMP_OR_TIME_CHECK_BODY(timestamp, TIMESTAMP);
+					break;
 				case 'I'://add interval data field
+				case '\xB5'://INTERVAL
 					period = second.rfind('.');//reverse for speed
 					new_td.timestamp.precision = period == static_cast<int>(string::npos) ? 0
 							: second.length() - period - 1;
@@ -5110,6 +5195,9 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 						}
 					}
 					temp += "INTERVAL " + second;
+					break;
+				case '\xEE'://TIME
+					TIMESTAMP_OR_TIME_CHECK_BODY(time, TIME);
 					break;
 				case 'X'://add binary data field
 					DEFAULT_CHECK_BODY(BYTEA);
