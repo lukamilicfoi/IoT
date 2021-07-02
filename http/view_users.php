@@ -1,202 +1,227 @@
 <?php
 require_once 'common.php';
-checkLogin();
-$admin = $_SESSION['user'] == 'admin';
+if (isset($_GET['truncate']) && $_SESSION['is_root']) {
+	if (isset($_GET['confirm'])) {
+		pg_free_result(pgquery('DELETE FROM users WHERE username <> \'root\';'));
 ?>
-<!DOCTYPE html>
-<html>
-	<head>
+		Table &quot;users&quot; truncated.<br/>
 <?php
-		echo '<title>View users', $admin ? ' as administrator' : '', "</title>\n";
+	} else {
 ?>
-		<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-	</head>
-	<body>
+		Are you sure?
+		<a href="?truncate&amp;confirm">Yes</a>
+		<a href="?">No</a>
 <?php
-		$dbconn = pgconnect('host=localhost dbname=postgres user=' . ($admin ? 'postgres' : 'luka') . ' client_encoding=UTF8');
-		if (isset($_GET['truncate'])) {
-			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery('DELETE FROM users WHERE username <> \'admin\';'));
-?>
-				Table &quot;users&quot; truncated.<br/>
-<?php
-			} else {
-?>
-				Are you sure?
-				<a href="?truncate&amp;confirm">Yes</a>
-				<a href="?">No</a>
-<?php
-				pg_close($dbconn);
-				exit(0);
-			}
-		} else if (isset($_POST['insert'])) {
-			$query = "INSERT INTO users(username, password, can_view_tables, can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_actually_login) VALUES('{$_POST['username']}', '" . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'';
-			$fields = array('can_view_tables', 'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules', 'can_actually_login');
-			for ($i = 0; $i < 6; $i++) {
-				$query .= isset($_POST[$fields[$i]]) ? ', TRUE' : ', FALSE';
-			}
-			pg_free_result(pgquery($query . ');'));
-			echo 'User ', htmlspecialchars($_POST['username']), " inserted.<br/>\n";
-		} else if (isset($_POST['update1'])) {
-			$query = "UPDATE users SET (password, can_view_tables, can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_actually_login) = (" . (isset($_POST['password']) && !empty($_POST['password']) ? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : 'password');
-			$fields = array('can_view_tables', 'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules', 'can_actually_login');
-			for ($i = 0; $i < 6; $i++) {
-				$query .= isset($_POST[$fields[$i]]) ? ', TRUE' : ', FALSE';
-			}
-			pg_free_result(pgquery($query . ") WHERE username = '{$_POST['username']}';"));
-			echo 'User ', htmlspecialchars($_POST['username']), " updated.<br/>\n";
-		} else if (isset($_GET['delete'])) {
-			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM users WHERE username = '{$_GET['username']}';"));
-				echo 'User ', htmlspecialchars($_GET['username']), " deleted.<br/>\n";
-			} else {
-?>
-				Are you sure?
-<?php
-				echo '<a href="?username=', urlencode($_GET['username']), "&amp;delete&amp;confirm\">Yes</a>\n";
-				echo "<a href=\"?\">No</a>\n";
-				pg_close($dbconn);
-				exit(0);
-			}
-		} else if (isset($_POST['update2']) && isset($_POST['password'])) {
-			pg_free_result(pgquery('UPDATE users SET password = \'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . "' WHERE username = '{$_SESSION['user']}';"));
-?>
-			Password updated.<br/>
-<?php
+		exit(0);
+	}
+} else if ($_SESSION['administrator'] && !isset($_POST['is_administrator']) || $_SESSION['is_root']) {
+	if (isset($_POST['insert'])) {
+		$query = 'INSERT INTO users(username, password';
+		$fields = array('can_view_tables', 'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules', 'can_actually_login', 'is_administrator', 'can_view_configuration', 'can_view_permissions', 'can_view_remotes');
+		for ($i = 0; $i < 10; $i++) {
+			$query .= ", {$fields[$i]}";
 		}
-		$result = pgquery('SELECT * FROM users WHERE username ' . ($admin ? '<> \'admin' : "= '{$_SESSION['user']}") . '\' ORDER BY username ASC;');
+		$query .= ") VALUES('{$_POST['username']}', '" . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'';
+		for ($i = 0; $i < 10; $i++) {
+			$query .= isset($_POST[$fields[$i]]) ? ', TRUE' : ', FALSE';
+		}
+		pg_free_result(pgquery($query . ');'));
+		echo 'User ', htmlspecialchars($_POST['username']), " inserted.<br/>\n";
+	} else if (isset($_POST['update1'])) {
+		$query = 'UPDATE users SET (password';
+		$fields = array('can_view_tables', 'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules', 'can_actually_login', 'is_administrator', 'can_view_configuration', 'can_view_permissions', 'can_view_remotes');
+		for ($i = 0; $i < 10; $i++) {
+			$query .= ", {$fields[$i]}";
+		}
+		$query .= ") = (" . (!empty($_POST['password']) ? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : 'password');
+		for ($i = 0; $i < 10; $i++) {
+			$query .= isset($_POST[$fields[$i]]) ? ', TRUE' : ', FALSE';
+		}
+		pg_free_result(pgquery($query . ") WHERE username = '{$_POST['key']}';"));
+		echo 'User ', htmlspecialchars($_POST['key']), " updated.<br/>\n";
+	} else if (isset($_POST['delete'])) {
+		if (isset($_POST['confirm'])) {
+			pg_free_result(pgquery("DELETE FROM users WHERE username = '{$_POST['key']}';"));
+			echo 'User ', htmlspecialchars($_POST['key']), " deleted.<br/>\n";
+		} else {
 ?>
-		Viewing table &quot;users&quot;.
-		<table border="1">
-			<tbody>
-				<tr>
-					<th>Username</th>
-					<th>New password?</th>
-					<th>Can view tables</th>
-					<th>Can send messages</th>
-					<th>Can inject messages</th>
-					<th>Can send queries</th>
-					<th>Can view rules</th>
-					<th>Can actually login</th>
-					<th>Actions</th>
-				</tr>
+			Are you sure?
 <?php
-				if ($admin) {
+			echo '<a href="?username=', urlencode($_POST['username']), "&amp;delete&amp;confirm\">Yes</a>\n";
+			echo "<a href=\"?\">No</a>\n";
+			exit(0);
+		}
+	}
+} else if (isset($_POST['update2']) && isset($_POST['password'])) {
+	pg_free_result(pgquery('UPDATE users SET password = \'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . "' WHERE username = '{$_SESSION['username']}';"));
 ?>
-					<tr>
-						<td>
-							<input form="insert" type="text" name="username"/>
-						</td>
-						<td>
-							<input form="insert" type="password" name="password"/>
-						</td>
-						<td>
-							<input form="insert" type="checkbox" name="can_view_tables"/>
-						</td>
-						<td>
-							<input form="insert" type="checkbox" name="can_send_messages"/>
-						</td>
-						<td>
-							<input form="insert" type="checkbox" name="can_inject_messages"/>
-						</td>
-						<td>
-							<input form="insert" type="checkbox" name="can_send_queries"/>
-						</td>
-						<td>
-							<input form="insert" type="checkbox" name="can_view_rules"/>
-						</td>
-						<td>
-							<input form="insert" type="checkbox" name="can_actually_login"/>
-						</td>
-						<td>
-							<form id="insert" action="" method="POST">
-								<input type="submit" name="insert" value="INSERT"/><br/>
-								<input type="reset" value="reset"/>
-							</form>
-							<form action="" method="GET">
-								<input type="submit" name="truncate" value="TRUNCATE"/>
-							</form>
-						</td>
-					</tr>
+	Password updated.<br/>
 <?php
-					for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
+}
+$result1 = pgquery("SELECT * FROM users WHERE username = '{$_SESSION['username']}';");
+if ($_SESSION['is_root']) {
+	$result2 = pgquery("SELECT * FROM users WHERE username <> 'admin' ORDER BY administrator DESC, username ASC;");
+} else if ($_SESSION['is_administrator']) {
+	$result2 = pqguery("SELECT * FROM users WHERE NOT is_administrator AND username <> '{$_SESSION['username']}' ORDER BY username ASC;");
+}
 ?>
-						<tr>
+Viewing table &quot;users&quot;.
+<table border="1">
+	<tbody>
+		<tr>
+			<th>Username</th>
+			<th>New password?</th>
+			<th>Can view tables</th>
+			<th>Can send messages</th>
+			<th>Can inject messages</th>
+			<th>Can send queries</th>
+			<th>Can view rules</th>
+			<th>Can actually login</th>
+			<th>Is administrator?</th>
+			<th>Can view configuration?</th>
+			<th>Can view permissions?</th>
+			<th>Can view remotes?</th>
+			<th>Actions</th>
+		</tr>
 <?php
-							echo '<td>', htmlspecialchars($row[0]), "</td>\n";
+		if ($_SESSION['is_administrator']) {
 ?>
-							<td>
+			<tr>
+				<td>
+					<input form="insert" type="text" name="username"/>
+				</td>
+				<td>
+					<input form="insert" type="password" name="password"/>
+				</td>
+				<td>
+					<input form="insert" type="checkbox" name="can_view_tables"/>
+				</td>
+				<td>
+					<input form="insert" type="checkbox" name="can_send_messages"/>
+				</td>
+				<td>
+					<input form="insert" type="checkbox" name="can_inject_messages"/>
+				</td>
+				<td>
+					<input form="insert" type="checkbox" name="can_send_queries"/>
+				</td>
+				<td>
+					<input form="insert" type="checkbox" name="can_view_rules"/>
+				</td>
+				<td>
+					<input form="insert" type="checkbox" name="can_actually_login"/>
+				</td>
+				<td>
 <?php
-								echo '<input form="update', htmlspecialchars($row[0]), '" type="hidden" name="username" value="', htmlspecialchars($row[0]), "\"/>\n";
-								echo '<input form="update', htmlspecialchars($row[0]), "\" type=\"text\" name=\"password\"/>\n";
+					echo '<input form="insert" type="checkbox" name="administrator"', $_SESSION['is_root'] ? '' : ' checked="checked" disabled="disabled"', "/>\n";
 ?>
-							</td>
+				</td>
+				<td>
+					<input form="insert" type="checkbox" name="can_view_configuration"/>
+				</td>
+				<td>
+					<input form="insert" type="checkbox" name="can_view_permissions"/>
+				</td>
+				<td>
+					<input form="insert" type="checkbox" name="can_view_remotes"/>
+				</td>
+				<td>
+					<form id="insert" action="" method="POST">
+						<input type="submit" name="insert" value="INSERT"/><br/>
+						<input type="reset" value="reset"/>
+					</form>
 <?php
-							for ($i = 2; $i < 8; $i++) {
+					if ($_SESSION['is_root']) {
 ?>
-								<td>
-<?php
-									echo '<input form="update', htmlspecialchars($row[0]), "\" type=\"checkbox\" name=\"", pg_field_name($result, $i), "\"", $row[$i] == 't' ? ' checked="checked"' : '', "/>\n";
-?>
-								</td>
-<?php
-							}
-?>
-							<td>
-<?php
-								echo '<form id="update', htmlspecialchars($row[0]), "\" action=\"\" method=\"POST\"><br/>\n";
-?>
-									<input type="submit" name="update1" value="UPDATE"/><br/>
-									<input type="reset" value="reset"/>
-<?php
-								echo "</form>\n";
-?>
-								<form action="" method="GET">
-<?php
-									echo '<input type="hidden" name="username" value="', htmlspecialchars($row[0]), "\"/>\n";
-?>
-									<input type="submit" name="delete" value="DELETE"/>
-								</form>
-							</td>
-						</tr>
+						<form action="" method="GET">
+							<input type="submit" name="truncate" value="TRUNCATE"/>
+						</form>
 <?php
 					}
-				} else {
 ?>
-					<tr>
+				</td>
+			</tr>
 <?php
-						$row = pg_fetch_row($result);
-						echo '<td>', htmlspecialchars($row[0]), "</td>\n";
+		}
+?>
+		<tr>
+<?php
+			$row = pg_fetch_row($result1);
+			echo '<td>', htmlspecialchars($row[0]), "</td>\n";
+?>
+			<td>
+				<input form="update2" type="password" name="password"/>
+			</td>
+<?php
+			for ($i = 2; $i < 12; $i++) {
+?>
+				<td>
+<?php
+					echo '<input type="checkbox"', $row[$i] == 't' : ' checked="checked"' : '', " disabled=\"disabled\"/>\n";
+?>
+				</td>
+<?php
+			}
+?>
+			<td>
+				<form id="update2" action="" method="POST">
+					<input type="submit" name="update2" value="UPDATE"/>
+				</form>
+			</td>
+		</tr>
+<?php
+		if ($_SESSION['is_administrator']) {
+			for ($row = pg_fetch_row($result2); $row; $row = pg_fetch_row($result2)) {
+?>
+				<tr>
+<?php
+					$user = htmlspecialchars($row[0]);
+					echo '<td>', $user, "</td>\n";
+?>
+					<td>
+<?php
+						echo '<input form="update1_', $user, '" type="hidden" name="username" value="', $user, "\"/>\n";
+						echo '<input form="update1_', $user, "\" type=\"text\" name=\"password\"/>\n";
+?>
+					</td>
+<?php
+					for ($i = 2; $i < 12; $i++) {
 ?>
 						<td>
-							<input form="update2" type="password" name="password"/>
+<?php
+							echo '<input form="update1_', $user, "\" type=\"checkbox\" name=\"", pg_field_name($result, $i), "\"", $row[$i] == 't' ? ' checked="checked"' : '', "/>\n";
+?>
 						</td>
 <?php
-						for ($i = 2; $i < 8; $i++) {
+					}
 ?>
-							<td>
+					<td>
 <?php
-								echo "<input type=\"checkbox\"", $row[$i] == 't' ? ' checked="checked"' : '', " disabled=\"disabled\"/>\n";
+						echo '<form id="update1_', $user, "\" action=\"\" method=\"POST\"><br/>\n";
 ?>
-							</td>
+							<input type="submit" name="update1" value="UPDATE"/><br/>
+							<input type="reset" value="reset"/>
 <?php
-						}
+						echo "</form>\n";
 ?>
-						<td>
-							<form id="update2" action="" method="POST">
-								<input form="update2" type="submit" name="update2" value="UPDATE"/>
-							</form>
-						</td>
-					</tr>
+						<form action="" method="GET">
 <?php
-				}
+							echo '<input type="hidden" name="username" value="', htmlspecialchars($row[0]), "\"/>\n";
 ?>
-			</tbody>
-		</table>
+							<input type="submit" name="delete" value="DELETE"/>
+						</form>
+					</td>
+				</tr>
 <?php
-		pg_free_result($result);
-		pg_close($dbconn);
+			}
+		}
 ?>
-		<a href="index.php">Done</a>
-	</body>
-</html>
+	</tbody>
+</table>
+<?php
+pg_free_result($result1);
+if ($_SESSION['is_administrator']) {
+	pg_free_result($result2);
+}
+?>
+<a href="index.php">Done</a>

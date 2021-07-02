@@ -50,160 +50,154 @@ function standardToPostgresqlInput($data, $oid) {
 	}
 }
 
-checkLogin();
+if (checkAuthorization(2, 'view tables') && !empty($_GET['table'])) {
+	$result1 = pgquery("SELECT user FROM table_user WHERE table = '{$_GET['table']}';");
+	$result2 = pgquery("SELECT TRUE FROM table_user WHERE table = '{$_GET['table']}' AND user = '{$_GET['username']}';");
+	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.user = users.username WHERE table_user.table = '{$_GET['table']}' AND NOT users.is_administrator;");
+	$h_table = htmlspecialchars($_GET['table']);
+	$u_table = urlencode($_GET['table']);
+	if (pg_fetch_row($result1)[0] === null || pg_fetch_row($result2) || pg_fetch_row($result3) && $_SESSION['is_administrator'] || $_SESSION['is_root']) {
+		if (isset($_GET['truncate'])) {
+			if (isset($_GET['confirm'])) {
+				$result = pgquery("TRUNCATE TABLE {$_GET['table']};");
+				echo 'Table ', $h_table, " truncated.<br/>\n";
+				pg_free_result($result);
+			} else {
 ?>
-<!DOCTYPE html>
-<html>
-	<head>
-		<title>View table</title>
-		<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-	</head>
-	<body>
+				Are you sure?
 <?php
-		$dbconn = pgconnect('host=localhost dbname=postgres user=' . ($_SESSION['user'] == 'admin' ? 'postgres' : 'luka') . ' client_encoding=UTF8');
-		if (checkAuthorization(2, 'view tables') && isset($_GET['table'])) {
-			if (isset($_GET['truncate'])) {
+				echo '<a href="?table=', $u_table, "&amp;truncate&amp;confirm\">Yes</a>\n";
+				echo '<a href="?table=', $u_table, '">No</a>';
+				exit(0);
+			}
+		} else if (isset($_GET['insert']) && !empty($_GET['t'])) {
+			$result = pgquery("SELECT * FROM {$_GET['table']} WHERE FALSE;");
+			$query = "INSERT INTO {$_GET['table']}(";
+			for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
+				$query .= pg_field_name($result, $i) . ', ';
+			}
+			$query = substr($query, 0, -2) . ') VALUES(';
+			for ($i = 0; $i < $j; $i++) {
+				$query .= standardToPostgresqlInput($_GET[pg_field_name($result, $i)], pg_field_type_oid($result, $i)) . ', ';
+			}
+			$result = pgquery(substr($query, 0, -2) . ');');
+			echo 'Row ', htmlspecialchars($_GET['t']), " inserted.<br/>\n";
+			pg_free_result($result);
+		} else if (!empty($_GET['key'])) {
+			if (isset($_GET['update'])) {
+				$result = pgquery("SELECT * FROM {$_GET['table']} WHERE FALSE;");
+				$query = "UPDATE {$_GET['table']} SET (";
+				for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
+					$query .= pg_field_name($result, $i) . ', ';
+				}
+				$query = substr($query, 0, -2) . ') = (';
+				for ($i = 0; $i < $j; $i++) {
+					$query .= standardToPostgresqlInput($_GET[pg_field_name($result, $i)], pg_field_type_oid($result, $i)) . ', ';
+				}
+				$result = pgquery(substr($query, 0, -2) . ") WHERE t = {$_GET['key']};");
+				echo 'Row ', htmlspecialchars($_GET['key']), " updated.<br/>\n";
+				pg_free_result($result);
+			} else if (isset($_GET['delete'])) {
 				if (isset($_GET['confirm'])) {
-					$result = pgquery("TRUNCATE TABLE {$_GET['table']};");
-					echo 'Table ', htmlspecialchars($_GET['table']), " truncated.<br/>\n";
+					$result = pgquery("DELETE FROM {$_GET['table']} WHERE t = {$_GET['key']};");
+					echo 'Row ', htmlspecialchars($_GET['key']), " deleted.<br/>\n";
 					pg_free_result($result);
 				} else {
 ?>
 					Are you sure?
 <?php
-					echo '<a href="?table=', urlencode($_GET['table']), "&amp;truncate&amp;confirm\">Yes</a>\n";
-					echo '<a href="?table=', urlencode($_GET['table']), '">No</a>';
-					pg_close($dbconn);
+					echo '<a href="?table=', $u_table, '&amp;key=', urlencode($_GET['key']), "&amp;delete&amp;confirm\">Yes</a>\n";
+					echo '<a href="?table=', $u_table, '">No</a>';
 					exit(0);
 				}
-			} else if (isset($_GET['insert'])) {
-				$result = pgquery("SELECT * FROM {$_GET['table']} WHERE FALSE;");
-				$query = "INSERT INTO {$_GET['table']}(";
-				for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
-					$query .= pg_field_name($result, $i) . ', ';
-				}
-				$query = substr($query, 0, -2) . ') VALUES(';
-				for ($i = 0; $i < $j; $i++) {
-					$query .= standardToPostgresqlInput($_GET[pg_field_name($result, $i)], pg_field_type_oid($result, $i)) . ', ';
-				}
-				$result = pgquery(substr($query, 0, -2) . ');');
-				echo 'Row ', htmlspecialchars($_GET['t']), " inserted.<br/>\n";
-				pg_free_result($result);
-			} else if (isset($_GET['key'])) {
-				if (isset($_GET['update'])) {
-					$result = pgquery("SELECT * FROM {$_GET['table']} WHERE FALSE;");
-					$query = "UPDATE {$_GET['table']} SET (";
-					for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
-						$query .= pg_field_name($result, $i) . ', ';
-					}
-					$query = substr($query, 0, -2) . ') = (';
-					for ($i = 0; $i < $j; $i++) {
-						$query .= standardToPostgresqlInput($_GET[pg_field_name($result, $i)], pg_field_type_oid($result, $i)) . ', ';
-					}
-					$result = pgquery(substr($query, 0, -2) . ") WHERE t = {$_GET['key']};");
-					echo 'Row ', htmlspecialchars($_GET['key']), " updated.<br/>\n";
-					pg_free_result($result);
-				} else if (isset($_GET['delete'])) {
-					if (isset($_GET['confirm'])) {
-						$result = pgquery("DELETE FROM {$_GET['table']} WHERE t = {$_GET['key']};");
-						echo 'Row ', htmlspecialchars($_GET['key']), " deleted.<br/>\n";
-						pg_free_result($result);
-					} else {
-?>
-						Are you sure?
-<?php
-						echo '<a href="?table=', urlencode($_GET['table']), '&amp;key=', urlencode($_GET['key']), "&amp;delete&amp;confirm\">Yes</a>\n";
-						echo '<a href="?table=', urlencode($_GET['table']), '">No</a>';
-						pg_close($dbconn);
-						exit(0);
-					}
-				}
 			}
-			$result = pgquery("TABLE {$_GET['table']} ORDER BY t ASC;");
-			echo 'Viewing table ', htmlspecialchars($_GET['table']), ".\n";
+		}
+		$result = pgquery("TABLE {$_GET['table']} ORDER BY t ASC;");
+		echo 'Viewing table ', $h_table, ".\n";
 ?>
-			<table border="1">
-				<tbody>
-					<tr>
+		<table border="1">
+			<tbody>
+				<tr>
 <?php
-						for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
-							echo '<th>', pg_field_name($result, $i), ' (', pg_field_type_oid($result, $i), ")</th>\n";
-						}
+					for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
+						echo '<th>', pg_field_name($result, $i), ' (', pg_field_type_oid($result, $i), ")</th>\n";
+					}
 ?>
-						<th>Actions</th>
-					</tr>
+					<th>Actions</th>
+				</tr>
+				<tr>
+<?php
+					for ($i = 0; $i < $j; $i++) {
+?>
+						<td>
+<?php
+							echo '<input form="insert" type="text" name="', pg_field_name($result, $i), "\"/>\n";
+?>
+						</td>
+<?php
+					}
+?>
+					<td>
+						<form id="insert" action="" method="GET">
+<?php
+							echo '<input type="hidden" name="table" value="', $h_table, "\"/>\n";
+?>
+							<input type="submit" name="insert" value="INSERT"/><br/>
+							<input type="reset" value="reset"/>
+						</form>
+						<form action="" method="GET">
+<?php
+							echo '<input type="hidden" name="table" value="', $h_table, "\"/>\n";
+?>
+							<input type="submit" name="truncate" value="TRUNCATE"/>
+						</form>
+					</td>
+				</tr>
+<?php
+				$t = pg_field_num($result, 't');
+				for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
+?>
 					<tr>
 <?php
 						for ($i = 0; $i < $j; $i++) {
 ?>
 							<td>
 <?php
-								echo '<input form="insert" type="text" name="', pg_field_name($result, $i), "\"/>\n";
+								echo '<input form="update', $row[$t], '" type="text" name="', pg_field_name($result, $i), '" value="', htmlspecialchars(postgresqlOutputToStandard($row[$i], pg_field_type_oid($result, $i))), "\"/>\n";
 ?>
 							</td>
 <?php
 						}
 ?>
 						<td>
-							<form id="insert" action="" method="GET">
 <?php
-								echo '<input type="hidden" name="table" value="', htmlspecialchars($_GET['table']), "\"/>\n";
+							echo '<form id="update', $row[$t], "\" action=\"\" method=\"GET\">\n";
+								echo '<input type="hidden" name="key" value="TIMESTAMP ', pg_field_type_oid($result, $t) == 1184 ? 'WITH TIME ZONE ' : '', '&apos;', $row[$t], "&apos;\"/>\n";
+								echo '<input type="hidden" name="table" value="', $h_table, "\"/>\n";
+								echo "<input type=\"submit\" name=\"update\" value=\"UPDATE\"/><br/>\n";
+								echo "<input type=\"reset\" value=\"reset\"/>\n";
+							echo "</form>\n";
 ?>
-								<input type="submit" name="insert" value="INSERT"/><br/>
-								<input type="reset" value="reset"/>
-							</form>
 							<form action="" method="GET">
 <?php
-								echo '<input type="hidden" name="table" value="', htmlspecialchars($_GET['table']), "\"/>\n";
+								echo '<input type="hidden" name="key" value="TIMESTAMP ', pg_field_type_oid($result, $t) == 1184 ? 'WITH TIME ZONE ' : '', '&apos;', $row[$t], "&apos;\"/>\n";
+								echo '<input type="hidden" name="table" value="', $h_table, "\"/>\n";
 ?>
-								<input type="submit" name="truncate" value="TRUNCATE"/>
+								<input type="submit" name="delete" value="DELETE"/>
 							</form>
 						</td>
 					</tr>
 <?php
-					$t = pg_field_num($result, 't');
-					for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
+				}
 ?>
-						<tr>
+			</tbody>
+		</table>
 <?php
-							for ($i = 0; $i < $j; $i++) {
+		pg_free_result($result);
+	}
+	pg_free_result($result1);
+	pg_free_result($result2);
+	pg_free_result($result3);
+}
 ?>
-								<td>
-<?php
-									echo "<input form=\"update{$row[$t]}\" type=\"text\" name=\"", pg_field_name($result, $i), "\" value=\"", htmlspecialchars(postgresqlOutputToStandard($row[$i], pg_field_type_oid($result, $i))), "\"/>\n";
-?>
-								</td>
-<?php
-							}
-?>
-							<td>
-<?php
-								echo "<form id=\"update{$row[$t]}\" action=\"\" method=\"GET\">\n";
-									echo '<input type="hidden" name="key" value="TIMESTAMP ', pg_field_type_oid($result, $t) == 1184 ? 'WITH TIME ZONE ' : '', "&apos;{$row[$t]}&apos;\"/>\n";
-									echo '<input type="hidden" name="table" value="', htmlspecialchars($_GET['table']), "\"/>\n";
-									echo "<input type=\"submit\" name=\"update\" value=\"UPDATE\"/><br/>\n";
-									echo "<input type=\"reset\" value=\"reset\"/>\n";
-								echo "</form>\n";
-?>
-								<form action="" method="GET">
-<?php
-									echo '<input type="hidden" name="key" value="TIMESTAMP ', pg_field_type_oid($result, $t) == 1184 ? 'WITH TIME ZONE ' : '', "&apos;{$row[$t]}&apos;\"/>\n";
-									echo '<input type="hidden" name="table" value="', htmlspecialchars($_GET['table']), "\"/>\n";
-?>
-									<input type="submit" name="delete" value="DELETE"/>
-								</form>
-							</td>
-						</tr>
-<?php
-					}
-?>
-				</tbody>
-			</table>
-<?php
-			pg_free_result($result);
-		}
-		pg_close($dbconn);
-?>
-		<a href="index.php">Done</a>
-	</body>
-</html>
+<a href="index.php">Done</a>
