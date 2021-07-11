@@ -324,6 +324,11 @@ struct refresh_next_timed_rule_time_struct {
 
 struct update_permissions_struct { };
 
+struct execute_timed_rule_struct {
+	int id;
+	char user[256];//username cannot exceed
+};
+
 /*
  * array: C array wrapper for easy indexing and hard finding
  * vector: array for easy pushing and popping on one end,
@@ -396,9 +401,20 @@ union typedetails {
 	struct { } bytea;
 };
 
+struct configuration {
+	bool forward_messages;
+	bool use_internet_switch_algorithm;
+	bool nsecs_id;
+	bool nsecs_src;
+	bool trust_everyone;
+	BYTE8 default_gateway;
+};
+
+map<string, configuration *> user_configuration;
+
 my_time_point beginning;
 
-multimap<string, BYTE8> table_address;
+multimap<string, string> table_user;
 
 PGconn *conn;
 
@@ -420,10 +436,6 @@ const char hex_to_text[17] = "0123456789abcdef";//converts 0..15 to [0-9a-f]
 
 my_time_point (* const my_now)() noexcept = chrono::system_clock::now;
 
-bool forward_messages = true;
-
-bool use_internet_switch_algorithm = true;
-
 mqd_t main_mq;
 
 mqd_t update_permissions_mq;
@@ -444,11 +456,9 @@ mqd_t config_mq;
 
 mqd_t refresh_next_timed_rule_time_mq;
 
-int nsecs_id = 10;//10 seconds
+mqd_t execute_timed_rule_mq;
 
 vector<protocol *> protocols;
-
-int nsecs_src = 36000;//10 hours
 
 time_t next_timed_rule = 0;
 
@@ -492,7 +502,8 @@ void decode_bytes_from_stream(istream &stream, BYTE *bytes, size_t len);
 void send_inject_from_rule(const char *message, const char *proto_id, const char *imm_addr,
 		bool CCF, bool ACF, bool broadcast, bool override_implicit_rules, bool send);
 
-void apply_rule_beginning(PGresult *res_rules, int &current_id, int i, const char *type);
+void apply_rule_beginning(PGresult *res_rules, int &current_id, int i, const char *type,
+		string &current_user);
 
 void insert_message(const formatted_message &fmsg, const raw_message &rmsg);
 
@@ -501,7 +512,7 @@ formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool 
 void select_message(formatted_message &fmsg, raw_message &rmsg);
 
 void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int offset,
-		string &select);
+		string &select, string &current_user);
 
 BYTE8 c17charp_to_BYTE8(const char *address);
 
@@ -521,6 +532,8 @@ extern "C" { PG_FUNCTION_INFO_V1(refresh_next_timed_rule_time); }
 
 extern "C" { PG_FUNCTION_INFO_V1(update_permissions); }
 
+extern "C" { PG_FUNCTION_INFO_V1(execute_timed_rule); }
+
 void load_store2_load();
 
 void load_store2_store();
@@ -532,6 +545,8 @@ void encode_message(formatted_message &fmsg, raw_message &rmsg);
 void refresh_next_timed_rule_time2(const refresh_next_timed_rule_time_struct &rntrts);
 
 void update_permissions2();
+
+void execute_timed_rule2(const execute_timed_rule_struct &etrs);
 
 void decode_message(raw_message &rmsg, formatted_message &fmsg);
 
@@ -566,10 +581,6 @@ bool is_select(string query);
 bool clean_select(string query);
 
 PGresult *formatsendreturn(PGresult *res, BYTE8 DST);
-
-bool use_CCF(raw_message &rmsg);
-
-bool use_ACF(raw_message &rmsg);
 
 void send_formatted_message(formatted_message *fmsg);
 
@@ -796,11 +807,7 @@ const EVP_CIPHER *ciphertype;
 
 const EVP_MD *mdtype;
 
-BYTE8 default_gateway = 0;
-
 int blocksizetimes2minus1;
-
-bool trust_everyone = false;
 
 int ivlength;
 
@@ -2320,31 +2327,24 @@ int main(int argc, char *argv[]) {
 	getcwd(cwd, PATH_MAX);
 	initialize_vars();
 
-	res = execcheckreturn("SELECT TRUE FROM pg_class WHERE relname = \'users\'");
-	if (PQntuples(res) == 0) {
-		PQclear(execcheckreturn("CREATE TABLE users(username TEXT, password TEXT, "
-				"can_view_tables BOOLEAN, can_send_messages BOOLEAN, can_inject_messages BOOLEAN, "
-				"can_send_queries BOOLEAN, can_view_rules BOOLEAN, can_actually_login BOOLEAN, "
-				"PRIMARY KEY(username))"));
-		PQclear(execcheckreturn("INSERT INTO users(username, password, can_view_tables, "
-				"can_send_messages, can_inject_messages, can_send_queries, can_view_rules, "
-				"can_actually_login) VALUES (\'admin\', "//password_hash('admin', PASSWORD_DEFAULT)
-				"\'$2y$10$JXGXlP8XSpsBd5rnqZt5oeBVODcogiT.14XShJBQHpbSdIwY/cLvW\', TRUE, TRUE, "
-				"TRUE, TRUE, TRUE, TRUE), (\'guest\', "//password_hash('guest', PASSWORD_DEFAULT)
-				"\'$2y$10$iBxU52qtFNOUljPT8iB4ieqX0/I5HhSMxHWO2y72J.Sjf9vk8UkAm\', FALSE, FALSE, "
-				"FALSE, FALSE, FALSE, FALSE)"));
-	}
-	PQclear(res);
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS t"s + BYTE8_to_c17charp(local_addr)
-			+ "(t TIMESTAMP(4) WITHOUT TIME ZONE)"));
-	PQclear(execcheckreturn("CREATE INDEX ON t"s + BYTE8_to_c17charp(local_addr) + "(t)"));
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS users(username TEXT, "
+			"password TEXT NOT NULL, can_view_tables BOOLEAN NOT NULL, "
+			"can_send_messages BOOLEAN NOT NULL, can_inject_messages BOOLEAN NOT NULL, "
+			"can_send_queries BOOLEAN NOT NULL, can_view_rules BOOLEAN NOT NULL, "
+			"can_actually_login BOOLEAN NOT NULL, is_administrator BOOLEAN NOT NULL, "
+			"can_view_configuration BOOLEAN NOT NULL, can_view_permissions BOOLEAN NOT NULL, "
+			"can_view_remotes BOOLEAN NOT NULL, can_execute_rules BOOLEAN NOT NULL, "
+			"PRIMARY KEY(username))"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS rules(id INTEGER, "
-			"send_receive_seconds SMALLINT, filter TEXT, drop_modify_nothing SMALLINT, "
-			"modification TEXT, query_command_nothing SMALLINT, query_command_1 TEXT, "
-			"send_inject_query_command_nothing SMALLINT, query_command_2 TEXT, proto_id TEXT, "
-			"imm_addr BYTEA, CCF BOOLEAN, ACF BOOLEAN, broadcast BOOLEAN, "
+			"send_receive_seconds SMALLINT NOT NULL, filter TEXT, "
+			"drop_modify_nothing SMALLINT NOT NULL, modification TEXT, "
+			"query_command_nothing SMALLINT NOT NULL, query_command_1 TEXT, "
+			"send_inject_query_command_nothing SMALLINT NOT NULL, query_command_2 TEXT, "
+			"proto_id TEXT, imm_addr BYTEA, CCF BOOLEAN, ACF BOOLEAN, broadcast BOOLEAN, "
 			"override_implicit_rules BOOLEAN, activate INTEGER, deactivate INTEGER, "
-			"active BOOLEAN, PRIMARY KEY(id))"));
+			"is_active BOOLEAN NOT NULL, user TEXT, last_run TIMESTAMP(0) WITH TIME ZONE, "
+			"run_period INTERVAL SECOND(0), next_run BIGINT, PRIMARY KEY(id, user), "
+			"FOREIGN KEY(user) REFERENCES users(username) ON DELETE CASCADE ON UPDATE CASCADE)"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS addr_oID(addr BYTEA, "
 			"out_ID SMALLINT NOT NULL, PRIMARY KEY(addr))"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS SRC_DST(SRC BYTEA, DST BYTEA, "
@@ -2422,7 +2422,8 @@ int main(int argc, char *argv[]) {
 		while (find_next_lower_device(sock, ifr, i) >= 0) {
 			THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
 			PQclear(res);
-			res = execcheckreturn("SELECT TRUE FROM adapter_name WHERE name = \'"s + ifr.ifr_name + '\'');
+			res = execcheckreturn("SELECT TRUE FROM adapter_name WHERE name = \'"s + ifr.ifr_name
+					+ '\'');
 			if (PQntuples(res) == 0) {
 				if ((ifr.ifr_flags & IFF_UP) != 0) {
 					ifr.ifr_flags &= ~IFF_UP;
@@ -2470,19 +2471,12 @@ int main(int argc, char *argv[]) {
 			"REFERENCES SRC_proto(SRC, proto) ON DELETE CASCADE ON UPDATE CASCADE)"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS configuration("
 			"forward_messages BOOLEAN NOT NULL, use_internet_switch_algorithm BOOLEAN NOT NULL, "
-			"nsecs_id INTEGER NOT NULL, nsecs_src INTEGER NOT NULL, trust_everyone BOOLEAN, "
-			"default_gateway BYTEA)"));
-	PQclear(execcheckreturn("TRUNCATE TABLE configuration"));
-	oss.str("INSERT INTO configuration(forward_messages, use_internet_switch_algorithm, nsecs_id, "
-			"nsecs_src, trust_everyone, default_gateway) VALUES(");
-	oss << BOOLALPHA_UPPERCASE(forward_messages) << ", "
-			<< BOOLALPHA_UPPERCASE(use_internet_switch_algorithm) << ", " << nsecs_id << ", "
-			<< nsecs_src << ", " << BOOLALPHA_UPPERCASE(trust_everyone) << ", E\'\\\\x"
-			<< BYTE8_to_c17charp(default_gateway) << "\')";
-	PQclear(execcheckreturn(oss.str()));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS currentuser(currentuser TEXT)"));
-	PQclear(execcheckreturn("TRUNCATE TABLE currentuser"));
-	PQclear(execcheckreturn("INSERT INTO currentuser(currentuser) VALUES(NULL)"));
+			"nsecs_id INTEGER NOT NULL, nsecs_src INTEGER NOT NULL, "
+			"trust_everyone BOOLEAN NOT NULL, default_gateway BYTEA NOT NULL, user TEXT, "
+			"PRIMARY KEY(user), FOREIGN KEY(user) REFERENCES users(username) "
+			"ON DELETE CASCADE ON UPDATE CASCADE)"));
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS current_user(current_user TEXT)"));
+	PQclear(execcheckreturn("TRUNCATE TABLE current_user"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS ext(addr_id TEXT) CASCADE"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS send_inject(message BYTEA, proto_id TEXT, "
 			"imm_addr BYTEA, CCF BOOLEAN, ACF BOOLEAN, send BOOLEAN, broadcast BOOLEAN, "
@@ -2492,21 +2486,11 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_next_timed_rule_time("
 			"next_timed_rule BIGINT)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS update_permissions()"));
-	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS currentuser() CASCADE"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS timers(rule_id INTEGER, "
-			"last_run TIMESTAMP(0) WITH TIME ZONE, run_period INTERVAL SECOND(0), next_run BIGINT, "
-			"PRIMARY KEY(rule_id), FOREIGN KEY(rule_id) REFERENCES rules(id) "
-			"ON DELETE CASCADE ON UPDATE CASCADE)"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS rule_user(rule_id INTEGER, "
-			"user TEXT, PRIMARY KEY(rule_id), FOREIGN KEY(rule_id) REFERENCES rules(id) "
-			"ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY(user) REFERENCES users(username) "
-			"ON DELETE CASCADE ON UPDATE CASCADE)"));
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS execute_timed_rule(INTEGER id, TEXT user)"));
+	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_user() CASCADE"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS raw_message_for_query_command("
 			"message BYTEA)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_address(table NAME, address BYTEA, "
-			"PRIMARY KEY(table, address), FOREIGN KEY(table) REFERENCES pg_class(relname) "
-			"ON UPDATE CASCADE ON DELETE CASCADE)"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_user(table NAME, user TEXT, "
 			"PRIMARY KEY(table, user), FOREIGN KEY(table) REFERENCES pg_class(relname) "
 			"ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY(user) REFERENCES user(username) "
@@ -2525,24 +2509,45 @@ int main(int argc, char *argv[]) {
 			"AS \'"s + cwd + "/libIoT\', \'refresh_next_timed_rule_time\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE update_permissions() AS \'"s + cwd
 			+ "/libIoT\', \'update_permissions\' LANGUAGE C"));
+	PQclear(execcheckreturn("CREATE PROCEDURE execute_timed_rule(INTEGER id, TEXT user) AS\'"s + cwd
+			+ "/libIoT\', \'execute_timed_rule\' LANGUAGE C"));
 	/*
 	 * in SQL standard only RETURNS NULL ON NULL INPUT function specifier exists
 	 *
 	 * also, other function specifiers exist in standard SQL
 	 */
-	PQclear(execcheckreturn("CREATE FUNCTION currentuser() RETURNS trigger AS \'BEGIN "
-			"IF NEW.username <> (SELECT currentuser FROM currentuser) THEN RETURN NULL; "
+	PQclear(execcheckreturn("CREATE FUNCTION current_user_update() RETURNS trigger AS \'BEGIN "
+			"IF EXISTS (TABLE current_user) "
+			"AND ((SELECT current_user FROM current_user) <> NEW.username "
+			"OR OLD.username <> NEW.username) AND (OLD.is_administrator OR NEW.is_administrator "
+			"OR (SELECT NOT users.is_administrator FROM users INNER JOIN current_user "
+			"ON users.username = current_user.current_user)) THEN RETURN NULL; "
 			"ELSE RETURN NEW; END IF; END;\' LANGUAGE PLPGSQL"));
-	PQclear(execcheckreturn("CREATE TRIGGER currentuser BEFORE UPDATE ON users "
-			"FOR ROW EXECUTE PROCEDURE currentuser()"));
+	PQclear(execcheckreturn("CREATE TRIGGER current_user_update BEFORE UPDATE ON users "
+			"FOR ROW EXECUTE PROCEDURE current_user_update()"));
+	PQclear(execcheckreturn("CREATE FUNCTION current_user_delete() RETURNS trigger AS \'BEGIN "
+			"IF EXISTS (TABLE current_user) AND (OLD.is_administrator "
+			"OR (SELECT NOT users.is_administrator FROM users "
+			"INNER JOIN current_user ON users.username = current_user.current_user)) "
+			"THEN RETURN NULL; ELSE RETURN OLD; END IF; END;\' LANGUAGE PLPGSQL"));
+	PQclear(execcheckreturn("CREATE TRIGGER current_user_delete BEFORE DELETE ON users "
+			"FOR ROW EXECUTE PROCEDURE current_user_delete()"));
+	PQclear(execcheckreturn("CREATE FUNCTION current_user_insert() RETURNS trigger AS \'BEGIN "
+			"IF EXISTS (TABLE current_user) AND (NEW.is_administrator "
+			"OR (SELECT NOT users.is_administrator FROM users "
+			"INNER JOIN current_user ON users.username = current_user.current_user)) "
+			"THEN RETURN NULL; ELSE RETURN NEW; END IF; END;\' LANGUAGE PLPGSQL"));
+	PQclear(execcheckreturn("CREATE TRIGGER current_user_insert() BEFORE INSERT ON users "
+			"FOR ROW EXECUTE PROCEDURE current_user_insert()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS insert_timer() CASCADE"));
 	PQclear(execcheckreturn("CREATE FUNCTION insert_timer() RETURNS trigger AS \'DECLARE "
 			"lastrun TIMESTAMP(0) WITH TIME ZONE; runperiod INTERVAL SECOND(0); BEGIN "
 			"lastrun = CURRENT_TIMESTAMP(0); "
 			"runperiod = CAST(NEW.filter AS INTEGER) * INTERVAL \'\'0:0:1\'\'; "
-			"INSERT INTO timers(rule_id, last_run, run_period, next_run) VALUES(NEW.id, lastrun, "
-			"runperiod, CAST(EXTRACT(EPOCH FROM lastrun + runperiod) AS BIGINT)); "
-			"PERFORM refresh_next_timed_rule_time((SELECT MIN(next_run) FROM timers)); "
+			"UPDATE rules SET (last_run, run_period, next_run) = (lastrun, "
+			"runperiod, CAST(EXTRACT(EPOCH FROM lastrun + runperiod) AS BIGINT)) "
+			"WHERE id = NEW.id AND user = NEW.user; "
+			"PERFORM refresh_next_timed_rule_time((SELECT MIN(next_run) FROM rules)); "
 			"RETURN NULL; END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER insert_timer AFTER INSERT ON rules FOR ROW "
 			"WHEN (NEW.send_receive_seconds = 2 AND NEW.active IS TRUE) "
@@ -2552,27 +2557,22 @@ int main(int argc, char *argv[]) {
 			"lastrun TIMESTAMP(0) WITH TIME ZONE; runperiod INTERVAL SECOND(0); BEGIN "
 			"lastrun = CURRENT_TIMESTAMP(0); "
 			"runperiod = CAST(NEW.filter AS INTEGER) * INTERVAL \'\'0:0:1\'\'; "
-			"IF (OLD.send_receive_seconds <> 2 OR OLD.active IS FALSE) "
-			"AND NEW.send_receive_seconds = 2 AND NEW.active IS TRUE THEN "
-			"INSERT INTO timers(rule_id, last_run, run_period, next_run) VALUES(NEW.id, lastrun, "
-			"runperiod, CAST(EXTRACT(EPOCH FROM lastrun + runperiod) AS BIGINT)); "
-			"ELSIF (NEW.send_receive_seconds <> 2 OR NEW.active IS FALSE) "
-			"AND OLD.send_receive_seconds = 2 AND OLD.active IS TRUE THEN "
+			"IF (OLD.send_receive_seconds <> 2 OR NOT OLD.is_active) "
+			"AND NEW.send_receive_seconds = 2 AND NEW.is_active THEN "
+			"UPDATE rules SET (last_run, run_period, next_run) = (lastrun, "
+			"runperiod, CAST(EXTRACT(EPOCH FROM lastrun + runperiod) AS BIGINT)) "
+			"WHERE id = NEW.id AND user = NEW.user; "
+			"ELSIF (NEW.send_receive_seconds <> 2 OR NOT NEW.is_active) "
+			"AND OLD.send_receive_seconds = 2 AND OLD.is_active THEN "
 			"DELETE FROM timers WHERE rule_id = NEW.id; "
-			"ELSIF (OLD.filter <> NEW.filter) THEN UPDATE timers SET (run_period, next_run) "
+			"ELSIF (OLD.filter <> NEW.filter) THEN UPDATE rules SET (run_period, next_run) "
 			"= (runperiod, CAST(EXTRACT(EPOCH FROM last_run + runperiod) AS BIGINT)) "
-			"WHERE rule_id = NEW.id; END IF; PERFORM refresh_next_timed_rule_time(("
-			"SELECT MIN(next_run) FROM timers)); RETURN NULL; END;\' LANGUAGE PLPGSQL"));
+			"WHERE id = NEW.id AND user = NEW.user; END IF; PERFORM refresh_next_timed_rule_time(("
+			"SELECT MIN(next_run) FROM rules)); RETURN NULL; END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER update_timer AFTER UPDATE ON rules FOR ROW "
 			"EXECUTE PROCEDURE update_timer()"));
-	PQclear(execcheckreturn("TRUNCATE TABLE timers"));
-	PQclear(execcheckreturn("INSERT INTO timers(rule_id, last_run, run_period, next_run) "
-			"SELECT id, CURRENT_TIMESTAMP(0), CAST(filter AS INTEGER) * INTERVAL \'0:0:1\', "
-			"NULL FROM rules WHERE send_receive_seconds = 2 AND active IS TRUE"));
-	PQclear(execcheckreturn("UPDATE timers SET next_run "
-			"= CAST(EXTRACT(EPOCH FROM last_run + run_period) AS BIGINT)"));
 	PQclear(execcheckreturn("CALL refresh_next_timed_rule_time(("
-			"SELECT MIN(next_run) FROM timers))"));
+			"SELECT MIN(next_run) FROM rules))"));
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
 	main_loop();
 
@@ -2656,6 +2656,9 @@ void initialize_vars() {
 	update_permissions_mq = mq_open("/update_permissions",
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(update_permissions_mq < 0, system_exception("cannot open update_permissions_mq"));
+	execute_timed_rule_mq = mq_open("/execute_timed_rule", O_RDWR | O_CREAT | O_NONBLOCK, 0777,
+			&ma);
+	THR(execute_timed_rule_mq < 0, system_exception("cannot open execute_timed_rule_mq"));
 
 	cipherctx = EVP_CIPHER_CTX_new();
 	mdctx = EVP_MD_CTX_new();
@@ -2699,7 +2702,9 @@ void destroy_vars() {
 		}
 		delete a_r.second;
 	}
-
+	for (auto u_c : user_configuration) {
+		delete u_c.second;
+	}
 	for (protocol *p : protocols) {
 		delete p;
 	}
@@ -2716,6 +2721,8 @@ void destroy_vars() {
 			system_exception("cannot unlink refresh_next_timed_rule_time_mq"));
 	THR(mq_unlink("/update_permissions") < 0,
 			system_exception("cannot unlink update_permissions_mq"));
+	THR(mq_unlink("/execute_timed_rule") < 0,
+			system_exception("cannot unlink execute_timed_rule_mq"));
 
 	EVP_CIPHER_CTX_free(cipherctx);
 	EVP_MD_CTX_free(mdctx);
@@ -2839,6 +2846,22 @@ PGresult *execcheckreturn(string query) {
 }
 
 #if __PIC__ == 1
+
+//this function is executed in another process!!!
+extern "C" Datum execute_timed_rule(PG_FUNCTION_ARGS) {
+	int id = PG_GETARG_INTEGER(0);
+	text *user_sql = PG_GETARG_TEXT_PP(1);
+	int user_len = VARSIZE_ANY_EXHDR(user_sql);
+	execute_timed_rule_struct etrs = { 0 };
+	mqd_t execute_timed_rule_mq = mq_open("/execute_timed_rule", O_WRONLY);
+
+	THR(execute_timed_rule_mq < 0, system_exception("cannot open execute_timed_rule_mq"));
+	memcpy(etrs.user, VARDATA_ANY(user_sql), user_len < 256 ? user_len : 256);
+	THR(mq_send(execute_timed_rule_mq, reinterpret_cast<char *>(&etrs),
+			sizeof(execute_timed_rule_struct), 0) < 0,
+			system_exception("cannot send to execute_timed_rule_mq"));
+	PG_RETURN_VOID();
+}
 
 //this function is executed in another process!!!
 extern "C" Datum ext(PG_FUNCTION_ARGS) {
@@ -3163,17 +3186,26 @@ void load_store2_store() {
 }
 
 void config2() {
-	PGresult *res = execcheckreturn("TABLE configuration");
-	istringstream iss(PQgetvalue(res, 0, 2));
+	PGresult *res = execcheckreturn("TABLE configuration ORDER BY user DESC");
+	istringstream iss;
+	configuration *c;
+	int i = PQntuples(res);
 
-	forward_messages = *PQgetvalue(res, 0, 0) == 't';
-	use_internet_switch_algorithm = *PQgetvalue(res, 0, 1) == 't';
-	iss >> nsecs_id;
-	iss.str(PQgetvalue(res, 0, 3));
-	iss.clear();
-	iss >> nsecs_src;
-	trust_everyone = *PQgetvalue(res, 0, 4) == 't';
-	default_gateway = c17charp_to_BYTE8(PQgetvalue(res, 0, 5) + 2);
+	user_configuration.clear();
+	while (--i >= 0) {
+		c = new configuration;
+		c->forward_messages = *PQgetvalue(res, i, 0) == 't';
+		c->use_internet_switch_algorithm = *PQgetvalue(res, i, 1) == 't';
+		iss.str(PQgetvalue(res, i, 2));
+		iss >> c->nsecs_id;
+		iss.clear();
+		iss.str(PQgetvalue(res, i, 3));
+		iss >> c->nsecs_src;
+		iss.clear();
+		c->trust_everyone = *PQgetvalue(res, i, 4) == 't';
+		c->default_gateway = c17charp_to_BYTE8(PQgetvalue(res, i, 5) + 2);
+		user_configuration.insert(make_pair(PQgetvalue(res, i, 6), c));
+	}
 	PQclear(res);
 }
 
@@ -3212,14 +3244,14 @@ void refresh_next_timed_rule_time2(const refresh_next_timed_rule_time_struct &rn
 }
 
 void update_permissions2() {
-	PGresult *res = execcheckreturn("TABLE table_address ORDER BY table DESC");
+	PGresult *res = execcheckreturn("TABLE table_user ORDER BY table DESC");
 	int i = PQntuples(res);
 
-	table_address.clear();
+	table_user.clear();
 	while (--i >= 0) {
-		table_address.insert(make_pair(PQgetvalue(res, i, 0),
-				c17charp_to_BYTE8(PQgetvalue(res, i, 1))));
+		table_user.insert(make_pair(PQgetvalue(res, i, 0), PQgetvalue(res, i, 1)));
 	}
+	PQclear(res);
 }
 
 void decode_message(raw_message &rmsg, formatted_message &fmsg) {
@@ -3399,7 +3431,9 @@ ostream &operator<<(ostream &os, const my_time_point &point) noexcept {
 }
 
 void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg) {
-	if (trust_everyone) {
+	auto t_u = table_user.find("t"s + BYTE8_to_c17charp(fmsg.SRC));
+
+	if (user_configuration[t_u != table_user.cend() ? t_u->second : "root"]->trust_everyone) {
 		LOG_CPP("trusting everyone for sending" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding rules for sending" << endl);
@@ -3443,7 +3477,9 @@ void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 }
 
 void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg) {
-	if (trust_everyone) {
+	auto t_u = table_user.find("t"s + BYTE8_to_c17charp(fmsg.DST));
+
+	if (user_configuration[t_u != table_user.cend() ? t_u->second : "root"]->trust_everyone) {
 		LOG_CPP("trusting everyone for receiving" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding checks for receiving" << endl);
@@ -3460,7 +3496,9 @@ formatted_message *receive_formatted_message() {
 	unique_ptr<raw_message> rmsg;
 	unique_ptr<formatted_message> fmsg;
 	my_time_point now;
-	multimap<protocol *, BYTE8>::const_iterator iter;
+	multimap<protocol *, BYTE8>::const_iterator iter_p_a;
+	map<string, string>::const_iterator iter_t_u;
+	configuration *c;
 
 	do {
 		rmsg.reset(receive_raw_message());
@@ -3473,7 +3511,9 @@ formatted_message *receive_formatted_message() {
 				r = new remote;
 				r->out_ID = uid(dre);
 			}
-			if (use_internet_switch_algorithm) {
+			iter_t_u = table_user.find("t"s + BYTE8_to_c17charp(fmsg->DST));
+			c = user_configuration[iter_t_u != table_user.cend() ? iter_t_u->second : "root"];
+			if (c->use_internet_switch_algorithm) {
 				map<BYTE8, my_time_point> *&iT = r->proto_iSRC_TWR[rmsg->proto];
 				if (iT == nullptr) {
 					iT = new map<BYTE8, my_time_point>;
@@ -3488,7 +3528,7 @@ formatted_message *receive_formatted_message() {
 				IT = new map<BYTE, my_time_point>;
 			}
 			my_time_point &t2 = (*IT)[fmsg->ID];
-			if (chrono::duration_cast<chrono::seconds>(now - t2).count() < nsecs_id) {
+			if (chrono::duration_cast<chrono::seconds>(now - t2).count() < c->nsecs_id) {
 						//SRC, DST, ID and approx. time same -> duplicate
 				LOG_CPP("received duplicate message of ID " << HEX(static_cast<int>(fmsg->ID), 2)
 						<< " from " << BYTE8_to_c17charp(fmsg->SRC) << endl);
@@ -3501,13 +3541,14 @@ formatted_message *receive_formatted_message() {
 			}
 			security_check_for_receiving(*rmsg, *fmsg);
 			if (fmsg->DST != local_addr) {
-				for (iter = local_proto_iaddr.find(rmsg->proto); iter != local_proto_iaddr.cend()
-						&& iter->first == rmsg->proto && iter->second != fmsg->DST; iter++)
+				for (iter_p_a = local_proto_iaddr.find(rmsg->proto);
+						iter_p_a != local_proto_iaddr.cend() && iter_p_a->first == rmsg->proto
+						&& iter_p_a->second != fmsg->DST; iter_p_a++)
 					;
 			}
-			if ((fmsg->DST != local_addr && iter != local_proto_iaddr.cend() && iter->first
-					== rmsg->proto && iter->second == fmsg->DST) || rmsg->broadcast) {
-				if (forward_messages) {
+			if ((fmsg->DST != local_addr && iter_p_a != local_proto_iaddr.cend() && iter_p_a->first
+					== rmsg->proto && iter_p_a->second == fmsg->DST) || rmsg->broadcast) {
+				if (c->forward_messages) {
 					LOG_CPP("forwarding message from SRC " << BYTE8_to_c17charp(fmsg->SRC)
 							<< " to DST " << BYTE8_to_c17charp(fmsg->DST) << endl);
 					send_formatted_message(fmsg.release());
@@ -3527,7 +3568,7 @@ formatted_message *receive_formatted_message() {
 				LOG_CPP("received QUICK " << *fmsg << endl);
 			} else {
 				LOG_CPP("received HELLO " << *fmsg << endl);
-				fmsg->DST = default_gateway;
+				fmsg->DST = c->default_gateway;
 				send_formatted_message(fmsg.release());
 				continue;
 			}
@@ -3631,6 +3672,8 @@ raw_message *receive_raw_message() {
 	PGresult *res_rules;
 	stringstream ss(ss.in | ss.out | ss.ate);
 	update_permissions_struct ups;
+	execute_timed_rule_struct etrs;
+	string current_user;
 
 	clock_gettime(CLOCK_REALTIME, &ts);
 	do {
@@ -3702,25 +3745,33 @@ raw_message *receive_raw_message() {
 		} else {
 			update_permissions2();
 		}
+		if (mq_receive(execute_timed_rule_mq, reinterpret_cast<char *>(&etrs), sizeof(etrs),
+				nullptr) < 0) {
+			THR(errno != EAGAIN, system_exception("cannot receive from execute_mq"));
+		} else {
+			execute_timed_rule2(etrs);
+		}
 		if (next_timed_rule <= ts.tv_sec++ && next_timed_rule > 0) {
 			LOG_CPP("checking for rules" << endl);
-			ss.str("SELECT rules.id, rules.query_command_nothing, rules.query_command_1, "
-					"rules.send_inject_query_command_nothing, rules.query_command_2, "
-					"rules.proto_id, rules.imm_addr, rules.activate, rules.deactivate FROM rules "
-					"INNER JOIN timers ON rules.id = timers.rule_id WHERE timers.next_run <= ");
+			ss.str("SELECT id, query_command_nothing, query_command_1, "
+					"send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, "
+					"CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, user "
+					"FROM rules WHERE is_active AND next_run <= ");
 			ss.clear();
 			ss << next_timed_rule;
 			select = ss.str();
-			res_rules = execcheckreturn(select + " ORDER BY rules.id ASC");
+			res_rules = execcheckreturn(select + " ORDER BY user ASC, id ASC");
 			for (i = 0, j = PQntuples(res_rules); i < j; i++) {
-				apply_rule_beginning(res_rules, current_id, i, "timed");
-				PQclear(execcheckreturn("UPDATE timers SET (last_run, next_run) = (last_run "
+				current_user = PQgetvalue(res_rules, i, 13);
+				apply_rule_beginning(res_rules, current_id, i, "timed", current_user);
+				PQclear(execcheckreturn("UPDATE rules SET (last_run, next_run) = (last_run "
 						"+ run_period, CAST(EXTRACT(EPOCH FROM last_run + 2 * run_period) "
-						"AS BIGINT)) WHERE rule_id = "s + PQgetvalue(res_rules, i, 0)));
-				apply_rule_end(res_rules, current_id, i, j, 0, select);
+						"AS BIGINT)) WHERE id = "s + PQgetvalue(res_rules, i, 0) + " AND user = \'"
+						+ PQgetvalue(res_rules, i, 9) + '\''));
+				apply_rule_end(res_rules, current_id, i, j, 0, select, current_user);
 			}
 			PQclear(res_rules);
-			res_rules = execcheckreturn("SELECT MIN(next_run) FROM timers");
+			res_rules = execcheckreturn("SELECT MIN(next_run) FROM rules");
 			ss.str(PQgetvalue(res_rules, 0, 0));
 			ss.clear();
 			ss >> next_timed_rule;
@@ -3742,10 +3793,10 @@ raw_message *receive_raw_message() {
 #endif /* OFFLINE */
 
 bool check_permissions(const char *table, BYTE8 address) {
-	multimap<string, BYTE8>::const_iterator iter = table_address.find(table);
+	multimap<string, string>::const_iterator iter = table_user.find(table);
 
-	if (iter != table_address.cend()) {
-		for (; iter != table_address.cend() && iter->first == table; iter++) {
+	if (iter != table_user.cend()) {
+		for (; iter != table_user.cend() && iter->first == table; iter++) {
 			if (iter->second == address) {
 				return true;
 			}
@@ -3839,11 +3890,12 @@ void send_inject_from_rule(const char *message, const char *proto_id, const char
 	delete sis;
 }
 
-void apply_rule_beginning(PGresult *res_rules, int &current_id, int i, const char *type) {
+void apply_rule_beginning(PGresult *res_rules, int &current_id, int i, const char *type,
+		string &current_user) {
 	istringstream iss(PQgetvalue(res_rules, i, 0));
 
 	iss >> current_id;
-	LOG_CPP("applying " << type << " rule " << current_id << endl);
+	LOG_CPP("applying " << type << " rule " << current_id << " for user " << current_user << endl);
 }
 
 void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
@@ -3867,31 +3919,34 @@ void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
 }
 
 formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool send) {
-	string select("SELECT ");
-	PGresult *res_fields, *res_rules = execcheckreturn(send
+	auto t_u = table_user.find("t"s + BYTE8_to_c17charp(send ? fmsg->SRC : fmsg->DST));
+	string current_user(t_u != table_user.cend() ? t_u->second : "root"), select((send
 			? "SELECT id, send_receive_seconds, filter, drop_modify_nothing, modification, "
 			"query_command_nothing, query_command_1, send_inject_query_command_nothing, "
 			"query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, "
-			"activate, deactivate, active FROM rules WHERE send_receive_seconds = 0 "
-			"AND active IS TRUE ORDER BY id ASC"
+			"activate, deactivate, is_active, user FROM rules WHERE send_receive_seconds = 0 "
+			"AND is_active AND user = \'"
 			: "SELECT id, send_receive_seconds, filter, drop_modify_nothing, modification, "
 			"query_command_nothing, query_command_1, send_inject_query_command_nothing, "
 			"query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, "
-			"activate, deactivate, active FROM rules WHERE send_receive_seconds = 1 "
-			"AND active IS TRUE ORDER BY id ASC");
-	int i = 0, j = PQntuples(res_rules), current_id;
+			"activate, deactivate, is_active, user FROM rules WHERE send_receive_seconds = 1"
+			"AND is_active AND user = \'") + current_user + '\'');
+	PGresult *res_fields, *res_rules;
+	int i = 0, j, current_id;
 	bool to_delete = false;
 	const char *value;
 	unique_ptr<formatted_message> dummy(fmsg);
 
 	insert_message(*fmsg, *rmsg);
 
+	res_rules = execcheckreturn(select + " ORDER BY id ASC");
+	j = PQntuples(res_rules);
 	while (++i < j && !to_delete) {
 		res_fields = execcheckreturn(select + PQgetvalue(res_rules, i, 2)
 				+ " FROM formatted_message_for_send_receive");
 		if (PQntuples(res_fields) == 1 && PQnfields(res_fields) == 1
 				&& strcmp(PQgetvalue(res_fields, 0, 0), "t") == 0) {
-			apply_rule_beginning(res_rules, current_id, i, send ? "send" : "receive");
+			apply_rule_beginning(res_rules, current_id, i, send ? "send" : "receive", current_user);
 			value = PQgetvalue(res_rules, i, 3);
 			if (*value == '0') {
 				LOG_CPP("marking for deletion" << endl);
@@ -3901,7 +3956,7 @@ formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool 
 				execute_semicolon_separated_commands("UPDATE formatted_message_for_send_receive "
 						"SET ", *fmsg, *rmsg, PQgetvalue(res_rules, i, 4));
 			}
-			apply_rule_end(res_rules, current_id, i, j, 3, select);
+			apply_rule_end(res_rules, current_id, i, j, 3, select, current_user);
 		}
 		PQclear(res_fields);
 	}
@@ -3950,7 +4005,7 @@ void select_message(formatted_message &fmsg, raw_message &rmsg) {
 }
 
 void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int offset,
-		string &select) {
+		string &select, string &current_user) {
 	int new_id;
 	stringstream ss(ss.in | ss.out | ss.ate);
 	bool reset = false;
@@ -3993,7 +4048,8 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	value = PQgetvalue(res_rules, i, offset + 11);
 	if (*value != '\0') {
 		LOG_CPP("activating rule " << value << endl);
-		PQclear(execcheckreturn("UPDATE rules SET active = TRUE WHERE id = "s + value));
+		PQclear(execcheckreturn("UPDATE rules SET active = TRUE WHERE id = "s + value
+				+ " AND user = \'" << current_user << '\''));
 		ss.str(value);
 		ss >> new_id;
 		if (new_id > current_id) {
@@ -4004,7 +4060,8 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	value = PQgetvalue(res_rules, i, offset + 12);
 	if (*value != '\0') {
 		LOG_CPP("deactivating rule " << value << endl);
-		PQclear(execcheckreturn("UPDATE rules SET active = FALSE WHERE id = "s + value));
+		PQclear(execcheckreturn("UPDATE rules SET active = FALSE WHERE id = "s + value
+				+ " AND user = \'" << current_user << '\''));
 		ss.str(value);
 		ss.clear();
 		ss >> new_id;
@@ -4018,7 +4075,7 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 		PQclear(res_rules);
 		ss.str(select);
 		ss.clear();
-		ss << " AND rules.id > " << current_id << " ORDER BY rules.id ASC";
+		ss << " AND id > " << current_id << " AND user = \'" << current_user << "\' ORDER BY id ASC";
 		res_rules = execcheckreturn(ss.str());
 		j = PQntuples(res_rules);
 		i = -1;
@@ -4052,6 +4109,23 @@ ostream &operator<<(ostream &os, const raw_message &rmsg) noexcept {
 	}
 	return os << "authentic channel, broadcast = " << BOOLALPHA_UPPERCASE(rmsg.broadcast)
 			<< ", override_implicit_rules = " << BOOLALPHA_UPPERCASE(rmsg.override_implicit_rules);
+}
+
+void execute2(const execute_timed_rule_struct &etrs) {
+	istringstream iss("SELECT id, query_command_nothing, query_command_1, "
+			"send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, "
+			"broadcast, override_implicit_rules, activate, deactivate, is_active, user FROM rules "
+			"WHERE id = ");
+	PGresult *res_rules;
+	string select, current_user(etrs.user);
+	int i, j = 1;
+
+	iss << etrs.id << " AND user = \'" << current_user << '\'';
+	select = iss.str();
+	res_rules = execcheckreturn(select);
+	apply_rule_beginning(res_rules, etrs.id, 0, "timed", current_user);
+	apply_rule_end(res_rules, etrs.id, i, j, 0, select, current_user);
+	PQclear(res_rules);
 }
 
 void print_message_c(ostream &os, const BYTE *msg, size_t length) noexcept {
@@ -4655,16 +4729,6 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 	return res;
 }
 
-bool use_CCF(raw_message &rmsg) {
-	return !trust_everyone && rmsg.TML > 1 && reinterpret_cast<header *>(rmsg.msg)->C
-			&& rmsg.proto->can_secure_with_C(rmsg);
-}
-
-bool use_ACF(raw_message &rmsg) {
-	return !trust_everyone && rmsg.TML > 1 && reinterpret_cast<header *>(rmsg.msg)->A
-			&& rmsg.proto->can_secure_with_A(rmsg);
-}
-
 void send_formatted_message(formatted_message *fmsg) {
 	unique_ptr<raw_message> rmsg;
 	int i;
@@ -4678,6 +4742,10 @@ void send_formatted_message(formatted_message *fmsg) {
 	istringstream iss;
 	chrono::system_clock::rep dt;
 	unique_ptr<formatted_message> copy, dummy_f(fmsg);
+	map<string, string>::const_iterator iter_table_user
+			= table_user.find("t"s + BYTE8_to_c17charp(fmsg->SRC));
+	configuration *c = user_configuration[iter_table_user != table_user.cend()
+			? iter_table_user->second : "root"];
 
 	for (iter_proto_iDST_TWR = iter_DST_destination->second->proto_iSRC_TWR.begin();
 			iter_proto_iDST_TWR != iter_DST_destination->second->proto_iSRC_TWR.end();
@@ -4685,7 +4753,7 @@ void send_formatted_message(formatted_message *fmsg) {
 		for (iter_iDST_TWR = iter_proto_iDST_TWR->second->begin();
 				iter_iDST_TWR != iter_proto_iDST_TWR->second->end(); iter_iDST_TWR++) {
 			dt = chrono::duration_cast<chrono::seconds>(now - iter_iDST_TWR->second).count();
-			if (dt > nsecs_src) {
+			if (dt > c->nsecs_src) {
 				LOG_CPP("proto " << iter_proto_iDST_TWR->first << " imm_DST "
 						<< BYTE8_to_c17charp(iter_iDST_TWR->first) << " expired by " << dt
 						<< " seconds" << endl);
@@ -4698,8 +4766,10 @@ void send_formatted_message(formatted_message *fmsg) {
 				rmsg.reset(new raw_message(new BYTE[fmsg->LEN + fields_MAX]));
 				rmsg->imm_addr = iter_iDST_TWR->first;
 				rmsg->proto = iter_proto_iDST_TWR->first;
-				rmsg->CCF = use_CCF(*rmsg);
-				rmsg->ACF = use_ACF(*rmsg);
+				rmsg->CCF = !c->trust_everyone && fmsg->HD.C
+						&& rmsg->proto->can_secure_with_C(*rmsg);
+				rmsg->ACF = !c->trust_everyone && fmsg->HD.A
+						&& rmsg->proto->can_secure_with_A(*rmsg);
 				dummy_f.reset(apply_rules(dummy_f.release(), rmsg.get(), true));
 				if (dummy_f == nullptr) {
 					continue;
@@ -5072,9 +5142,9 @@ void format_insert_header(sti &iter_begin, sti &iter_end, string &temp, vector<s
 //the number of columns is sent through a member of var "dt" (cast to type)
 void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<datatypes> &dt,
 		vector<typedetails> &td, string &first, string &second, bool &no_t) {
-	int max_column = static_cast<int>(dt.back()) - 1, column = 0, period, e, expo;
+	int max_column = static_cast<int>(dt.back()) - 1, column = 0, period, e, expo, row = 0;
 	bool added = false, loop = true;
-	istringstream iss;
+	stringstream ss;
 	typedetails new_td;
 	string uescape;
 
@@ -5107,9 +5177,12 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 				} else {//end of data row or end of data
 					THR(column < max_column, error_exception("too little columns"));
 					if (no_t) {
-						temp += ", LOCALTIMESTAMP";
+						ss.str(", LOCALTIMESTAMP + INTERVAL \'0:0:0.0001\' * ");
+						ss << row;
+						temp += ss.str();
 					}
 					if (second.front() == ';') {//end of data row
+						row++;
 						column = 0;
 						added = false;
 						temp += "), (";
@@ -5247,9 +5320,9 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 						new_td.numeric.precision = e;
 						new_td.numeric.scale = period == static_cast<int>(string::npos) ? 0
 								: e - period - 1;
-						iss.str(first.substr(e + 1));
-						iss >> expo;
-						iss.clear();
+						ss.str(first.substr(e + 1));
+						ss >> expo;
+						ss.clear();
 						if (expo > 0) {
 							if (period == static_cast<int>(string::npos)) {
 								new_td.numeric.precision += expo;
@@ -5290,9 +5363,12 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 					THR(column < max_column, error_exception("too little columns"));
 					temp += first;
 					if (no_t) {
-						temp += ", LOCALTIMESTAMP";
+						ss.str(", LOCALTIMESTAMP + INTERVAL \'0:0:0.0001\' * ");
+						ss << row;
+						temp += ss.str();
 					}
 					if (second.front() == ';') {//end of data row
+						row++;
 						column = 0;
 						added = false;
 						temp += "), (";
@@ -5329,8 +5405,7 @@ void create_table(string address, vector<string> &columns, vector<string> &types
 		}
 	}
 	PQclear(execcheckreturn("CREATE TABLE " + address + coltyp
-			+ "t TIMESTAMP(4) WITHOUT TIME ZONE)"));//strlen("4294967296") = 10
-	PQclear(execcheckreturn("CREATE INDEX ON " + address + "(t)"));
+			+ "t TIMESTAMP(4) WITHOUT TIME ZONE, PRIMARY KEY(t))"));//strlen("4294967296") = 10
 }
 
 //if the final character of a member of var "columns" is inverted, the column needs altering
