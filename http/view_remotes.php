@@ -1,6 +1,6 @@
 <?php
 require_once 'common.php';
-if (checkAuthorization(11, 'view remotes')) {
+if (checkAuthorization(10, 'view remotes')) {
 	if (isset($_GET['load'])) {
 		pg_free_result(pgquery('SELECT load_store(TRUE);'));
 		$_SESSION['loaded'] = true;

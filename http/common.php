@@ -18,7 +18,6 @@ if ($_SESSION['is_root']) {
 	$trail = ' as administrator';
 	$user = 'administrator';
 } else {
-	$trail = '';
 	$user = $needs_login ? 'local' : 'login';
 }
 echo '<title>', $page_name, $trail, "</title>\n";

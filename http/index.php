@@ -1,6 +1,6 @@
 <?php
 require_once 'common.php';
-if (checkAuthorization(2, 'view tables')) {
+if (checkAuthorization(3, 'view tables')) {
 	if ($_SESSION['is_root']) {
 		$result = pgquery('(SELECT relname FROM pg_class WHERE relname LIKE \'t________________\' AND relname <> \'table_constraints\' ORDER BY relname ASC) UNION ALL (SELECT table FROM table_user WHERE table NOT LIKE \'t________________\' OR relname = \'table_constraints\' ORDER BY table ASC);');
 	} else if ($_SESSION['is_administrator']) {
@@ -15,11 +15,11 @@ if (checkAuthorization(2, 'view tables')) {
 		echo '<a href="view_table.php?table=', urlencode($row[0]), '">', htmlspecialchars($row[0]), "</a>\n";
 	}
 	pg_free_result($result);
-}
 ?>
-<br/>
+	<br/>
 <?php
-if (checkAuthorization(6, 'view rules')) {
+}
+if (checkAuthorization(7, 'view rules')) {
 ?>
 	<a href="view_rules.php">View rules</a><br/>
 <?php
@@ -27,10 +27,9 @@ if (checkAuthorization(6, 'view rules')) {
 ?>
 <a href="view_users.php">View users</a><br/>
 <?php
-if (checkAuthorization(3, 'send messages')) {
+if (checkAuthorization(4, 'send messages')) {
 	if (!empty($_GET['msgtosend']) && !empty($_GET['proto_id']) && !empty($_GET['imm_DST'])) {
-		$result = pgquery('SELECT send_inject(E\'\\\\x' . substr($_GET['msgtosend'], 2) . ", '{$_GET['proto_id']}', E'\\\\x" . substr($_GET['imm_DST'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, TRUE);');
-		pg_free_result($result);
+		pg_free_result(pgquery('SELECT send_inject(E\'\\\\x' . substr($_GET['msgtosend'], 2) . ", '{$_GET['proto_id']}', E'\\\\x" . substr($_GET['imm_DST'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, TRUE);'));
 		echo 'Message ', htmlspecialchars($_GET['msgtosend']), " sent.\n";
 	}
 ?>
@@ -54,10 +53,9 @@ if (checkAuthorization(3, 'send messages')) {
 	</form>
 <?php
 }
-if (checkAuthorization(4, 'inject messages')) {
+if (checkAuthorization(5, 'inject messages')) {
 	if (!empty($_GET['msgtoinject']) && !empty($_GET['proto_id']) && !empty($_GET['imm_SRC'])) {
-		$result = pgquery('SELECT send_inject(E\'\\\\x' . substr($_GET['msgtoinject'], 2) . ", '{$_GET['proto_id']}', E'\\\\x" . substr($_GET['imm_SRC'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : ' FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, FALSE);');
-		pg_free_result($result);
+		pg_free_result(pgquery('SELECT send_inject(E\'\\\\x' . substr($_GET['msgtoinject'], 2) . ", '{$_GET['proto_id']}', E'\\\\x" . substr($_GET['imm_SRC'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : ' FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, FALSE);'));
 		echo 'Message ', htmlspecialchars($_GET['msgtoinject']), " injected.\n";
 	}
 ?>
@@ -81,7 +79,7 @@ if (checkAuthorization(4, 'inject messages')) {
 	</form>
 <?php
 }
-if (checkAuthorization(5, 'send queries to database')) {
+if (checkAuthorization(6, 'send queries to database')) {
 	if (!empty($_GET['query'])) {
 		if (!$_SESSION['is_root']) {
 			$flock = fopen('/tmp/flock', 'c');
@@ -92,7 +90,7 @@ if (checkAuthorization(5, 'send queries to database')) {
 				exit('cannot flock');
 			}
 			pg_connect('host=localhost dbname=postgres user=postgres client_encoding=UTF8');
-			pg_free_result(pgquery("UPDATE currentuser SET currentuser = '{$_SESSION['username']}';"));
+			pg_free_result(pgquery("UPDATE current_user SET current_user = '{$_SESSION['username']}';"));
 			pg_close();
 			pg_connect('host=localhost dbname=postgres user=' . ($_SESSION['is_administrator'] ? 'administrator' : 'local') . ' client_encoding=UTF8');
 		}
@@ -100,7 +98,7 @@ if (checkAuthorization(5, 'send queries to database')) {
 		if (!$_SESSION['is_root']) {
 			fclose($flock);
 		}
-		echo 'Query ', htmlspecialchars($_GET['query']), ' sent to database (PostgreSQL ', pg_version()['client'], ").\n";
+		echo 'Query \'', htmlspecialchars($_GET['query']), '\' sent to database (PostgreSQL ', pg_version()['client'], ").\n";
 ?>
 		<table border="1">
 			<tbody>
@@ -140,17 +138,40 @@ if (checkAuthorization(5, 'send queries to database')) {
 	</form>
 <?php
 }
-if (checkAuthorization(9, 'view configuration')) {
+if (checkAuthorization(11, 'manually execute timed rules')) {
+	if (!empty($_GET['user']) && !empty($_GET['id'])) {
+		$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_GET['username']}' AND NOT is_administrator;");
+		if ($_GET['user'] == $_SESSION['username'] || $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root']) {
+			pg_free_result(pgquery("SELECT manually_execute_timed_rule('{$_GET['user']}', {$_GET['id']});"));
+		}
+		pg_free_result($result);
+		echo 'For user ', htmlspecialchars($_GET['user']), ' timed rule ', htmlspecialchars($_GET['id']), " manually executed.\n";
+	}
+?>
+	<form action="" method="GET">
+		For user
+<?php
+		echo '<input type="text" name="user"', $_SESSION['is_administrator'] ? '' : ' value="' . htmlspecialchars($_SESSION['username']) . '" disabled="disabled"', "/>\n";
+?>
+		manually execute timed rule
+		<input type="text" name="id"/>
+		right now
+		<input type="submit" value="submit"/>
+		<input type="reset" value="reset"/>
+	</form>
+<?php
+}
+if (checkAuthorization(8, 'view configuration')) {
 ?>
 	<a href="view_configuration.php">View configuration</a><br/>
 <?php
 }
-if (checkAuthorization(10, 'view permissions')) {
+if (checkAuthorization(9, 'view permissions')) {
 ?>
 	<a href="view_permissions.php">View permissions</a><br/>
 <?php
 }
-if (checkAuthorization(11, 'view remotes')) {
+if (checkAuthorization(10, 'view remotes')) {
 ?>
 	<a href="view_remotes.php">View remotes</a><br/>
 <?php

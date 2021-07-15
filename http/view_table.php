@@ -50,7 +50,7 @@ function standardToPostgresqlInput($data, $oid) {
 	}
 }
 
-if (checkAuthorization(2, 'view tables') && !empty($_GET['table'])) {
+if (checkAuthorization(3, 'view tables') && !empty($_GET['table'])) {
 	$result1 = pgquery("SELECT user FROM table_user WHERE table = '{$_GET['table']}';");
 	$result2 = pgquery("SELECT TRUE FROM table_user WHERE table = '{$_GET['table']}' AND user = '{$_GET['username']}';");
 	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.user = users.username WHERE table_user.table = '{$_GET['table']}' AND NOT users.is_administrator;");
@@ -113,7 +113,7 @@ if (checkAuthorization(2, 'view tables') && !empty($_GET['table'])) {
 			}
 		}
 		$result = pgquery("TABLE {$_GET['table']} ORDER BY t ASC;");
-		echo 'Viewing table ', $h_table, ".\n";
+		echo 'Viewing table &quot;', $h_table, "&quot;.\n";
 ?>
 		<table border="1">
 			<tbody>
@@ -174,8 +174,10 @@ if (checkAuthorization(2, 'view tables') && !empty($_GET['table'])) {
 							echo '<form id="update', $row[$t], "\" action=\"\" method=\"GET\">\n";
 								echo '<input type="hidden" name="key" value="TIMESTAMP ', pg_field_type_oid($result, $t) == 1184 ? 'WITH TIME ZONE ' : '', '&apos;', $row[$t], "&apos;\"/>\n";
 								echo '<input type="hidden" name="table" value="', $h_table, "\"/>\n";
-								echo "<input type=\"submit\" name=\"update\" value=\"UPDATE\"/><br/>\n";
-								echo "<input type=\"reset\" value=\"reset\"/>\n";
+?>
+								<input type="submit" name="update" value="UPDATE"/><br/>
+								<input type="reset" value="reset"/>
+<?php
 							echo "</form>\n";
 ?>
 							<form action="" method="GET">

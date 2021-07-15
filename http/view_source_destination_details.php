@@ -1,6 +1,6 @@
 <?php
 require_once 'common.php';
-if (!empty($_GET['SRC']) && !empty($_GET['DST']) && checkAuthorization(11, 'view remotes')) {
+if (!empty($_GET['SRC']) && !empty($_GET['DST']) && checkAuthorization(10, 'view remotes')) {
 	$result1 = pgquery("SELECT TRUE FROM table_user WHERE table = 't{$_GET['SRC']}';");
 	$result2 = pgquery("SELECT TRUE FROM table_user WHERE table = 't{$_GET['SRC']}' AND user = '{$_SESSION['username']}';");
 	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.user = users.username WHERE table_user.table = 't{$_GET['SRC']}' AND NOT users.is_administrator;");
@@ -100,8 +100,10 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST']) && checkAuthorization(11, 'view
 								echo '<input type="hidden" name="SRC" value="', $h_SRC, "\"/>\n";
 								echo '<input type="hidden" name="DST" value="', $h_DST, "\"/>\n";
 								echo '<input type="hidden" name="key" value="', $str, "\"/>\n";
-								echo "<input type=\"submit\" name=\"update\" value=\"Update this mapping for this SRC and this DST\"/>\n";
-								echo "<input type=\"reset\" value=\"reset\"/>\n";
+?>
+								<input type="submit" name="update" value="Update this mapping for this SRC and this DST\"/>
+								<input type="reset" value="reset"/>
+<?php
 							echo "</form>\n";
 ?>
 							<form action="" method="GET">

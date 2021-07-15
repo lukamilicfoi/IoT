@@ -1,6 +1,6 @@
 <?php
 require_once 'common.php';
-if (checkAuthorization(10, 'view permissions')) {
+if (checkAuthorization(9, 'view permissions')) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
 			pg_free_result(pgquery('TRUNCATE TABLE table_user;'));
@@ -112,16 +112,18 @@ if (checkAuthorization(10, 'view permissions')) {
 						echo '<form id="update_', $table, '_', $user, "\" action=\"\" method=\"GET\">\n";
 							echo '<input type="hidden" name="key1" value="', $table, "\"/>\n";
 							echo '<input type="hidden" name="key2" value="', $user, "\"/>\n";
-							echo "<input type=\"submit\" name=\"update\" value=\"UPDATE\"/>\n";
-							echo "<input type=\"reset\" value=\"reset\"/>\n";
+?>
+							<input type="submit" name="update" value="UPDATE"/>
+							<input type="reset" value="reset"/>
+<?php
 						echo "</form>\n";
 ?>
 						<form action="" method="GET">
 <?php
 							echo '<input type="hidden" name="key1" value="', $table, "\"/>\n";
 							echo '<input type="hidden" name="key2" value="' $user, "\"/>\n";
-							echo "<input type=\"submit\" name=\"delete\" value=\"DELETE\"/>\n";
 ?>
+							<input type="submit" name="delete" value="DELETE"/>
 						</form>
 					</td>
 				</tr>
