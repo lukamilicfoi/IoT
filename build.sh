@@ -1,5 +1,6 @@
 #!/bin/bash
-g++ -o IoT -l bluetooth -l crypto -l pq -l pthread -l rt -l signal-protocol-c -l ssl IoT.cpp
-g++ -o libIoT -shared -fPIC -l bluetooth -l crypto -l pq -l pthread -l rt -l signal-protocol-c \
-		-l ssl IoT.cpp
+sudo cp af_ieee802154_cp.h /usr/include
+sudo cp elog.h /usr/include/postgresql/server/utils
+g++ -oIoT -lbluetooth -lcrypto -lpq -lpthread -lrt -lsignal-protocol-c -lssl IoT.cpp
+g++ -olibIoT -shared -fPIC -lbluetooth -lcrypto -lpq -lpthread -lrt -lsignal-protocol-c -lssl IoT.cpp
 
