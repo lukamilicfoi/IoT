@@ -3798,13 +3798,17 @@ raw_message *receive_raw_message() {
 #endif /* OFFLINE */
 
 bool check_permissions(const char *table, BYTE8 address) {
-	multimap<string, string>::const_iterator iter = table_user.find(table);
+	multimap<string, string>::const_iterator iter1 = table_user.find(table),
+			iter2 = table_user.find("t"s + BYTE8_to_c17charp(address));
 
-	if (iter != table_user.cend()) {
-		for (; iter != table_user.cend() && iter->first == table; iter++) {
-			if (iter->second == address) {
-				return true;
+	if (iter1 != table_user.cend()) {
+		if (iter2 != table_user.cend()) {
+			for (; iter1 != table_user.cend() && iter1->first == table; iter1++) {
+				if (iter1->second == iter2->second) {
+					return true;
+				}
 			}
+			return false;
 		}
 		return false;
 	}
@@ -4055,7 +4059,7 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	if (*value != '\0') {
 		LOG_CPP("activating rule " << value << endl);
 		PQclear(execcheckreturn("UPDATE rules SET is_active = TRUE WHERE id = "s + value
-				+ " AND user = \'" << current_user << '\''));
+				+ " AND user = \'" + current_user + '\''));
 		ss.str(value);
 		ss >> new_id;
 		if (new_id > current_id) {
@@ -4067,7 +4071,7 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	if (*value != '\0') {
 		LOG_CPP("deactivating rule " << value << endl);
 		PQclear(execcheckreturn("UPDATE rules SET is_active = FALSE WHERE id = "s + value
-				+ " AND user = \'" << current_user << '\''));
+				+ " AND user = \'" + current_user + '\''));
 		ss.str(value);
 		ss.clear();
 		ss >> new_id;
@@ -4119,7 +4123,7 @@ ostream &operator<<(ostream &os, const raw_message &rmsg) noexcept {
 }
 
 void manually_execute_timed_rule2(const manually_execute_timed_rule_struct &metrs) {
-	istringstream iss("SELECT user, id, query_command_nothing, query_command_1, "
+	ostringstream oss("SELECT user, id, query_command_nothing, query_command_1, "
 			"send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, "
 			"broadcast, override_implicit_rules, activate, deactivate, is_active, FROM rules "
 			"WHERE id = ");
@@ -4127,8 +4131,8 @@ void manually_execute_timed_rule2(const manually_execute_timed_rule_struct &metr
 	string select, current_user(metrs.user);
 	int i, j = 1;
 
-	iss << metrs.id << " AND user = \'" << current_user << '\'';
-	select = iss.str();
+	oss << metrs.id << " AND user = \'" << current_user << '\'';
+	select = oss.str();
 	res_rules = execcheckreturn(select);
 	apply_rule_beginning(res_rules, i, 0, "timed", current_user);
 	apply_rule_end(res_rules, metrs.id, i, j, 0, select, current_user);
