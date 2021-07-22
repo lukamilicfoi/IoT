@@ -2336,7 +2336,7 @@ int main(int argc, char *argv[]) {
 			"can_view_permissions BOOLEAN NOT NULL, can_view_remotes BOOLEAN NOT NULL, "
 			"can_execute_rules BOOLEAN NOT NULL, can_actually_login BOOLEAN NOT NULL"
 			"PRIMARY KEY(username))"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS rules(user TEXT, id INTEGER, "
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS rules(\"user\" TEXT, id INTEGER, "
 			"send_receive_seconds SMALLINT NOT NULL, filter TEXT, "
 			"drop_modify_nothing SMALLINT NOT NULL, modification TEXT, "
 			"query_command_nothing SMALLINT NOT NULL, query_command_1 TEXT, "
@@ -2344,8 +2344,8 @@ int main(int argc, char *argv[]) {
 			"proto_id TEXT, imm_addr BYTEA, CCF BOOLEAN, ACF BOOLEAN, broadcast BOOLEAN, "
 			"override_implicit_rules BOOLEAN, activate INTEGER, deactivate INTEGER, "
 			"is_active BOOLEAN NOT NULL, last_run TIMESTAMP(0) WITH TIME ZONE, "
-			"run_period INTERVAL SECOND(0), next_run BIGINT, PRIMARY KEY(user, id), "
-			"FOREIGN KEY(user) REFERENCES users(username) ON DELETE CASCADE ON UPDATE CASCADE)"));
+			"run_period INTERVAL SECOND(0), next_run BIGINT, PRIMARY KEY(\"user\", id), "
+			"FOREIGN KEY(\"user\") REFERENCES users(username) ON DELETE CASCADE ON UPDATE CASCADE)"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS addr_oID(addr BYTEA, "
 			"out_ID SMALLINT NOT NULL, PRIMARY KEY(addr))"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS SRC_DST(SRC BYTEA, DST BYTEA, "
@@ -2473,8 +2473,8 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS configuration("
 			"forward_messages BOOLEAN NOT NULL, use_internet_switch_algorithm BOOLEAN NOT NULL, "
 			"nsecs_id INTEGER NOT NULL, nsecs_src INTEGER NOT NULL, "
-			"trust_everyone BOOLEAN NOT NULL, default_gateway BYTEA NOT NULL, user TEXT, "
-			"PRIMARY KEY(user), FOREIGN KEY(user) REFERENCES users(username) "
+			"trust_everyone BOOLEAN NOT NULL, default_gateway BYTEA NOT NULL, \"user\" TEXT, "
+			"PRIMARY KEY(\"user\"), FOREIGN KEY(\"user\") REFERENCES users(username) "
 			"ON DELETE CASCADE ON UPDATE CASCADE)"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS current_user(current_user TEXT)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE current_user"));
@@ -2488,7 +2488,7 @@ int main(int argc, char *argv[]) {
 			"next_timed_rule BIGINT)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS update_permissions()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS manually_execute_timed_rule(INTEGER id, "
-			"user TEXT)"));
+			"\"user\" TEXT)"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_user() CASCADE"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS raw_message_for_query_command("
 			"message BYTEA)"));
@@ -2511,7 +2511,7 @@ int main(int argc, char *argv[]) {
 			"AS \'"s + cwd + "/libIoT\', \'refresh_next_timed_rule_time\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE update_permissions() AS \'"s + cwd
 			+ "/libIoT\', \'update_permissions\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE manually_execute_timed_rule(INTEGER id, TEXT user) "
+	PQclear(execcheckreturn("CREATE PROCEDURE manually_execute_timed_rule(INTEGER id, TEXT \"user\") "
 			"AS\'"s + cwd + "/libIoT\', \'manually_execute_timed_rule\' LANGUAGE C"));
 	/*
 	 * in SQL standard only RETURNS NULL ON NULL INPUT function specifier exists
@@ -2548,7 +2548,7 @@ int main(int argc, char *argv[]) {
 			"runperiod = CAST(NEW.filter AS INTEGER) * INTERVAL \'\'0:0:1\'\'; "
 			"UPDATE rules SET (last_run, run_period, next_run) = (lastrun, "
 			"runperiod, CAST(EXTRACT(EPOCH FROM lastrun + runperiod) AS BIGINT)) "
-			"WHERE id = NEW.id AND user = NEW.user; "
+			"WHERE id = NEW.id AND \"user\" = NEW.user; "
 			"PERFORM refresh_next_timed_rule_time((SELECT MIN(next_run) FROM rules)); "
 			"RETURN NULL; END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER insert_timer AFTER INSERT ON rules FOR ROW "
@@ -2569,7 +2569,7 @@ int main(int argc, char *argv[]) {
 			"DELETE FROM timers WHERE rule_id = NEW.id; "
 			"ELSIF (OLD.filter <> NEW.filter) THEN UPDATE rules SET (run_period, next_run) "
 			"= (runperiod, CAST(EXTRACT(EPOCH FROM last_run + runperiod) AS BIGINT)) "
-			"WHERE id = NEW.id AND user = NEW.user; END IF; PERFORM refresh_next_timed_rule_time(("
+			"WHERE id = NEW.id AND \"user\" = NEW.user; END IF; PERFORM refresh_next_timed_rule_time(("
 			"SELECT MIN(next_run) FROM rules)); RETURN NULL; END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER update_timer AFTER UPDATE ON rules FOR ROW "
 			"EXECUTE PROCEDURE update_timer()"));
@@ -3758,20 +3758,20 @@ raw_message *receive_raw_message() {
 		}
 		if (next_timed_rule <= ts.tv_sec++ && next_timed_rule > 0) {
 			LOG_CPP("checking for rules" << endl);
-			ss.str("SELECT user, id, query_command_nothing, query_command_1, "
+			ss.str("SELECT \"user\", id, query_command_nothing, query_command_1, "
 					"send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, "
 					"CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, "
 					"FROM rules WHERE is_active AND next_run <= ");
 			ss.clear();
 			ss << next_timed_rule;
 			select = ss.str();
-			res_rules = execcheckreturn(select + " ORDER BY user ASC, id ASC");
+			res_rules = execcheckreturn(select + " ORDER BY \"user\" ASC, id ASC");
 			for (i = 0, j = PQntuples(res_rules); i < j; i++) {
 				current_user = PQgetvalue(res_rules, i, 0);
 				apply_rule_beginning(res_rules, current_id, i, "timed", current_user);
 				PQclear(execcheckreturn("UPDATE rules SET (last_run, next_run) = (last_run "
 						"+ run_period, CAST(EXTRACT(EPOCH FROM last_run + 2 * run_period) "
-						"AS BIGINT)) WHERE id = "s + PQgetvalue(res_rules, i, 1) + " AND user = \'"
+						"AS BIGINT)) WHERE id = "s + PQgetvalue(res_rules, i, 1) + " AND \"user\" = \'"
 						+ PQgetvalue(res_rules, i, 0) + '\''));
 				apply_rule_end(res_rules, current_id, i, j, 0, select, current_user);
 			}
@@ -3930,16 +3930,16 @@ void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
 formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool send) {
 	auto t_u = table_user.find("t"s + BYTE8_to_c17charp(send ? fmsg->SRC : fmsg->DST));
 	string current_user(t_u != table_user.cend() ? t_u->second : "root"), select((send
-			? "SELECT user, id, send_receive_seconds, filter, drop_modify_nothing, modification, "
+			? "SELECT \"user\", id, send_receive_seconds, filter, drop_modify_nothing, modification, "
 			"query_command_nothing, query_command_1, send_inject_query_command_nothing, "
 			"query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, "
 			"activate, deactivate, is_active, FROM rules WHERE send_receive_seconds = 0 "
-			"AND is_active AND user = \'"
-			: "SELECT user, id, send_receive_seconds, filter, drop_modify_nothing, modification, "
+			"AND is_active AND \"user\" = \'"
+			: "SELECT \"user\", id, send_receive_seconds, filter, drop_modify_nothing, modification, "
 			"query_command_nothing, query_command_1, send_inject_query_command_nothing, "
 			"query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, "
 			"activate, deactivate, is_active, FROM rules WHERE send_receive_seconds = 1"
-			"AND is_active AND user = \'") + current_user + '\'');
+			"AND is_active AND \"user\" = \'") + current_user + '\'');
 	PGresult *res_fields, *res_rules;
 	int i = 0, j, current_id;
 	bool to_delete = false;
@@ -4059,7 +4059,7 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	if (*value != '\0') {
 		LOG_CPP("activating rule " << value << endl);
 		PQclear(execcheckreturn("UPDATE rules SET is_active = TRUE WHERE id = "s + value
-				+ " AND user = \'" + current_user + '\''));
+				+ " AND \"user\" = \'" + current_user + '\''));
 		ss.str(value);
 		ss >> new_id;
 		if (new_id > current_id) {
@@ -4071,7 +4071,7 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	if (*value != '\0') {
 		LOG_CPP("deactivating rule " << value << endl);
 		PQclear(execcheckreturn("UPDATE rules SET is_active = FALSE WHERE id = "s + value
-				+ " AND user = \'" + current_user + '\''));
+				+ " AND \"user\" = \'" + current_user + '\''));
 		ss.str(value);
 		ss.clear();
 		ss >> new_id;
@@ -4085,7 +4085,7 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 		PQclear(res_rules);
 		ss.str(select);
 		ss.clear();
-		ss << " AND id > " << current_id << " AND user = \'" << current_user
+		ss << " AND id > " << current_id << " AND \"user\" = \'" << current_user
 				<< "\' ORDER BY id ASC";
 		res_rules = execcheckreturn(ss.str());
 		j = PQntuples(res_rules);
@@ -4123,7 +4123,7 @@ ostream &operator<<(ostream &os, const raw_message &rmsg) noexcept {
 }
 
 void manually_execute_timed_rule2(const manually_execute_timed_rule_struct &metrs) {
-	ostringstream oss("SELECT user, id, query_command_nothing, query_command_1, "
+	ostringstream oss("SELECT \"user\", id, query_command_nothing, query_command_1, "
 			"send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, "
 			"broadcast, override_implicit_rules, activate, deactivate, is_active, FROM rules "
 			"WHERE id = ");
@@ -4131,7 +4131,7 @@ void manually_execute_timed_rule2(const manually_execute_timed_rule_struct &metr
 	string select, current_user(metrs.user);
 	int i, j = 1;
 
-	oss << metrs.id << " AND user = \'" << current_user << '\'';
+	oss << metrs.id << " AND \"user\" = \'" << current_user << '\'';
 	select = oss.str();
 	res_rules = execcheckreturn(select);
 	apply_rule_beginning(res_rules, i, 0, "timed", current_user);
