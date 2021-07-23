@@ -731,7 +731,7 @@ void protocol::stop() {
 void protocol::recv_all(protocol *proto) {
 	raw_message *rmsg;
 
-	LOG_CPP("started recv_all thread " << proto->recv_all_thread->get_id() << " for class "
+	LOG_CPP("started recv_all thread " << this_thread::get_id() << " for class "
 			<< typeid(*proto).name() << " and id " << proto->get_my_id() << endl);
 	while (true) {
 		rmsg = proto->recv_once();
@@ -749,7 +749,7 @@ void protocol::recv_all(protocol *proto) {
 void protocol::send_all(protocol *proto) {
 	raw_message *rmsg;
 
-	LOG_CPP("started send_all thread " << proto->send_all_thread->get_id() << " for class "
+	LOG_CPP("started send_all thread " << this_thread::get_id() << " for class "
 			<< typeid(*proto).name() << " and id " << proto->get_my_id() << endl);
 	while (true) {
 		if (mq_receive(proto->get_my_mq(),
@@ -2334,7 +2334,7 @@ int main(int argc, char *argv[]) {
 			"can_inject_messages BOOLEAN NOT NULL, can_send_queries BOOLEAN NOT NULL, "
 			"can_view_rules BOOLEAN NOT NULL, can_view_configuration BOOLEAN NOT NULL, "
 			"can_view_permissions BOOLEAN NOT NULL, can_view_remotes BOOLEAN NOT NULL, "
-			"can_execute_rules BOOLEAN NOT NULL, can_actually_login BOOLEAN NOT NULL"
+			"can_execute_rules BOOLEAN NOT NULL, can_actually_login BOOLEAN NOT NULL, "
 			"PRIMARY KEY(username))"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS rules(\"user\" TEXT, id INTEGER, "
 			"send_receive_seconds SMALLINT NOT NULL, filter TEXT, "
@@ -2350,7 +2350,7 @@ int main(int argc, char *argv[]) {
 			"out_ID SMALLINT NOT NULL, PRIMARY KEY(addr))"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS SRC_DST(SRC BYTEA, DST BYTEA, "
 			"PRIMARY KEY(SRC, DST), FOREIGN KEY(SRC) REFERENCES addr_oID(addr) "
-			"ON DELETE CASCADE ON UPDATE CASCADE"));
+			"ON DELETE CASCADE ON UPDATE CASCADE)"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS ID_TWR(SRC BYTEA, DST BYTEA, ID SMALLINT, "
 			"TWR TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(SRC, DST, ID), "
 			"FOREIGN KEY(SRC, DST) REFERENCES SRC_DST(SRC, DST) "
