@@ -2224,6 +2224,8 @@ void udp::start() {
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(UDP_PORT);
 	sa.sin_addr.s_addr = INADDR_ANY;
+	THR(setsockopt(udp_sock, SOL_SOCKET, SO_REUSEPORT, &a, sizeof(a)) < 0,
+			network_exception("cannot SO_REUSEPORT udp_sock"));
 	THR(bind(udp_sock, reinterpret_cast<sockaddr *>(&sa), sizeof(sockaddr)) < 0,
 			network_exception("cannot bind udp_sock"));
 	FD_SET(udp_sock, &socks);
@@ -2243,6 +2245,8 @@ void udp::start() {
 			network_exception("cannot setsockopt broadcast_sock"));
 	sa.sin_port = htons(UDP_PORT);
 	sa.sin_addr.s_addr = INADDR_BROADCAST;
+	THR(setsockopt(broadcast_sock, SOL_SOCKET, SO_REUSEPORT, &a, sizeof(a)) < 0,
+			network_exception("cannot SO_REUSEPORT broadcast_sock"));
 	THR(bind(broadcast_sock, reinterpret_cast<sockaddr *>(&sa), sizeof(sockaddr)) < 0,
 			network_exception("cannot bind broadcast_sock"));
 	FD_SET(broadcast_sock, &socks);
