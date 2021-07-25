@@ -2378,7 +2378,7 @@ int main(int argc, char *argv[]) {
 		p->start();
 	}
 	PQclear(res);
-	PQclear(execcheckreturn("TRUNCATE TABLE proto_name"));
+	PQclear(execcheckreturn("TRUNCATE TABLE proto_name CASCADE"));//CASCADE needed for table fmforsr
 	oss.str("INSERT INTO proto_name(proto, name) VALUES(");
 	for (const protocol *p : protocols) {
 		oss << '\'' << p->get_my_id() << "\', \'" << get_typename(typeid(*p)) << "\'), (";
@@ -2412,7 +2412,7 @@ int main(int argc, char *argv[]) {
 		}
 		close(sock);
 		sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-		hdi.dev_id = i;
+		hdi.dev_id = 0;
 		THR(ioctl(sock, HCIGETDEVINFO, &hdi) < 0, system_exception("cannot HCIGETDEVINFO ioctl"));
 		if (!hci_test_bit(HCI_UP, &hdi.flags)) {
 			THR(ioctl(sock, HCIDEVUP, 0) < 0, system_exception("cannot HCIDEVUP ioctl"));
@@ -2446,11 +2446,11 @@ int main(int argc, char *argv[]) {
 		PQclear(res);
 		close(sock);
 		sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-		oss.str("SELECT TRUE FROM adapter_name WHERE name = ");
-		oss << hdi.name;
-		hdi.dev_id = i;
+		oss.str("SELECT TRUE FROM adapter_name WHERE name = \'");
+		hdi.dev_id = 0;
 		THR(ioctl(sock, HCIGETDEVINFO, &hdi) < 0, system_exception("cannot HCIGETDEVINFO ioctl"));
-		res = execcheckreturn(oss.str());
+		oss << hdi.name;
+		res = execcheckreturn(oss.str() + '\'');
 		if (PQntuples(res) == 0) {
 			if (!hci_test_bit(HCI_UP, &hdi.flags)) {
 				THR(ioctl(sock, HCIDEVUP, 0) < 0, system_exception("cannot HCIDEVUP ioctl"));
@@ -2480,8 +2480,8 @@ int main(int argc, char *argv[]) {
 			"trust_everyone BOOLEAN NOT NULL, default_gateway BYTEA NOT NULL, \"user\" TEXT, "
 			"PRIMARY KEY(\"user\"), FOREIGN KEY(\"user\") REFERENCES users(username) "
 			"ON DELETE CASCADE ON UPDATE CASCADE)"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS current_user(current_user TEXT)"));
-	PQclear(execcheckreturn("TRUNCATE TABLE current_user"));
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS \"current_user\"(\"current_user\" TEXT)"));
+	PQclear(execcheckreturn("TRUNCATE TABLE \"current_user\""));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS ext(addr_id TEXT) CASCADE"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS send_inject(message BYTEA, proto_id TEXT, "
 			"imm_addr BYTEA, CCF BOOLEAN, ACF BOOLEAN, send BOOLEAN, broadcast BOOLEAN, "
@@ -2493,13 +2493,13 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS update_permissions()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS manually_execute_timed_rule(INTEGER id, "
 			"\"user\" TEXT)"));
-	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_user() CASCADE"));
+	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS \"current_user\"() CASCADE"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS raw_message_for_query_command("
 			"message BYTEA)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_user(table NAME, user TEXT, "
-			"PRIMARY KEY(table, user), FOREIGN KEY(table) REFERENCES pg_class(relname) "
-			"ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY(user) REFERENCES user(username) "
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_user(table NAME, \"user\" TEXT, "
+			"PRIMARY KEY(table, \"user\"), FOREIGN KEY(table) REFERENCES pg_class(relname) "
+			"ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY(\"user\") REFERENCES user(username) "
 			"ON UPDATE CASCADE ON DELETE CASCADE)"));
 	PQclear(execcheckreturn("CREATE PROCEDURE ext(addr_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'ext\' LANGUAGE C"));
@@ -2523,8 +2523,8 @@ int main(int argc, char *argv[]) {
 	 * also, other function specifiers exist in standard SQL
 	 */
 	PQclear(execcheckreturn("CREATE FUNCTION current_user_update() RETURNS trigger AS \'BEGIN "
-			"IF EXISTS (TABLE current_user) "
-			"AND ((SELECT current_user FROM current_user) <> NEW.username "
+			"IF EXISTS (TABLE \"current_user\") "
+			"AND ((SELECT \"current_user\" FROM \"current_user\") <> NEW.username "
 			"OR OLD.username <> NEW.username) AND (OLD.is_administrator OR NEW.is_administrator "
 			"OR (SELECT NOT users.is_administrator FROM users INNER JOIN current_user "
 			"ON users.username = current_user.current_user)) THEN RETURN NULL; "
@@ -2532,16 +2532,16 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE TRIGGER current_user_update BEFORE UPDATE ON users "
 			"FOR ROW EXECUTE PROCEDURE current_user_update()"));
 	PQclear(execcheckreturn("CREATE FUNCTION current_user_delete() RETURNS trigger AS \'BEGIN "
-			"IF EXISTS (TABLE current_user) AND (OLD.is_administrator "
+			"IF EXISTS (TABLE \"current_user\") AND (OLD.is_administrator "
 			"OR (SELECT NOT users.is_administrator FROM users "
-			"INNER JOIN current_user ON users.username = current_user.current_user)) "
+			"INNER JOIN \"current_user\" ON users.username = current_user.current_user)) "
 			"THEN RETURN NULL; ELSE RETURN OLD; END IF; END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER current_user_delete BEFORE DELETE ON users "
 			"FOR ROW EXECUTE PROCEDURE current_user_delete()"));
 	PQclear(execcheckreturn("CREATE FUNCTION current_user_insert() RETURNS trigger AS \'BEGIN "
-			"IF EXISTS (TABLE current_user) AND (NEW.is_administrator "
+			"IF EXISTS (TABLE \"current_user\") AND (NEW.is_administrator "
 			"OR (SELECT NOT users.is_administrator FROM users "
-			"INNER JOIN current_user ON users.username = current_user.current_user)) "
+			"INNER JOIN \"current_user\" ON users.username = current_user.current_user)) "
 			"THEN RETURN NULL; ELSE RETURN NEW; END IF; END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER current_user_insert() BEFORE INSERT ON users "
 			"FOR ROW EXECUTE PROCEDURE current_user_insert()"));
@@ -2780,7 +2780,7 @@ void populate_local_proto_iaddr() {
 		}
 	}
 	close(sock);
-	sock = socket(AF_BLUETOOTH, SOCK_RAW, 0);
+	sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	hdi.dev_id = 0;
 	THR(ioctl(sock, HCIGETDEVINFO, &hdi) < 0, system_exception("cannot HCIGETDEVINFO ioctl"));
 	if (hci_test_bit(HCI_RAW, &hdi.flags) && !bacmp(&hdi.bdaddr, &bdaddr_any)) {
