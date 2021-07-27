@@ -2488,18 +2488,19 @@ int main(int argc, char *argv[]) {
 			"override_implicit_rules BOOLEAN)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS load_store(load BOOLEAN)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS config()"));
-	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_next_timed_rule_time("
+	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS refresh_next_timed_rule_time("
 			"next_timed_rule BIGINT)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS update_permissions()"));
-	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS manually_execute_timed_rule(INTEGER id, "
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS manually_execute_timed_rule(id INTEGER, "
 			"username TEXT)"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_username() CASCADE"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS raw_message_for_query_command("
 			"message BYTEA)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
+	PQclear(execcheckreturn("CREATE TEMPORARY TABLE tables AS SELECT relname AS tablename FROM pg_class"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_user(tablename NAME, username TEXT, "
-			"PRIMARY KEY(tablename, username), FOREIGN KEY(tablename) REFERENCES pg_class(relname) "
-			"ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY(username) REFERENCES user(username) "
+			"PRIMARY KEY(tablename, username), FOREIGN KEY(tablename) REFERENCES tables(tablename) "
+			"ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY(username) REFERENCES users(username) "
 			"ON UPDATE CASCADE ON DELETE CASCADE)"));
 	PQclear(execcheckreturn("CREATE PROCEDURE ext(addr_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'ext\' LANGUAGE C"));
@@ -2511,12 +2512,15 @@ int main(int argc, char *argv[]) {
 			+ "/libIoT\', \'load_store\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE config() AS \'"s + cwd
 			+ "/libIoT\', \'config\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE refresh_next_timed_rule_time(next_timed_rule BIGINT) "
+	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_timed_rule_time(next_timed_rule BIGINT) RETURNS void"
 			"AS \'"s + cwd + "/libIoT\', \'refresh_next_timed_rule_time\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE update_permissions() AS \'"s + cwd
 			+ "/libIoT\', \'update_permissions\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE manually_execute_timed_rule(INTEGER id, TEXT username) "
+	PQclear(execcheckreturn("CREATE PROCEDURE manually_execute_timed_rule(id INTEGER, username TEXT) "
 			"AS\'"s + cwd + "/libIoT\', \'manually_execute_timed_rule\' LANGUAGE C"));
+	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_username_update() CASCADE"));
+	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_username_delete() CASCADE"));
+	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_username_insert() CASCADE"));
 	/*
 	 * in SQL standard only RETURNS NULL ON NULL INPUT function specifier exists
 	 *
@@ -2538,7 +2542,7 @@ int main(int argc, char *argv[]) {
 			"THEN RETURN NULL; ELSE RETURN OLD; END IF; END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER current_username_delete BEFORE DELETE ON users "
 			"FOR ROW EXECUTE PROCEDURE current_username_delete()"));
-	PQclear(execcheckreturn("CREATE FUNCTION current_username_insert() RETURNS trigger AS \'BEGIN "
+	PQclear(execcheckreturn("CREATE FUNCTION current_username_insert RETURNS trigger AS \'BEGIN "
 			"IF EXISTS (TABLE current_username) AND (NEW.is_administrator "
 			"OR (SELECT NOT users.is_administrator FROM users "
 			"INNER JOIN current_username ON users.username = current_username.current_username)) "
@@ -2556,7 +2560,7 @@ int main(int argc, char *argv[]) {
 			"PERFORM refresh_next_timed_rule_time((SELECT MIN(next_run) FROM rules)); "
 			"RETURN NULL; END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER insert_timer AFTER INSERT ON rules FOR ROW "
-			"WHEN (NEW.send_receive_seconds = 2 AND NEW.active IS TRUE) "
+			"WHEN (NEW.send_receive_seconds = 2 AND NEW.is_active) "
 			"EXECUTE PROCEDURE insert_timer()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS update_timer() CASCADE"));
 	PQclear(execcheckreturn("CREATE FUNCTION update_timer() RETURNS trigger AS \'DECLARE "
@@ -2577,7 +2581,7 @@ int main(int argc, char *argv[]) {
 			"SELECT MIN(next_run) FROM rules)); RETURN NULL; END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER update_timer AFTER UPDATE ON rules FOR ROW "
 			"EXECUTE PROCEDURE update_timer()"));
-	PQclear(execcheckreturn("CALL refresh_next_timed_rule_time(("
+	PQclear(execcheckreturn("SELECT refresh_next_timed_rule_time(("
 			"SELECT MIN(next_run) FROM rules))"));
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
 	main_loop();
