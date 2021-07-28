@@ -2497,7 +2497,9 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS raw_message_for_query_command("
 			"message BYTEA)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
-	PQclear(execcheckreturn("CREATE TEMPORARY TABLE tables AS SELECT relname AS tablename FROM pg_class"));
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS tables(tablename NAME PRIMARY KEY)"));
+	PQclear(execcheckreturn("DELETE FROM tables WHERE tablename IN (SELECT tablename FROM tables EXCEPT SELECT relname FROM pg_class)"));
+	PQclear(execcheckreturn("INSERT INTO tables SELECT tablename FROM tables EXCEPT SELECT relname FROM pg_class"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_user(tablename NAME, username TEXT, "
 			"PRIMARY KEY(tablename, username), FOREIGN KEY(tablename) REFERENCES tables(tablename) "
 			"ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY(username) REFERENCES users(username) "
@@ -2863,7 +2865,7 @@ extern "C" Datum manually_execute_timed_rule(PG_FUNCTION_ARGS) {
 	text *user_sql = PG_GETARG_TEXT_PP(0);
 	int user_len = VARSIZE_ANY_EXHDR(user_sql);
 	int id = PG_GETARG_INT32(1);
-	manually_execute_timed_rule_struct metrs = { 0 };
+	manually_execute_timed_rule_struct metrs = { "", id };
 	mqd_t manually_execute_timed_rule_mq = mq_open("/manually_execute_timed_rule", O_WRONLY);
 
 	THR(manually_execute_timed_rule_mq < 0,
