@@ -404,8 +404,8 @@ union typedetails {
 struct configuration {
 	bool forward_messages;
 	bool use_internet_switch_algorithm;
-	bool nsecs_id;
-	bool nsecs_src;
+	int nsecs_id;
+	int nsecs_src;
 	bool trust_everyone;
 	BYTE8 default_gateway;
 };
@@ -2419,7 +2419,7 @@ int main(int argc, char *argv[]) {
 					//privileged operation!!!
 			LOG_CPP("turned on device " << hdi.name << endl);
 		}
-		oss << MAX_DEVICE_INDEX + i << ", \'" << hdi.name << "\'), ";
+		oss << MAX_DEVICE_INDEX + i << ", \'" << hdi.name << "\'), (";
 		oss.seekp(-3, oss.end) << '\0';
 		PQclear(execcheckreturn(oss.str()));
 	} else {
@@ -2480,6 +2480,7 @@ int main(int argc, char *argv[]) {
 			"trust_everyone BOOLEAN NOT NULL, default_gateway BYTEA NOT NULL, username TEXT, "
 			"PRIMARY KEY(username), FOREIGN KEY(username) REFERENCES users(username) "
 			"ON DELETE CASCADE ON UPDATE CASCADE)"));
+	PQclear(execcheckreturn("CALL config"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS current_username(current_username TEXT)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE current_username"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS ext(addr_id TEXT) CASCADE"));
@@ -2514,7 +2515,7 @@ int main(int argc, char *argv[]) {
 			+ "/libIoT\', \'load_store\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE config() AS \'"s + cwd
 			+ "/libIoT\', \'config\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_timed_rule_time(next_timed_rule BIGINT) RETURNS void"
+	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_timed_rule_time(next_timed_rule BIGINT) RETURNS void  "
 			"AS \'"s + cwd + "/libIoT\', \'refresh_next_timed_rule_time\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE update_permissions() AS \'"s + cwd
 			+ "/libIoT\', \'update_permissions\' LANGUAGE C"));
@@ -2544,12 +2545,12 @@ int main(int argc, char *argv[]) {
 			"THEN RETURN NULL; ELSE RETURN OLD; END IF; END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER current_username_delete BEFORE DELETE ON users "
 			"FOR ROW EXECUTE PROCEDURE current_username_delete()"));
-	PQclear(execcheckreturn("CREATE FUNCTION current_username_insert RETURNS trigger AS \'BEGIN "
+	PQclear(execcheckreturn("CREATE FUNCTION current_username_insert() RETURNS trigger AS \'BEGIN "
 			"IF EXISTS (TABLE current_username) AND (NEW.is_administrator "
 			"OR (SELECT NOT users.is_administrator FROM users "
 			"INNER JOIN current_username ON users.username = current_username.current_username)) "
 			"THEN RETURN NULL; ELSE RETURN NEW; END IF; END;\' LANGUAGE PLPGSQL"));
-	PQclear(execcheckreturn("CREATE TRIGGER current_username_insert() BEFORE INSERT ON users "
+	PQclear(execcheckreturn("CREATE TRIGGER current_username_insert BEFORE INSERT ON users "
 			"FOR ROW EXECUTE PROCEDURE current_username_insert()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS insert_timer() CASCADE"));
 	PQclear(execcheckreturn("CREATE FUNCTION insert_timer() RETURNS trigger AS \'DECLARE "
@@ -3420,11 +3421,11 @@ void main_loop() {
 			break;
 		} catch (error_exception &e) {
 			LOG_CPP("sending PAYLOAD_ERROR for message " << HEX(fmsg->ID, 2) << endl);
-			send_control("P"s + *reinterpret_cast<char *>(fmsg->ID) + e.what(), fmsg->SRC,
+			send_control("P"s + *reinterpret_cast<char *>(&fmsg->ID) + e.what(), fmsg->SRC,
 					fmsg->DST);
 		} catch (unsupported_exception &e) {
 			LOG_CPP("sending OPERATION_UNSUPPORTED for message " << HEX(fmsg->ID, 2) << endl);
-			send_control("O"s + *reinterpret_cast<char *>(fmsg->ID) + e.what(), fmsg->SRC,
+			send_control("O"s + *reinterpret_cast<char *>(&fmsg->ID) + e.what(), fmsg->SRC,
 					fmsg->DST);
 		} catch (message_exception &e) {
 			//don't-care
@@ -3930,7 +3931,7 @@ void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
 	oss << "\', E\'\\\\x" << HEX_NOSHOWB(fmsg.CRC, 8) << "\', "
 			<< BOOLALPHA_UPPERCASE(fmsg.is_encrypted()) << ", "
 			<< BOOLALPHA_UPPERCASE(fmsg.is_signed()) << ", " << BOOLALPHA_UPPERCASE(rmsg.broadcast)
-			<< BOOLALPHA_UPPERCASE(rmsg.override_implicit_rules) << ", \'"
+			<< ", " << BOOLALPHA_UPPERCASE(rmsg.override_implicit_rules) << ", \'"
 			<< rmsg.proto->get_my_id() << "\', E\'\\\\x" << BYTE8_to_c17charp(rmsg.imm_addr)
 			<< "\', " << BOOLALPHA_UPPERCASE(rmsg.CCF) << ", " << BOOLALPHA_UPPERCASE(rmsg.ACF)
 			<< ')';
@@ -3943,12 +3944,12 @@ formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool 
 			? "SELECT username, id, send_receive_seconds, filter, drop_modify_nothing, modification, "
 			"query_command_nothing, query_command_1, send_inject_query_command_nothing, "
 			"query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, "
-			"activate, deactivate, is_active, FROM rules WHERE send_receive_seconds = 0 "
+			"activate, deactivate, is_active FROM rules WHERE send_receive_seconds = 0 "
 			"AND is_active AND username = \'"
 			: "SELECT username, id, send_receive_seconds, filter, drop_modify_nothing, modification, "
 			"query_command_nothing, query_command_1, send_inject_query_command_nothing, "
 			"query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, "
-			"activate, deactivate, is_active, FROM rules WHERE send_receive_seconds = 1"
+			"activate, deactivate, is_active FROM rules WHERE send_receive_seconds = 1"
 			"AND is_active AND username = \'") + current_user + '\'');
 	PGresult *res_fields, *res_rules;
 	int i = 0, j, current_id;
@@ -4753,7 +4754,7 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 void send_formatted_message(formatted_message *fmsg) {
 	unique_ptr<raw_message> rmsg;
 	int i;
-	map<BYTE8, remote *>::iterator iter_DST_destination;
+	map<BYTE8, remote *>::iterator iter_DST_destination = addr_remote.find(fmsg->DST);
 	multimap<protocol *, BYTE8>::iterator iter_iSRC;
 	bool failed = true;
 	my_time_point now = my_now();
@@ -4768,6 +4769,7 @@ void send_formatted_message(formatted_message *fmsg) {
 	configuration *c = user_configuration[iter_table_user != table_user.cend()
 			? iter_table_user->second : "root"];
 
+	THR(iter_DST_destination == addr_remote.end(), message_exception("DST does not exist"));
 	for (iter_proto_iDST_TWR = iter_DST_destination->second->proto_iSRC_TWR.begin();
 			iter_proto_iDST_TWR != iter_DST_destination->second->proto_iSRC_TWR.end();
 			iter_proto_iDST_TWR++) {
@@ -4781,9 +4783,6 @@ void send_formatted_message(formatted_message *fmsg) {
 				iter_proto_iDST_TWR->second->erase(iter_iDST_TWR);
 			} else {
 				copy.reset(new(fmsg->LEN) formatted_message(*fmsg));
-				iter_DST_destination = addr_remote.find(fmsg->DST);
-				THR(iter_DST_destination == addr_remote.end(),
-						message_exception("DST does not exist"));
 				rmsg.reset(new raw_message(new BYTE[fmsg->LEN + fields_MAX]));
 				rmsg->imm_addr = iter_iDST_TWR->first;
 				rmsg->proto = iter_proto_iDST_TWR->first;
@@ -5166,7 +5165,7 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 		vector<typedetails> &td, string &first, string &second, bool &no_t) {
 	int max_column = static_cast<int>(dt.back()) - 1, column = 0, period, e, expo, row = 0;
 	bool added = false, loop = true;
-	stringstream ss;
+	stringstream ss(ss.out | ss.ate);
 	typedetails new_td;
 	string uescape;
 
