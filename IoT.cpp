@@ -2359,6 +2359,7 @@ int main(int argc, char *argv[]) {
 			"TWR TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(SRC, DST, ID), "
 			"FOREIGN KEY(SRC, DST) REFERENCES SRC_DST(SRC, DST) "
 			"ON DELETE CASCADE ON UPDATE CASCADE)"));
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS t"s + BYTE8_to_c17charp(local_addr) + "(t TIMESTAMP(4) WITHOUT TIME ZONE, PRIMARY KEY(t))"));
 
 	res = execcheckreturn("SELECT TRUE FROM pg_class WHERE relname = \'proto_name\'");
 	if (PQntuples(res) == 0) {
@@ -2480,7 +2481,6 @@ int main(int argc, char *argv[]) {
 			"trust_everyone BOOLEAN NOT NULL, default_gateway BYTEA NOT NULL, username TEXT, "
 			"PRIMARY KEY(username), FOREIGN KEY(username) REFERENCES users(username) "
 			"ON DELETE CASCADE ON UPDATE CASCADE)"));
-	PQclear(execcheckreturn("CALL config"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS current_username(current_username TEXT)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE current_username"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS ext(addr_id TEXT) CASCADE"));
@@ -2515,7 +2515,7 @@ int main(int argc, char *argv[]) {
 			+ "/libIoT\', \'load_store\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE config() AS \'"s + cwd
 			+ "/libIoT\', \'config\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_timed_rule_time(next_timed_rule BIGINT) RETURNS void  "
+	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_timed_rule_time(next_timed_rule BIGINT) RETURNS void "
 			"AS \'"s + cwd + "/libIoT\', \'refresh_next_timed_rule_time\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE update_permissions() AS \'"s + cwd
 			+ "/libIoT\', \'update_permissions\' LANGUAGE C"));
@@ -2586,6 +2586,7 @@ int main(int argc, char *argv[]) {
 			"EXECUTE PROCEDURE update_timer()"));
 	PQclear(execcheckreturn("SELECT refresh_next_timed_rule_time(("
 			"SELECT MIN(next_run) FROM rules))"));
+	PQclear(execcheckreturn("CALL config()"));
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
 	main_loop();
 
@@ -2807,7 +2808,7 @@ void determine_local_addr() {
 	while (find_next_lower_device(sock, ifr, i) >= 0) {
 		THR(ioctl(sock, SIOCGIFHWADDR, &ifr) < 0,
 				system_exception("cannot SIOCGIFHWADDR ioctl"));//cannot cause EADDRNOTAVAIL
-		if (ifr.ifr_hwaddr.sa_family == ARPHRD_ETHER) {
+		if (ifr.ifr_hwaddr.sa_family == ARPHRD_IEEE80211) {
 			if (little_endian) {
 				memcpy_reverse(&local_addr, ifr.ifr_hwaddr.sa_data, 6);
 			} else {
@@ -3246,11 +3247,11 @@ void encode_message(formatted_message &fmsg, raw_message &rmsg) {
 		i += 8;
 	}
 	memcpy(rmsg.msg + i, fmsg.PL, fmsg.LEN);
-	if (fmsg.HD.R) {
-		memcpy_endian(rmsg.msg + i, &fmsg.CRC, 4);
-		i += 4;
-	}
 	rmsg.TML = i + fmsg.LEN;
+	if (fmsg.HD.R) {
+		memcpy_endian(rmsg.msg + rmsg.TML, &fmsg.CRC, 4);
+		rmsg.TML += 4;
+	}
 }
 
 void refresh_next_timed_rule_time2(const refresh_next_timed_rule_time_struct &rntrts) {
@@ -3480,8 +3481,10 @@ void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 	memcpy_endian(&fmsg->DST, &DST, 8);
 	memcpy_endian(&fmsg->SRC, &SRC, 8);
 	payload.copy(reinterpret_cast<char *>(fmsg->PL), LEN);
+	fmsg->HD.put_as_byte(header::reverse_byte(fmsg->HD.get_as_byte()));
 	fmsg->CRC = givecrc32c(reinterpret_cast<BYTE *>(fmsg.get()) + 4, LEN + fields_MAX);
 			//HD,ID,LEN,DST,SRC
+	fmsg->HD.put_as_byte(header::reverse_byte(fmsg->HD.get_as_byte()));
 	if (little_endian) {
 		fmsg->LEN = LEN;
 		fmsg->DST = DST;
@@ -4632,9 +4635,15 @@ void unsub(string _id, BYTE8 address) {
 void sel(string query, BYTE8 address) {
 	regex re("(?:FROM|JOIN) +([a-z0-9]+)", regex_constants::icase);//must ignore case for security
 
-	/* is not SELECT if doesn't start with "SELECT ", "WITH ", "TABLE ", or '('s before those */
+	/*
+	 * is not SELECT if doesn't start with "SELECT\\b",
+	 * "WITH\\b", "TABLE\\b", or '('s before those
+	 */
 	THR(!is_select(query), error_exception("error in query"));
-	/* is not clean if contains I/U/D in pre-queries, multi-queries, SELECT INTO or SELECT FOR */
+	/*
+	 * is not clean if contains INSERT/UPDATE/DELETE in pre-queries,
+	 * multi-queries, SELECT INTO, or SELECT FOR
+	 */
 	THR(!clean_select(query), error_exception("error in SELECT"));
 	for (sti iter_begin(query.begin(), query.end(), re, 1), iter_end; iter_begin != iter_end;
 			iter_begin++) {
@@ -4645,7 +4654,7 @@ void sel(string query, BYTE8 address) {
 }
 
 bool is_select(string query) {
-	regex re("\\(*(SELECT|WITH|TABLE) (.|\\n|\\r)*", regex_constants::nosubs);
+	regex re("\\(*(SELECT|WITH|TABLE)\\b(.|\\n|\\r)*", regex_constants::nosubs);
 			//deliberately not ignoring case
 
 	return regex_match(query, re);
@@ -4739,8 +4748,10 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 	memcpy_endian(&fmsg->DST, &DST, 8);
 	memcpy_endian(&fmsg->SRC, &local_addr, 8);
 	data.copy(reinterpret_cast<char *>(fmsg->PL), LEN);
+	fmsg->HD.put_as_byte(header::reverse_byte(fmsg->HD.get_as_byte()));
 	fmsg->CRC = givecrc32c(reinterpret_cast<BYTE *>(fmsg.get()) + 4, LEN + fields_MAX);
 			//HD,ID,LEN,DST,SRC
+	fmsg->HD.put_as_byte(header::reverse_byte(fmsg->HD.get_as_byte()));
 	if (little_endian) {
 		fmsg->LEN = LEN;
 		fmsg->DST = DST;
