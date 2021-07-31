@@ -141,7 +141,7 @@ extern "C" { PG_MODULE_MAGIC; }
  */
 #define RE_STRING "\'[^\']*\'(\?!\\s*\')|\"[^\"]*\"(\?!\\s*\")"
 
-#define fields_MAX 20
+#define fields_MAX 24
 
 #undef strerror
 
@@ -2375,9 +2375,6 @@ int main(int argc, char *argv[]) {
 		instantiate_protocol_if_enabled<ble>();
 		instantiate_protocol_if_enabled<_154>();
 	}
-	for (protocol *p : protocols) {
-		p->start();
-	}
 	PQclear(res);
 	PQclear(execcheckreturn("TRUNCATE TABLE proto_name CASCADE"));//CASCADE needed for table fmforsr
 	oss.str("INSERT INTO proto_name(proto, name) VALUES(");
@@ -2463,6 +2460,9 @@ int main(int argc, char *argv[]) {
 					//privileged operation!!!
 			LOG_CPP("turned off device " << hdi.name << endl);
 		}
+	}
+	for (protocol *p : protocols) {
+		p->start();
 	}
 	PQclear(res);
 	close(sock);
@@ -2760,7 +2760,7 @@ BYTE8 EUI64_to_EUI48(BYTE8 EUI64) noexcept {
 }
 
 void populate_local_proto_iaddr() {
-	int sock = socket(AF_UNIX, SOCK_SEQPACKET, 0), i = MAX_DEVICE_INDEX;
+	int sock = socket(AF_INET, SOCK_STREAM, 0), i = MAX_DEVICE_INDEX;
 	ifreq ifr;
 	BYTE8 addr;
 	hci_dev_info hdi;
@@ -2961,8 +2961,9 @@ int find_next_lower_bluetooth(int sock, hci_dev_info &hdi, int &i) {
 			continue;
 		}
 		LOG_CPP("found bluetooth " << hdi.name << " at index " << i << endl);
+		return i;
 	}
-	return i;
+	return -1;
 }
 
 protocol *find_protocol_by_id(const char *id) {
@@ -2991,8 +2992,9 @@ int find_next_lower_device(int sock, ifreq &ifr, int &i) {
 			continue;
 		}
 		LOG_CPP("found device " << ifr.ifr_name << " at index " << i << endl);
+		return i;
 	}
-	return i;
+	return -1;
 }
 
 void send_inject2(const send_inject_struct &sis) {
