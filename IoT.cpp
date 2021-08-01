@@ -141,7 +141,7 @@ extern "C" { PG_MODULE_MAGIC; }
  */
 #define RE_STRING "\'[^\']*\'(\?!\\s*\')|\"[^\"]*\"(\?!\\s*\")"
 
-#define fields_MAX 24
+#define fields_MAX 20
 
 #undef strerror
 
@@ -2349,7 +2349,8 @@ int main(int argc, char *argv[]) {
 			"override_implicit_rules BOOLEAN, activate INTEGER, deactivate INTEGER, "
 			"is_active BOOLEAN NOT NULL, last_run TIMESTAMP(0) WITH TIME ZONE, "
 			"run_period INTERVAL SECOND(0), next_run BIGINT, PRIMARY KEY(username, id), "
-			"FOREIGN KEY(username) REFERENCES users(username) ON DELETE CASCADE ON UPDATE CASCADE)"));
+			"FOREIGN KEY(username) REFERENCES users(username) "
+			"ON DELETE CASCADE ON UPDATE CASCADE)"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS addr_oID(addr BYTEA, "
 			"out_ID SMALLINT NOT NULL, PRIMARY KEY(addr))"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS SRC_DST(SRC BYTEA, DST BYTEA, "
@@ -2359,7 +2360,8 @@ int main(int argc, char *argv[]) {
 			"TWR TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(SRC, DST, ID), "
 			"FOREIGN KEY(SRC, DST) REFERENCES SRC_DST(SRC, DST) "
 			"ON DELETE CASCADE ON UPDATE CASCADE)"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS t"s + BYTE8_to_c17charp(local_addr) + "(t TIMESTAMP(4) WITHOUT TIME ZONE, PRIMARY KEY(t))"));
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS t"s + BYTE8_to_c17charp(local_addr)
+			+ "(t TIMESTAMP(4) WITHOUT TIME ZONE, PRIMARY KEY(t))"));
 
 	res = execcheckreturn("SELECT TRUE FROM pg_class WHERE relname = \'proto_name\'");
 	if (PQntuples(res) == 0) {
@@ -2417,7 +2419,7 @@ int main(int argc, char *argv[]) {
 					//privileged operation!!!
 			LOG_CPP("turned on device " << hdi.name << endl);
 		}
-		oss << MAX_DEVICE_INDEX + i << ", \'" << hdi.name << "\'), (";
+		oss << MAX_DEVICE_INDEX << ", \'" << hdi.name << "\'), (";
 		oss.seekp(-3, oss.end) << '\0';
 		PQclear(execcheckreturn(oss.str()));
 	} else {
@@ -2499,8 +2501,10 @@ int main(int argc, char *argv[]) {
 			"message BYTEA)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS tables(tablename NAME PRIMARY KEY)"));
-	PQclear(execcheckreturn("DELETE FROM tables WHERE tablename IN (SELECT tablename FROM tables EXCEPT SELECT relname FROM pg_class)"));
-	PQclear(execcheckreturn("INSERT INTO tables SELECT tablename FROM tables EXCEPT SELECT relname FROM pg_class"));
+	PQclear(execcheckreturn("DELETE FROM tables WHERE tablename IN (SELECT tablename FROM tables "
+			"EXCEPT SELECT relname FROM pg_class)"));
+	PQclear(execcheckreturn("INSERT INTO tables SELECT tablename FROM tables "
+			"EXCEPT SELECT relname FROM pg_class"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_user(tablename NAME, username TEXT, "
 			"PRIMARY KEY(tablename, username), FOREIGN KEY(tablename) REFERENCES tables(tablename) "
 			"ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY(username) REFERENCES users(username) "
@@ -2515,12 +2519,14 @@ int main(int argc, char *argv[]) {
 			+ "/libIoT\', \'load_store\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE config() AS \'"s + cwd
 			+ "/libIoT\', \'config\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_timed_rule_time(next_timed_rule BIGINT) RETURNS void "
-			"AS \'"s + cwd + "/libIoT\', \'refresh_next_timed_rule_time\' LANGUAGE C"));
+	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_timed_rule_time(next_timed_rule BIGINT) "
+			"RETURNS void AS \'"s + cwd + "/libIoT\', \'refresh_next_timed_rule_time\' "
+			"LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE update_permissions() AS \'"s + cwd
 			+ "/libIoT\', \'update_permissions\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE manually_execute_timed_rule(id INTEGER, username TEXT) "
-			"AS\'"s + cwd + "/libIoT\', \'manually_execute_timed_rule\' LANGUAGE C"));
+	PQclear(execcheckreturn("CREATE PROCEDURE manually_execute_timed_rule(id INTEGER, "
+			"username TEXT) AS\'"s + cwd + "/libIoT\', \'manually_execute_timed_rule\' "
+			"LANGUAGE C"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_username_update() CASCADE"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_username_delete() CASCADE"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_username_insert() CASCADE"));
@@ -2580,8 +2586,9 @@ int main(int argc, char *argv[]) {
 			"DELETE FROM timers WHERE rule_id = NEW.id; "
 			"ELSIF (OLD.filter <> NEW.filter) THEN UPDATE rules SET (run_period, next_run) "
 			"= (runperiod, CAST(EXTRACT(EPOCH FROM last_run + runperiod) AS BIGINT)) "
-			"WHERE id = NEW.id AND username = NEW.username; END IF; PERFORM refresh_next_timed_rule_time(("
-			"SELECT MIN(next_run) FROM rules)); RETURN NULL; END;\' LANGUAGE PLPGSQL"));
+			"WHERE id = NEW.id AND username = NEW.username; END IF; "
+			"PERFORM refresh_next_timed_rule_time((SELECT MIN(next_run) FROM rules)); RETURN NULL; "
+			"END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER update_timer AFTER UPDATE ON rules FOR ROW "
 			"EXECUTE PROCEDURE update_timer()"));
 	PQclear(execcheckreturn("SELECT refresh_next_timed_rule_time(("
@@ -3787,8 +3794,8 @@ raw_message *receive_raw_message() {
 				apply_rule_beginning(res_rules, current_id, i, "timed", current_user);
 				PQclear(execcheckreturn("UPDATE rules SET (last_run, next_run) = (last_run "
 						"+ run_period, CAST(EXTRACT(EPOCH FROM last_run + 2 * run_period) "
-						"AS BIGINT)) WHERE id = "s + PQgetvalue(res_rules, i, 1) + " AND username = \'"
-						+ PQgetvalue(res_rules, i, 0) + '\''));
+						"AS BIGINT)) WHERE id = "s + PQgetvalue(res_rules, i, 1)
+						+ " AND username = \'" + PQgetvalue(res_rules, i, 0) + '\''));
 				apply_rule_end(res_rules, current_id, i, j, 0, select, current_user);
 			}
 			PQclear(res_rules);
@@ -3946,16 +3953,17 @@ void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
 formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool send) {
 	auto t_u = table_user.find("t"s + BYTE8_to_c17charp(send ? fmsg->SRC : fmsg->DST));
 	string current_user(t_u != table_user.cend() ? t_u->second : "root"), select((send
-			? "SELECT username, id, send_receive_seconds, filter, drop_modify_nothing, modification, "
-			"query_command_nothing, query_command_1, send_inject_query_command_nothing, "
-			"query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, "
-			"activate, deactivate, is_active FROM rules WHERE send_receive_seconds = 0 "
-			"AND is_active AND username = \'"
-			: "SELECT username, id, send_receive_seconds, filter, drop_modify_nothing, modification, "
-			"query_command_nothing, query_command_1, send_inject_query_command_nothing, "
-			"query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, "
-			"activate, deactivate, is_active FROM rules WHERE send_receive_seconds = 1"
-			"AND is_active AND username = \'") + current_user + '\'');
+			? "SELECT username, id, send_receive_seconds, filter, drop_modify_nothing, "
+			"modification, query_command_nothing, query_command_1, "
+			"send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, "
+			"broadcast, override_implicit_rules, activate, deactivate, is_active FROM rules "
+			"WHERE send_receive_seconds = 0 AND is_active AND username = \'"
+			: "SELECT username, id, send_receive_seconds, filter, drop_modify_nothing, "
+			"modification, query_command_nothing, query_command_1, "
+			"send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, "
+			"broadcast, override_implicit_rules, activate, deactivate, is_active FROM rules "
+			"WHERE send_receive_seconds = 1 AND is_active AND username = \'")
+			+ current_user + '\'');
 	PGresult *res_fields, *res_rules;
 	int i = 0, j, current_id;
 	bool to_delete = false;
@@ -4325,7 +4333,7 @@ void convert_select(string &query, string remote_FROM) {
 			" DISTINCT ", " ELSE ", " ESCAPE ", " END ",
 			" EVERY ", " EXCEPT ", " EXISTS ", " FALSE ",
 			//0xA8-0xAF:
-			" FETCH ", " FILTER ", " FIRST "," FLAG ",
+			" FETCH ", " FILTER ", " FIRST ", " FLAG ",
 			" FROM ", " FULL ", " GROUP ", " GROUPING ",
 			//0xB0-0xB7:
 			" HAVING ", " HOUR ", " IN ", " INNER ",
@@ -4796,7 +4804,7 @@ void send_formatted_message(formatted_message *fmsg) {
 				iter_proto_iDST_TWR->second->erase(iter_iDST_TWR);
 			} else {
 				copy.reset(new(fmsg->LEN) formatted_message(*fmsg));
-				rmsg.reset(new raw_message(new BYTE[fmsg->LEN + fields_MAX]));
+				rmsg.reset(new raw_message(new BYTE[fmsg->LEN + fields_MAX + 4]));
 				rmsg->imm_addr = iter_iDST_TWR->first;
 				rmsg->proto = iter_proto_iDST_TWR->first;
 				rmsg->CCF = !c->trust_everyone && fmsg->HD.C
