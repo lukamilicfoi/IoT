@@ -2,29 +2,29 @@
 require_once 'common.php';
 if (checkAuthorization(8, 'view configuration') {
 	$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_GET['username']}' AND NOT is_administrator;");
-	if (isset($_GET['update']) && !empty($_GET['user']) && ($_GET['user'] == $_SESSION['username'] || $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root'])) {
-		pg_free_result(pgquery('UPDATE configuration SET (forward_messages, use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway) = (' . (isset($_GET['forward_messages']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['use_internet_switch_algorithm']) ? 'TRU' : 'FALS') . "E, {$_GET['nsecs_id']}, {$_GET['nsecs_src']}, " . (isset($_GET['trust_everyone']) ? 'TRU' : 'FALS') . "E, E'\\\\x{$_GET['default_gateway'}') WHERE user = '{$_GET['user']}';"));
+	if (isset($_GET['update']) && !empty($_GET['username']) && ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root'])) {
+		pg_free_result(pgquery('UPDATE configuration SET (forward_messages, use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway) = (' . (isset($_GET['forward_messages']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['use_internet_switch_algorithm']) ? 'TRU' : 'FALS') . "E, {$_GET['nsecs_id']}, {$_GET['nsecs_src']}, " . (isset($_GET['trust_everyone']) ? 'TRU' : 'FALS') . "E, E'\\\\x{$_GET['default_gateway'}') WHERE username = '{$_GET['username']}';"));
 		pg_free_result(pgquery('SELECT config();'));
-		echo 'Configuration updated for user ', htmlspecialchars($_GET['user']), ".\n";
+		echo 'Configuration updated for username ', htmlspecialchars($_GET['username']), ".\n";
 	}
 	pg_free_result($result);
 	if ($_SESSION['is_root']) {
-		$result = pgquery('TABLE configuration ORDER BY user ASC;');
+		$result = pgquery('TABLE configuration ORDER BY username ASC;');
 ?>
 		Viewing table &quot;configuration&quot;.
 <?php
 	} else if ($_SESSION['is_administrator']) {
-		$result = pgquery("SELECT configuration.* FROM configuration INNER JOIN users ON configuration.user = users.username WHERE NOT users.is_administrator OR configuration.user = '{$_SESSION['username']}' ORDER BY users.administrator DESC, configuration.user ASC;");
-		echo 'Viewing table &quot;configuration&quot; for user ', htmlspecialchars($_SESSION['username']), " and non-administrators.\n";
+		$result = pgquery("SELECT configuration.* FROM configuration INNER JOIN users ON configuration.username = users.username WHERE NOT users.is_administrator OR configuration.username = '{$_SESSION['username']}' ORDER BY users.is_administrator DESC, configuration.username ASC;");
+		echo 'Viewing table &quot;configuration&quot; for username ', htmlspecialchars($_SESSION['username']), " and non-administrators.\n";
 	} else {
-		$result = pgquery("SELECT * FROM configuration WHERE user = '{$_SESSION['username']}';");
-		echo 'Viewing table &quot;configuration&quot; for user ', htmlspecialchars($_SESSION['username']), ".\n";
+		$result = pgquery("SELECT * FROM configuration WHERE username = '{$_SESSION['username']}';");
+		echo 'Viewing table &quot;configuration&quot; for username ', htmlspecialchars($_SESSION['username']), ".\n";
 	}
 ?>
 	<table border="1">
 		<tbody>
 			<tr>
-				<th>User</th>
+				<th>Username</th>
 				<th>Forward messages?</th>
 				<th>Use internet switch algorithm?</th>
 				<th>Duplicate expiration in seconds</th>
@@ -39,7 +39,7 @@ if (checkAuthorization(8, 'view configuration') {
 				<tr>
 					<td>
 <?php
-						echo '<input form="update" type="text" name="user" value="', htmlspecialchars($row[0]), "\" disabled=\"disabled\"/>\n";
+						echo '<input form="update" type="text" name="username" value="', htmlspecialchars($row[0]), "\" disabled=\"disabled\"/>\n";
 ?>
 					</td>
 					<td>

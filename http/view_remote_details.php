@@ -1,9 +1,9 @@
 <?php
 require_once 'common.php';
 if (checkAuthorization(10, 'view remotes') && !empty($_GET['addr'])) {
-	$result1 = pgquery("SELECT TRUE FROM table_user WHERE table = 't{$_GET['addr']}';");
-	$result2 = pgquery("SELECT TRUE FROM table_user WHERE table = 't{$_GET['addr']}' AND user = '{$_SESSION['username']}';");
-	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.user = users.username WHERE table_user.table = 't{$_GET['addr']}' AND NOT users.is_administrator;");
+	$result1 = pgquery("SELECT TRUE FROM table_user WHERE tablename = 't{$_GET['addr']}';");
+	$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = 't{$_GET['addr']}' AND username = '{$_SESSION['username']}';");
+	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.username = users.username WHERE table_user.tablename = 't{$_GET['addr']}' AND NOT users.is_administrator;");
 	$h_addr = htmlspecialchars($_GET['addr']);
 	$u_addr = urlencode($_GET['addr']);
 	if ($_SESSION['is_root'] || !pg_fetch_row($result1) || pg_fetch_row($result2) || $_SESSION['is_administrator'] && pg_fetch_row($result3)) {

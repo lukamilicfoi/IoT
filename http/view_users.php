@@ -57,7 +57,7 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 } else if (isset($_POST['update2']) && isset($_POST['password'])) {
 	pg_free_result(pgquery('UPDATE users SET password = \'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . "' WHERE username = '{$_SESSION['username']}';"));
 ?>
-	Password updated - for this user.<br/>
+	Password updated - for this username.<br/>
 <?php
 }
 $result1 = pgquery("SELECT * FROM users WHERE username = '{$_SESSION['username']}';");
@@ -181,13 +181,13 @@ Viewing table &quot;users&quot;.
 ?>
 				<tr>
 <?php
-					$user = htmlspecialchars($row[0]);
-					echo '<td>', $user, "</td>\n";
+					$username = htmlspecialchars($row[0]);
+					echo '<td>', $username, "</td>\n";
 ?>
 					<td>
 <?php
-						echo '<input form="update1_', $user, '" type="hidden" name="key" value="', $user, "\"/>\n";
-						echo '<input form="update1_', $user, "\" type=\"text\" name=\"password\"/>\n";
+						echo '<input form="update1_', $username, '" type="hidden" name="key" value="', $username, "\"/>\n";
+						echo '<input form="update1_', $username, "\" type=\"text\" name=\"password\"/>\n";
 ?>
 					</td>
 <?php
@@ -195,7 +195,7 @@ Viewing table &quot;users&quot;.
 ?>
 						<td>
 <?php
-							echo '<input form="update1_', $user, '" type="checkbox" name="', pg_field_name($result, $i), '"', $row[$i] == 't' ? ' checked="checked"' : '', "/>\n";
+							echo '<input form="update1_', $username, '" type="checkbox" name="', pg_field_name($result, $i), '"', $row[$i] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
 						</td>
 <?php
@@ -203,7 +203,7 @@ Viewing table &quot;users&quot;.
 ?>
 					<td>
 <?php
-						echo '<form id="update1_', $user, "\" action=\"\" method=\"POST\">\n";
+						echo '<form id="update1_', $username, "\" action=\"\" method=\"POST\">\n";
 ?>
 							<input type="submit" name="update1" value="UPDATE"/><br/>
 							<input type="reset" value="reset"/>

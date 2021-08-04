@@ -1,9 +1,9 @@
 <?php
 require_once 'common.php';
 if (!empty($_GET['SRC']) && !empty($_GET['DST']) && checkAuthorization(10, 'view remotes')) {
-	$result1 = pgquery("SELECT TRUE FROM table_user WHERE table = 't{$_GET['SRC']}';");
-	$result2 = pgquery("SELECT TRUE FROM table_user WHERE table = 't{$_GET['SRC']}' AND user = '{$_SESSION['username']}';");
-	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.user = users.username WHERE table_user.table = 't{$_GET['SRC']}' AND NOT users.is_administrator;");
+	$result1 = pgquery("SELECT TRUE FROM table_user WHERE tablename = 't{$_GET['SRC']}';");
+	$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = 't{$_GET['SRC']}' AND username = '{$_SESSION['username']}';");
+	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.username = users.username WHERE table_user.tablename = 't{$_GET['SRC']}' AND NOT users.is_administrator;");
 	$h_SRC = htmlspecialchars($_GET['SRC']);
 	$h_DST = htmlspecialchars($_GET['DST']);
 	$u_SRC = urlencode($_GET['SRC']);

@@ -2,11 +2,11 @@
 require_once 'common.php';
 if (checkAuthorization(3, 'view tables')) {
 	if ($_SESSION['is_root']) {
-		$result = pgquery('(SELECT relname FROM pg_class WHERE relname LIKE \'t________________\' AND relname <> \'table_constraints\' ORDER BY relname ASC) UNION ALL (SELECT table FROM table_user WHERE table NOT LIKE \'t________________\' OR relname = \'table_constraints\' ORDER BY table ASC);');
+		$result = pgquery('(SELECT relname FROM pg_class WHERE relname LIKE \'t________________\' AND relname <> \'table_constraints\' ORDER BY relname ASC) UNION ALL (SELECT tablename FROM table_user WHERE tablename NOT LIKE \'t________________\' OR relname = \'table_constraints\' ORDER BY tablename ASC);');
 	} else if ($_SESSION['is_administrator']) {
-		$result = pgquery("(SELECT pg_class.relname FROM pg_class LEFT OUTER JOIN table_user ON pg_class.relname = table_user.table LEFT OUTER JOIN users ON table_user.user = users.username WHERE pg_class.relname LIKE 't________________' AND pg_class.relname <> 'table_constraints' AND (table_users.user IS NULL OR table_users.user = '{$_SESSION['username']}' OR NOT users.is_administrator) ORDER BY pg_class.relname ASC) UNION ALL (SELECT table_user.table FROM table_user LEFT OUTER JOIN users ON table_user.user = users.user WHERE (table_user.table NOT LIKE \'t________________\' OR table_user.table = \'table_constraints\') AND (table_user.user IS NULL OR table_user.user = '{$_SESSION['username']}' OR NOT users.is_administrator) ORDER BY table_user.table ASC);");
+		$result = pgquery("(SELECT pg_class.relname FROM pg_class LEFT OUTER JOIN table_user ON pg_class.relname = table_user.tablename LEFT OUTER JOIN users ON table_user.username = users.username WHERE pg_class.relname LIKE 't________________' AND pg_class.relname <> 'table_constraints' AND (table_users.username IS NULL OR table_users.username = '{$_SESSION['username']}' OR NOT users.is_administrator) ORDER BY pg_class.relname ASC) UNION ALL (SELECT table_user.tablename FROM table_user LEFT OUTER JOIN users ON table_user.username = users.username WHERE (table_user.tablename NOT LIKE \'t________________\' OR table_user.tablename = \'table_constraints\') AND (table_user.username IS NULL OR table_user.username = '{$_SESSION['username']}' OR NOT users.is_administrator) ORDER BY table_user.tablename ASC);");
 	} else {
-		$result = pgquery("(SELECT pg_class.relname FROM pg_class LEFT OUTER JOIN table_user ON pg_class.relname = table_user.table LEFT OUTER JOIN users ON table_user.user = users.username WHERE pg_class.relname LIKE 't________________' AND pg_class.relname <> 'table_constraints' AND (table_users.user IS NULL OR table_users.user = '{$_SESSION['username']}') ORDER BY pg_class.relname ASC) UNION ALL (SELECT table FROM table_user WHERE (table NOT LIKE \'t________________\' OR table = \'table_constraints\') AND (user IS NULL OR user = '{$_SESSION['username']}') ORDER BY table ASC);");
+		$result = pgquery("(SELECT pg_class.relname FROM pg_class LEFT OUTER JOIN table_user ON pg_class.relname = table_user.tablename LEFT OUTER JOIN users ON table_user.username = users.username WHERE pg_class.relname LIKE 't________________' AND pg_class.relname <> 'table_constraints' AND (table_users.username IS NULL OR table_users.username = '{$_SESSION['username']}') ORDER BY pg_class.relname ASC) UNION ALL (SELECT tablename FROM table_user WHERE (tablename NOT LIKE \'t________________\' OR tablename = \'table_constraints\') AND (username IS NULL OR username = '{$_SESSION['username']}') ORDER BY tablename ASC);");
 	}
 ?>
 	View table:
@@ -90,7 +90,7 @@ if (checkAuthorization(6, 'send queries to database')) {
 				exit('cannot flock');
 			}
 			pg_connect('host=localhost dbname=postgres user=postgres client_encoding=UTF8');
-			pg_free_result(pgquery("UPDATE current_user SET current_user = '{$_SESSION['username']}';"));
+			pg_free_result(pgquery("UPDATE current_username SET current_username = '{$_SESSION['username']}';"));
 			pg_close();
 			pg_connect('host=localhost dbname=postgres user=' . ($_SESSION['is_administrator'] ? 'administrator' : 'local') . ' client_encoding=UTF8');
 		}
@@ -139,19 +139,19 @@ if (checkAuthorization(6, 'send queries to database')) {
 <?php
 }
 if (checkAuthorization(11, 'manually execute timed rules')) {
-	if (!empty($_GET['user']) && !empty($_GET['id'])) {
+	if (!empty($_GET['username']) && !empty($_GET['id'])) {
 		$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_GET['username']}' AND NOT is_administrator;");
 		if ($_GET['user'] == $_SESSION['username'] || $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root']) {
-			pg_free_result(pgquery("SELECT manually_execute_timed_rule('{$_GET['user']}', {$_GET['id']});"));
+			pg_free_result(pgquery("SELECT manually_execute_timed_rule('{$_GET['username']}', {$_GET['id']});"));
 		}
 		pg_free_result($result);
-		echo 'For user ', htmlspecialchars($_GET['user']), ' timed rule ', htmlspecialchars($_GET['id']), " manually executed.\n";
+		echo 'For username ', htmlspecialchars($_GET['username']), ' timed rule ', htmlspecialchars($_GET['id']), " manually executed.\n";
 	}
 ?>
 	<form action="" method="GET">
-		For user
+		For username
 <?php
-		echo '<input type="text" name="user"', $_SESSION['is_administrator'] ? '' : ' value="' . htmlspecialchars($_SESSION['username']) . '" disabled="disabled"', "/>\n";
+		echo '<input type="text" name="username"', $_SESSION['is_administrator'] ? '' : ' value="' . htmlspecialchars($_SESSION['username']) . '" disabled="disabled"', "/>\n";
 ?>
 		manually execute timed rule
 		<input type="text" name="id"/>

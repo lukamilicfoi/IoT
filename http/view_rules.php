@@ -14,24 +14,24 @@ if (checkAuthorization(7, 'view rules')) {
 <?php
 			exit(0);
 		}
-	} else if (!empty($_GET['id']) && !empty($_GET['user'])) {
+	} else if (!empty($_GET['id']) && !empty($_GET['username'])) {
 		if (isset($_SESSION['insert']) {
-			$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_GET['user']}' AND NOT is_administrator;");
-			if ($_GET['user'] == "'{$_SESSION['username']}'" || $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root']) {
-				pg_free_result(pgquery("INSERT INTO rules(user, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) VALUES({$_GET['user']}, {$_GET['id']}, {$_GET['send_receive_seconds']}, {$_GET['filter']}, {$_GET['drop_modify_nothing']}, {$_GET['modification']}, {$_GET['query_command_nothing']}, {$_GET['query_command_1']}, {$_GET['send_inject_query_command_nothing']}, {$_GET['query_command_2']}, {$_GET['proto_id']}, E'\\\\x" . substr($_GET['imm_addr'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . "E, {$_GET['activate']}, {$_GET['deactivate']}, " . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E);"));
-				echo 'For user ', htmlspecialchars($_GET['user']), ' rule ', htmlspecialchars($_GET['id']), " inserted.<br/>\n";
+			$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_GET['username']}' AND NOT is_administrator;");
+			if ($_GET['username'] == "'{$_SESSION['username']}'" || $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root']) {
+				pg_free_result(pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) VALUES({$_GET['username']}, {$_GET['id']}, {$_GET['send_receive_seconds']}, {$_GET['filter']}, {$_GET['drop_modify_nothing']}, {$_GET['modification']}, {$_GET['query_command_nothing']}, {$_GET['query_command_1']}, {$_GET['send_inject_query_command_nothing']}, {$_GET['query_command_2']}, {$_GET['proto_id']}, E'\\\\x" . substr($_GET['imm_addr'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . "E, {$_GET['activate']}, {$_GET['deactivate']}, " . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E);"));
+				echo 'For username ', htmlspecialchars($_GET['username']), ' rule ', htmlspecialchars($_GET['id']), " inserted.<br/>\n";
 			}
 			pg_free_result($result);
 		} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
-			$result = pgquery("SELECT TRUE FROM users WHERE username = {$_GET['key1']} OR username = '{$_GET['user']}' AND is_administrator;");
-			if ($_GET['key1'] == "'{$_SESSION['username']}'" && $_GET['key1'] == $_GET['user'] || $_SESSION['is_administrator'] && !pg_fetch_row($result) || $_SESSION['is_root']) {
+			$result = pgquery("SELECT TRUE FROM users WHERE username = {$_GET['key1']} OR username = '{$_GET['username']}' AND is_administrator;");
+			if ($_GET['key1'] == "'{$_SESSION['username']}'" && $_GET['key1'] == $_GET['username'] || $_SESSION['is_administrator'] && !pg_fetch_row($result) || $_SESSION['is_root']) {
 				if (isset($_GET['update'])) {
-					pg_free_result(pgquery("UPDATE rules SET (user, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) = ({$_GET['user']}, {$_GET['id']}, {$_GET['send_receive_seconds']}, {$_GET['filter']}, {$_GET['drop_modify_nothing']}, {$_GET['modification']}, {$_GET['query_command_nothing']}, {$_GET['query_command_2']}, {$_GET['send_inject_query_command_nothing']}, {$_GET['query_command_2']}, {$_GET['proto_id']}, E'\\\\x" . substr($_GET['imm_addr'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . "E, {$_GET['activate']}, {$_GET['deactivate']}, " . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E) WHERE user = {$_GET['key1']} AND id = {$_GET['key2']};"));
-					echo 'For user ', htmlspecialchars($_GET['key1']), ' rule ', htmlspecialchars($_GET['key2']), " updated.<br/>\n";
+					pg_free_result(pgquery("UPDATE rules SET (username, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) = ({$_GET['username']}, {$_GET['id']}, {$_GET['send_receive_seconds']}, {$_GET['filter']}, {$_GET['drop_modify_nothing']}, {$_GET['modification']}, {$_GET['query_command_nothing']}, {$_GET['query_command_2']}, {$_GET['send_inject_query_command_nothing']}, {$_GET['query_command_2']}, {$_GET['proto_id']}, E'\\\\x" . substr($_GET['imm_addr'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . "E, {$_GET['activate']}, {$_GET['deactivate']}, " . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E) WHERE user = {$_GET['key1']} AND id = {$_GET['key2']};"));
+					echo 'For username ', htmlspecialchars($_GET['key1']), ' rule ', htmlspecialchars($_GET['key2']), " updated.<br/>\n";
 				} else if (isset($_GET['delete'])) {
 					if (isset($_GET['confirm'])) {
-						pg_free_result(pgquery("DELETE FROM rules WHERE user = {$_GET['key1']} AND id = {$_GET['key2']};"));
-						echo 'For user ', htmlspecialchars($_GET['key1']), ' rule ', htmlspecialchars($_GET['key2']), " deleted.<br/>\n";
+						pg_free_result(pgquery("DELETE FROM rules WHERE username = {$_GET['key1']} AND id = {$_GET['key2']};"));
+						echo 'For username ', htmlspecialchars($_GET['key1']), ' rule ', htmlspecialchars($_GET['key2']), " deleted.<br/>\n";
 					} else {
 ?>
 						Are you sure?
@@ -48,12 +48,12 @@ if (checkAuthorization(7, 'view rules')) {
 		}
 	}
 	if ($_SESSION['is_root']) {
-		$result = pgquery('TABLE rules ORDER BY user ASC, id ASC;');
+		$result = pgquery('TABLE rules ORDER BY username ASC, id ASC;');
 ?>
 		Viewing table &quot;rules&quot;.
 <?php
 	} else if ($_SESSION['is_administrator']) {
-		$result = pgquery("SELECT rules.* FROM rules INNER JOIN users ON rules.user = users.username WHERE rules.user = '{$_SESSION['username']}' OR NOT users.is_administrator ORDER BY users.is_administrator DESC, rules.user ASC, rules.id ASC;");
+		$result = pgquery("SELECT rules.* FROM rules INNER JOIN users ON rules.username = users.username WHERE rules.username = '{$_SESSION['username']}' OR NOT users.is_administrator ORDER BY users.is_administrator DESC, rules.username ASC, rules.id ASC;");
 		echo 'Viewing table &quot;rules&quot; for ', htmlspecialchars($_SESSION['username']), " and non-administrators.<br/>\n";
 	} else {
 		$result = pgquery("SELECT * FROM rules WHERE user = '{$_SESSION['username']}' ORDER BY id ASC;");
@@ -63,7 +63,7 @@ if (checkAuthorization(7, 'view rules')) {
 	<table border="1">
 		<tbody>
 			<tr>
-				<td>user</td>
+				<td>username</td>
 				<td>id</td>
 				<td>send_receive_seconds</td>
 				<td>filter</td>
@@ -107,7 +107,7 @@ if (checkAuthorization(7, 'view rules')) {
 				<td>TIMESTAMP(0) WITH TIME ZONE</td>
 			</tr>
 			<tr>
-				<th>For user<th>
+				<th>For username<th>
 				<th>this is rule number</th>
 				<th>It is activated</th>
 				<th>(filter)</th>
@@ -132,7 +132,7 @@ if (checkAuthorization(7, 'view rules')) {
 			<tr>
 				<td>
 <?php
-					echo '<input form="insert" type="text" name="user"', $_SESSION['is_administrator'] ? '' : ' value="&apos;' . htmlspecialchars($_SESSION['username']) . '&apos;" disabled="disabled"', "/>\n";
+					echo '<input form="insert" type="text" name="username"', $_SESSION['is_administrator'] ? '' : ' value="&apos;' . htmlspecialchars($_SESSION['username']) . '&apos;" disabled="disabled"', "/>\n";
 ?>
 				</td>
 				<td>
@@ -246,156 +246,156 @@ if (checkAuthorization(7, 'view rules')) {
 				<tr>
 					<td>
 <?php
-						$user = htmlspecialchars($row[0]);
-						echo '<input form="update_', $user, '_', $row[1], 'type="text" name="user" value="&apos;', $user, '&apos;"', $_SESSION['is_administrator'] ? '' : ' disabled="disabled"' , "/>\n";
+						$username = htmlspecialchars($row[0]);
+						echo '<input form="update_', $username, '_', $row[1], 'type="text" name="username" value="&apos;', $username, '&apos;"', $_SESSION['is_administrator'] ? '' : ' disabled="disabled"' , "/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="text" name="id", value="', $row[1], "\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="id", value="', $row[1], "\"/>\n";
 ?>
 						.
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="radio" name="send_receive_seconds" value="0"', $row[2] == '0' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="radio" name="send_receive_seconds" value="0"', $row[2] == '0' ? ' checked="checked"' : '', "/>\n";
 ?>
 						on sending when:<br/>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="radio" name="send_receive_seconds" value="1"', $row[2] == '1' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="radio" name="send_receive_seconds" value="1"', $row[2] == '1' ? ' checked="checked"' : '', "/>\n";
 ?>
 						on receiving when:<br/>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="radio" name="send_receive_seconds" value="2"', $row[2] == '2' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="radio" name="send_receive_seconds" value="2"', $row[2] == '2' ? ' checked="checked"' : '', "/>\n";
 ?>
 						every this amount of seconds:
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="text" name="filter" value="&apos;', htmlspecialchars($row[3]), "&apos;\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="filter" value="&apos;', htmlspecialchars($row[3]), "&apos;\"/>\n";
 ?>
 						.
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="radio" name="drop_modify_nothing" value="0"', $row[4] == '0' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="radio" name="drop_modify_nothing" value="0"', $row[4] == '0' ? ' checked="checked"' : '', "/>\n";
 ?>
 						drop message<br/>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="radio" name="drop_modify_nothing" value="1"', $row[4] == '1' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="radio" name="drop_modify_nothing" value="1"', $row[4] == '1' ? ' checked="checked"' : '', "/>\n";
 ?>
 						modify message with this:<br/>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="radio" name="drop_modify_nothing" value="2"', $row[4] == '2' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="radio" name="drop_modify_nothing" value="2"', $row[4] == '2' ? ' checked="checked"' : '', "/>\n";
 ?>
 						do nothing
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="text" name="modification" value="&apos;', htmlspecialchars($row[5]), "&apos;\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="modification" value="&apos;', htmlspecialchars($row[5]), "&apos;\"/>\n";
 ?>
 						,
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="radio" name="query_command_nothing" value="0"', $row[6] == '0' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="radio" name="query_command_nothing" value="0"', $row[6] == '0' ? ' checked="checked"' : '', "/>\n";
 ?>
 						SQL query:<br/>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="radio" name="query_command_nothing" value="1"', $row[6] == '1' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="radio" name="query_command_nothing" value="1"', $row[6] == '1' ? ' checked="checked"' : '', "/>\n";
 ?>
 						bash command:<br/>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="radio" name="query_command_nothing" value="2"', $row[6] == '2' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="radio" name="query_command_nothing" value="2"', $row[6] == '2' ? ' checked="checked"' : '', "/>\n";
 ?>
 						(execute nothing)
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="text" name="query_command_1" value="&apos;', htmlspecialchars($row[7]), "&apos;\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="query_command_1" value="&apos;', htmlspecialchars($row[7]), "&apos;\"/>\n";
 ?>
 						,
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="radio" name="send_inject_query_command_nothing" value="0"', $row[8] == '0' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="radio" name="send_inject_query_command_nothing" value="0"', $row[8] == '0' ? ' checked="checked"' : '', "/>\n";
 ?>
 						query and send it:<br/>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="radio" name="send_inject_query_command_nothing" value="1"', $row[8] == '1' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="radio" name="send_inject_query_command_nothing" value="1"', $row[8] == '1' ? ' checked="checked"' : '', "/>\n";
 ?>
 						command and send it:<br/>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="radio" name="send_inject_query_command_nothing" value="2"', $row[8] == '2' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="radio" name="send_inject_query_command_nothing" value="2"', $row[8] == '2' ? ' checked="checked"' : '', "/>\n";
 ?>
 						query and inject it:<br/>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="radio" name="send_inject_query_command_nothing" value="3"', $row[8] == '3' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="radio" name="send_inject_query_command_nothing" value="3"', $row[8] == '3' ? ' checked="checked"' : '', "/>\n";
 ?>
 						command and inject it:<br/>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="radio" name="send_inject_query_command_nothing" value="4"', $row[8] == '4' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="radio" name="send_inject_query_command_nothing" value="4"', $row[8] == '4' ? ' checked="checked"' : '', "/>\n";
 ?>
 						(form nothing)
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="text" name="query_command_2" value="&apos;', htmlspecialchars($row[9]), "&apos;\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="query_command_2" value="&apos;', htmlspecialchars($row[9]), "&apos;\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="text" name="proto_id" value="&apos;', htmlspecialchars($row[10]), "&apos;\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="proto_id" value="&apos;', htmlspecialchars($row[10]), "&apos;\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="text" name="imm_addr" value="X&apos;', htmlspecialchars(strtoupper(substr($row[11], 2))), "&apos;\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="imm_addr" value="X&apos;', htmlspecialchars(strtoupper(substr($row[11], 2))), "&apos;\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="checkbox" name="CCF"', $row[12] == 't' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="checkbox" name="CCF"', $row[12] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="checkbox" name="ACF"', $row[13] == 't' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="checkbox" name="ACF"', $row[13] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="checkbox" name="broadcast"', $row[14] == 't' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="checkbox" name="broadcast"', $row[14] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="checkbox" name="override_implicit_rules"', $row[15] == 't' ? ' checked="checked"' : '', "/>\n";
-?>
-						.
-					</td>
-					<td>
-<?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="text" name="activate" value="', $row[16] === null ? 'NULL' : $row[16], "\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="checkbox" name="override_implicit_rules"', $row[15] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
 						.
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="text" name="deactivate" value="', $row[17] === null ? 'NULL' : $row[17], "\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="activate" value="', $row[16] === null ? 'NULL' : $row[16], "\"/>\n";
 ?>
 						.
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $user, '_', $row[1], '" type="checkbox" name="active"', $row[18] == 't' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="deactivate" value="', $row[17] === null ? 'NULL' : $row[17], "\"/>\n";
 ?>
 						.
 					</td>
 					<td>
 <?php
-						echo '<form id="update_', $user, '_', $row[1], "\" action=\"\" method=\"GET\">\n";
-							echo '<input type="hidden" name="key1" value="&apos;', $user, "&apos;\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="checkbox" name="active"', $row[18] == 't' ? ' checked="checked"' : '', "/>\n";
+?>
+						.
+					</td>
+					<td>
+<?php
+						echo '<form id="update_', $username, '_', $row[1], "\" action=\"\" method=\"GET\">\n";
+							echo '<input type="hidden" name="key1" value="&apos;', $username, "&apos;\"/>\n";
 							echo '<input type="hidden" name="key2" value="', $row[1], "\"/>\n";
 ?>
 							<input type="submit" name="update" value="UPDATE"/>;
@@ -405,7 +405,7 @@ if (checkAuthorization(7, 'view rules')) {
 ?>
 						<form action="" method="GET">
 <?php
-							echo '<input type="hidden" name="key1" value="&apos;', $user, "&apos;\"/>\n";
+							echo '<input type="hidden" name="key1" value="&apos;', $username, "&apos;\"/>\n";
 							echo '<input type="hidden" name="key2" value="', $row[1], "\"/>\n";
 ?>
 							<input type="submit" name="delete" value="DELETE"/>
