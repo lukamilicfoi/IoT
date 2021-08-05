@@ -424,7 +424,7 @@ if (checkAuthorization(7, 'view rules')) {
 	Deactivating a rule deletes its timer. Changing a period does not.<br/>
 	Id must be unique. Smaller value indicates bigger priority.<br/>
 	When broadcasting a message any imm_DST is ignored.<br/>
-	On send and inject rules last_run is meaningless.<br/>
+	On send and receive rules last_run is meaningless.<br/>
 	<a href="index.php">Done</a>
 <?php
 	pg_free_result($result);

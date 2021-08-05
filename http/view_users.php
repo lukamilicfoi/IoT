@@ -212,7 +212,7 @@ Viewing table &quot;users&quot;.
 ?>
 						<form action="" method="GET">
 <?php
-							echo '<input type="hidden" name="key" value="', htmlspecialchars($row[0]), "\"/>\n";
+							echo '<input type="hidden" name="key" value="', $username, "\"/>\n";
 ?>
 							<input type="submit" name="delete" value="DELETE"/>
 						</form>

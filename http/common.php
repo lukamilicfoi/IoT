@@ -8,31 +8,37 @@ if ($needs_login && !isset($_SESSION['username'])) {
 }
 ?>
 
-<!DOCTYPE html><html><head>
+<!DOCTYPE html>
+<html>
+	<head>
 
 <?php
 if ($_SESSION['is_root']) {
 	$trail = ' as root';
-	$user = 'postgres';
+	$username = 'postgres';
 } else if ($_SESSION['is_administrator']) {
 	$trail = ' as administrator';
-	$user = 'administrator';
+	$username = 'administrator';
 } else {
-	$user = $needs_login ? 'local' : 'login';
+	$username = $needs_login ? 'local' : 'login';
+	$trail = '';
 }
 echo '<title>', $page_name, $trail, "</title>\n";
 ?>
 
-<meta http_equiv="Content-Type" content="text/html; charset=utf-8"/></head><body>
+		<meta http_equiv="Content-Type" content="text/html; charset=utf-8"/>
+	</head>
+<body>
 
 <?php
-if (pg_connect("host=localhost dbname=postgres user=$user client_encoding=UTF8")) {
+if (pg_connect("host=localhost dbname=postgres user=$username client_encoding=UTF8")) {
 	exit('Could not connect - ' . pg_last_error());
 }
 register_shutdown_function(function() {
 ?>
 
-</body></html>
+	</body>
+</html>
 
 <?php
 });
