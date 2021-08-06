@@ -5,14 +5,16 @@ if (!empty($_POST['username']) && !empty($_POST['password'])) {
 	$result = pgquery("SELECT password, is_administrator, can_actually_login FROM users WHERE username = '{$_POST['username']}';");
 	$row = pg_fetch_row($result);
 	if ($row && password_verify($_POST['password'], $row[0]) && $row[2] == 't') {
-		session_reset();
+		session_destroy();
+		session_start();
 		$_SESSION['is_root'] = $_POST['username'] == 'root';
 		$_SESSION['is_administrator'] = $row[1] == 't';
 		$_SESSION['username'] = $_POST['username'];
 	}
 	pg_free_result($result);
 } else if (isset($_GET['logout'])) {
-	session_reset();
+	session_destroy();
+	session_start();
 }
 if (isset($_SESSION['username'])) {
 	header('Location: index.php');

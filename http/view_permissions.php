@@ -14,7 +14,7 @@ if (checkAuthorization(9, 'view permissions')) {
 			exit(0);
 		}
 	} else if (!empty($_GET['tablename']) && !empty($_GET['username'])) {
-		if (isset($_GET['insert']) {
+		if (isset($_GET['insert'])) {
 			$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_GET['username']}' AND NOT is_administrator;");
 			if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root']) {
 				pg_free_result(pgquery("INSERT INTO table_user(tablename, username) VALUES('{$_GET['tablename']}', '{$_GET['username']}');"));
@@ -121,7 +121,7 @@ if (checkAuthorization(9, 'view permissions')) {
 						<form action="" method="GET">
 <?php
 							echo '<input type="hidden" name="key1" value="', $tablename, "\"/>\n";
-							echo '<input type="hidden" name="key2" value="' $username, "\"/>\n";
+							echo '<input type="hidden" name="key2" value="', $username, "\"/>\n";
 ?>
 							<input type="submit" name="delete" value="DELETE"/>
 						</form>

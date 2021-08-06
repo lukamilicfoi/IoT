@@ -52,11 +52,12 @@ function standardToPostgresqlInput($data, $oid) {
 
 if (checkAuthorization(3, 'view tables') && !empty($_GET['table'])) {
 	$result1 = pgquery("SELECT username FROM table_user WHERE tablename = '{$_GET['table']}';");
-	$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = '{$_GET['table']}' AND username = '{$_GET['username']}';");
+	$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = '{$_GET['table']}' AND username = '{$_SESSION['username']}';");
 	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.username = users.username WHERE table_user.tablename = '{$_GET['table']}' AND NOT users.is_administrator;");
 	$h_table = htmlspecialchars($_GET['table']);
 	$u_table = urlencode($_GET['table']);
-	if (pg_fetch_row($result1)[0] === null || pg_fetch_row($result2) || pg_fetch_row($result3) && $_SESSION['is_administrator'] || $_SESSION['is_root']) {
+	$row = pg_fetch_row($result1);
+	if (!$row || $row[0] === null || pg_fetch_row($result2) || pg_fetch_row($result3) && $_SESSION['is_administrator'] || $_SESSION['is_root']) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
 				$result = pgquery("TRUNCATE TABLE {$_GET['table']};");

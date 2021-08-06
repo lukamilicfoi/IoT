@@ -2,7 +2,7 @@
 require_once 'common.php';
 if (checkAuthorization(3, 'view tables')) {
 	if ($_SESSION['is_root']) {
-		$result = pgquery('(SELECT relname FROM pg_class WHERE relname LIKE \'t________________\' AND relname <> \'table_constraints\' ORDER BY relname ASC) UNION ALL (SELECT tablename FROM table_user WHERE tablename NOT LIKE \'t________________\' OR relname = \'table_constraints\' ORDER BY tablename ASC);');
+		$result = pgquery('(SELECT relname FROM pg_class WHERE relname LIKE \'t________________\' AND relname <> \'table_constraints\' ORDER BY relname ASC) UNION ALL (SELECT tablename FROM table_user WHERE tablename NOT LIKE \'t________________\' OR tablename = \'table_constraints\' ORDER BY tablename ASC);');
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("(SELECT pg_class.relname FROM pg_class LEFT OUTER JOIN table_user ON pg_class.relname = table_user.tablename LEFT OUTER JOIN users ON table_user.username = users.username WHERE pg_class.relname LIKE 't________________' AND pg_class.relname <> 'table_constraints' AND (table_users.username IS NULL OR table_users.username = '{$_SESSION['username']}' OR NOT users.is_administrator) ORDER BY pg_class.relname ASC) UNION ALL (SELECT table_user.tablename FROM table_user LEFT OUTER JOIN users ON table_user.username = users.username WHERE (table_user.tablename NOT LIKE \'t________________\' OR table_user.tablename = \'table_constraints\') AND (table_user.username IS NULL OR table_user.username = '{$_SESSION['username']}' OR NOT users.is_administrator) ORDER BY table_user.tablename ASC);");
 	} else {
@@ -35,11 +35,11 @@ if (checkAuthorization(4, 'send messages')) {
 ?>
 	<form action="" method="GET">
 		Send raw message (write as binary string)
-		<input type="text" name="msgtosend" value="X&apos;&apos;"/><br/>
+		<input type="text" name="msgtosend" value="X&apos;&apos;"/>
 		using protocol id (write as string)
 		<input type="text" name="proto_id" value="&apos;&apos;"/><br/>
 		and imm_DST (write as binary string)
-		<input type="text" name="imm_DST" value="X&apos;&apos;"/><br/>
+		<input type="text" name="imm_DST" value="X&apos;&apos;"/>
 		using CCF
 		<input type="checkbox" name="CCF"/>
 		and ACF
@@ -61,11 +61,11 @@ if (checkAuthorization(5, 'inject messages')) {
 ?>
 	<form action="" method="GET">
 		Inject raw message (write as binary string)
-		<input type="text" name="msgtoinject" value="X&apos;&apos;"/><br/>
+		<input type="text" name="msgtoinject" value="X&apos;&apos;"/>
 		using protocol id (write as string)
 		<input type="text" name="proto_id" value="&apos;&apos;"/><br/>
 		and imm_SRC (write as binary string)
-		<input type="text" name="imm_SRC" value="X&apos;&apos;"/><br/>
+		<input type="text" name="imm_SRC" value="X&apos;&apos;"/>
 		using CCF
 		<input type="checkbox" name="CCF"/>
 		and ACF

@@ -31,7 +31,7 @@ echo '<title>', $page_name, $trail, "</title>\n";
 <body>
 
 <?php
-if (pg_connect("host=localhost dbname=postgres user=$username client_encoding=UTF8")) {
+if (!pg_connect("host=localhost dbname=postgres user=$username client_encoding=UTF8")) {
 	exit('Could not connect - ' . pg_last_error());
 }
 register_shutdown_function(function() {

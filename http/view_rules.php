@@ -15,7 +15,7 @@ if (checkAuthorization(7, 'view rules')) {
 			exit(0);
 		}
 	} else if (!empty($_GET['id']) && !empty($_GET['username'])) {
-		if (isset($_SESSION['insert']) {
+		if (isset($_SESSION['insert'])) {
 			$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_GET['username']}' AND NOT is_administrator;");
 			if ($_GET['username'] == "'{$_SESSION['username']}'" || $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root']) {
 				pg_free_result(pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) VALUES({$_GET['username']}, {$_GET['id']}, {$_GET['send_receive_seconds']}, {$_GET['filter']}, {$_GET['drop_modify_nothing']}, {$_GET['modification']}, {$_GET['query_command_nothing']}, {$_GET['query_command_1']}, {$_GET['send_inject_query_command_nothing']}, {$_GET['query_command_2']}, {$_GET['proto_id']}, E'\\\\x" . substr($_GET['imm_addr'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . "E, {$_GET['activate']}, {$_GET['deactivate']}, " . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E);"));
@@ -107,7 +107,7 @@ if (checkAuthorization(7, 'view rules')) {
 				<td>TIMESTAMP(0) WITH TIME ZONE</td>
 			</tr>
 			<tr>
-				<th>For username<th>
+				<th>For username</th>
 				<th>this is rule number</th>
 				<th>It is activated</th>
 				<th>(filter)</th>
@@ -132,11 +132,11 @@ if (checkAuthorization(7, 'view rules')) {
 			<tr>
 				<td>
 <?php
-					echo '<input form="insert" type="text" name="username"', $_SESSION['is_administrator'] ? '' : ' value="&apos;' . htmlspecialchars($_SESSION['username']) . '&apos;" disabled="disabled"', "/>\n";
+					echo '<input form="insert" type="text" name="username"', $_SESSION['is_administrator'] ? '' : ' value="&apos;' . htmlspecialchars($_SESSION['username']) . '&apos;" disabled="disabled" size="10"', "/>\n";
 ?>
 				</td>
-				<td>
-					<input form="insert" type="text" name="id"/>
+				<td nowrap="nowrap">
+					<input form="insert" type="text" name="id" size="10"/>
 					.
 				</td>
 				<td>
@@ -147,8 +147,8 @@ if (checkAuthorization(7, 'view rules')) {
 					<input form="insert" type="radio" name="send_receive_seconds" value="2"/>
 					every this amount of seconds:
 				</td>
-				<td>
-					<input form="insert" type="text" name="filter"/>
+				<td nowrap="nowrap">
+					<input form="insert" type="text" name="filter" size="10"/>
 					.
 				</td>
 				<td>
@@ -159,8 +159,8 @@ if (checkAuthorization(7, 'view rules')) {
 					<input form="insert" type="radio" name="drop_modify_nothing" value="2"/>
 					do nothing
 				</td>
-				<td>
-					<input form="insert" type="text" name="modification"/>
+				<td nowrap="nowrap">
+					<input form="insert" type="text" name="modification" size="10"/>
 					,
 				</td>
 				<td>
@@ -171,8 +171,8 @@ if (checkAuthorization(7, 'view rules')) {
 					<input form="insert" type="radio" name="query_command_nothing" value="2"/>
 					(execute nothing)
 				</td>
-				<td>
-					<input form="insert" type="text" name="query_command_1"/>
+				<td nowrap="nowrap">
+					<input form="insert" type="text" name="query_command_1" size="10"/>
 					,
 				</td>
 				<td>
@@ -188,13 +188,13 @@ if (checkAuthorization(7, 'view rules')) {
 					(form nothing)
 				</td>
 				<td>
-					<input form="insert" type="text" name="query_command_2"/>
+					<input form="insert" type="text" name="query_command_2" size="10"/>
 				</td>
 				<td>
-					<input form="insert" type="text" name="proto_id"/>
+					<input form="insert" type="text" name="proto_id" size="10"/>
 				</td>
 				<td>
-					<input form="insert" type="text" name="imm_addr"/>
+					<input form="insert" type="text" name="imm_addr" size="10"/>
 				</td>
 				<td>
 					<input form="insert" type="checkbox" name="CCF"/>
@@ -205,19 +205,19 @@ if (checkAuthorization(7, 'view rules')) {
 				<td>
 					<input form="insert" type="checkbox" name="broadcast"/>
 				</td>
-				<td>
+				<td nowrap="nowrap">
 					<input form="insert" type="checkbox" name="override_implicit_rules"/>
 					.
 				</td>
-				<td>
+				<td nowrap="nowrap">
 					<input form="insert" type="text" name="activate"/>
 					.
 				</td>
-				<td>
+				<td nowrap="nowrap">
 					<input form="insert" type="text" name="deactivate"/>
 					.
 				</td>
-				<td>
+				<td nowrap="nowrap">
 					<input form="insert" type="checkbox" name="active"/>
 					.
 				</td>

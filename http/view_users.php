@@ -163,7 +163,7 @@ Viewing table &quot;users&quot;.
 ?>
 				<td>
 <?php
-					echo '<input type="checkbox"', $row[$i] == 't' : ' checked="checked"' : '', " disabled=\"disabled\"/>\n";
+					echo '<input type="checkbox"', $row[$i] == 't' ? ' checked="checked"' : '', " disabled=\"disabled\"/>\n";
 ?>
 				</td>
 <?php
