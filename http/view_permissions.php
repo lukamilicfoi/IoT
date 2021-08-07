@@ -8,8 +8,8 @@ if (checkAuthorization(9, 'view permissions')) {
 		} else {
 ?>
 			Are you sure?
-			<a href="?truncate&amp;confirm">Yes</a>\n";
-			<a href="">No</a>\n";
+			<a href="?truncate&amp;confirm">Yes</a>
+			<a href="">No</a>
 <?php
 			exit(0);
 		}
@@ -18,7 +18,7 @@ if (checkAuthorization(9, 'view permissions')) {
 			$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_GET['username']}' AND NOT is_administrator;");
 			if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root']) {
 				pg_free_result(pgquery("INSERT INTO table_user(tablename, username) VALUES('{$_GET['tablename']}', '{$_GET['username']}');"));
-				echo 'Row ', htmlspecialchars($_GET['tablename']), ', ', htmlspecialchars($_GET['username']), " inserted.<br/>\n";
+				echo 'Row (\'', htmlspecialchars($_GET['tablename']), '\', \'', htmlspecialchars($_GET['username']), "') inserted.<br/>\n";
 			}
 			pg_free_result($result);
 		} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
@@ -26,11 +26,11 @@ if (checkAuthorization(9, 'view permissions')) {
 			if ($_GET['key2'] == $_SESSION['username'] && $_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator'] && !pg_fetch_row($result) || $_SESSION['is_root']) {
 				if (isset($_GET['update'])) {
 					pg_free_result(pgquery("UPDATE table_user SET (tablename, username) = ('{$_GET['tablename']}', '{$_GET['username']}') WHERE tablename = '{$_GET['key1']}' AND username = '{$_GET['key2']}';"));
-					echo 'Row ', htmlspecialchars($_GET['key1']), ', ', htmlspecialchars($_GET['key2']), " updated.<br/>\n";
+					echo 'Row (\'', htmlspecialchars($_GET['key1']), '\', \'', htmlspecialchars($_GET['key2']), "') updated.<br/>\n";
 				} else if (isset($_GET['delete'])) {
 					if (isset($_GET['confirm'])) {
 						pg_free_result(pgquery("DELETE FROM table_user WHERE tablename = '{$_GET['key1']}' AND username = '{$_GET['key2']}';"));
-						echo 'Row ', htmlspecialchars($_GET['key1']), ', ', htmlspecialchars($_GET['key2']), " deleted.<br/>\n";
+						echo 'Row (\'', htmlspecialchars($_GET['key1']), '\', \'', htmlspecialchars($_GET['key2']), "') deleted.<br/>\n";
 					} else {
 ?>
 						Are you sure?
@@ -72,7 +72,14 @@ if (checkAuthorization(9, 'view permissions')) {
 				</td>
 				<td>
 <?php
-					echo '<input form="insert" type="text" name="username"', $_SESSION['is_administrator'] ? '' : ' value="' . $_SESSION['username'] . '" disabled="disabled"', "/>\n";
+					if ($_SESSION['is_administrator']) {
+?>
+						<input form="insert" type="text" name="username"/>
+<?php
+					} else {
+						echo '<input type="text" value="', $_SESSION['username'], "\" disabled=\"disabled\"/>\n";
+						echo '<input form="insert" type="hidden" name="username" value="', $_SESSION['username'], "\"/>\n";
+					}
 ?>
 				</td>
 				<td>
@@ -98,13 +105,18 @@ if (checkAuthorization(9, 'view permissions')) {
 					<td>
 <?php
 						$tablename = htmlspecialchars($row[0]);
-						$user = htmlspecialchars($row[1]);
-						echo '<input form="update_', $tablename, '_', $username, ' type="text" name="tablename" value="', $tablename, "\"/>\n";
+						$username = htmlspecialchars($row[1]);
+						echo '<input form="update_', $tablename, '_', $username, '\" type="text" name="tablename" value="', $tablename, "\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $tablename, '_', $username, ' type="text" name="username" value="', $username, $_SESSION['is_administrator'] ? '' : '" disabled="disabled', "\"/>\n";
+						if ($_SESSION['is_administrator']) {
+							echo '<input form="update_', $tablename, '_', $username, '\" type="text" name="username" value="', $username, "\"/>\n";
+						} else {
+							echo '<input type="text" value="', $username, "\" disabled=\"disabled\"/>\n";
+							echo '<input form="update_', $tablename, '_', $username, '\" type="hidden" name="username" value="', $username, "\" disabled=\"/>\n";
+						}
 ?>
 					</td>
 					<td>

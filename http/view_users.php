@@ -98,7 +98,16 @@ Viewing table &quot;users&quot;.
 				</td>
 				<td>
 <?php
-					echo '<input form="insert" type="checkbox" name="is_administrator"', $_SESSION['is_root'] ? '' : ' disabled="disabled"', "/>\n";
+					if ($_SESSION['is_root']) {
+?>
+						<input form="insert" type="checkbox" name="is_administrator"/>
+<?php
+					} else {
+?>
+						<input type="checkbox"/>
+						<input form="insert" type="checkbox" name="is_administrator" disabled="disabled"/>
+<?php
+					}
 ?>
 				</td>
 				<td>
@@ -183,10 +192,10 @@ Viewing table &quot;users&quot;.
 <?php
 					$username = htmlspecialchars($row[0]);
 					echo '<td>', $username, "</td>\n";
+					echo '<input form="update1_', $username, '" type="hidden" name="key" value="', $username, "\"/>\n";
 ?>
 					<td>
 <?php
-						echo '<input form="update1_', $username, '" type="hidden" name="key" value="', $username, "\"/>\n";
 						echo '<input form="update1_', $username, "\" type=\"text\" name=\"password\"/>\n";
 ?>
 					</td>
