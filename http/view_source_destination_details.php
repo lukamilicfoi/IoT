@@ -25,23 +25,21 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST']) && checkAuthorization(10, 'view
 			if (isset($_GET['insert'])) {
 				pg_free_result(pgquery("INSERT INTO ID_TWR(SRC, DST, ID, TWR) VALUES(E'\\\\x{$_GET['SRC']}', E'\\\\x{$_GET['DST']}', {$_GET['ID']}, TIMESTAMP '{$_GET['TWR']}');"));
 				echo 'Mapping ', htmlspecialchars($_GET['ID']), ' for SRC ', $h_SRC, ' and DST ', $h_DST, " inserted.<br/>\n";
-			} else if (!empty($_GET['key'])) {
-				if (isset($_GET['update'])) {
-					pg_free_result(pgquery("UPDATE ID_TWR SET(ID, TWR) = ({$_GET['ID']}, TIMESTAMP '{$_GET['TWR']}') WHERE SRC = E'\\\\x{$_GET['SRC']}' AND DST = E'\\\\x{$_GET['DST']}' AND ID = {$_GET['key']};"));
-					echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and DST ', $h_DST, "updated.<br/>\n";
-				} else if (isset($_GET['delete'])) {
-					if (isset($_GET['confirm'])) {
-						pg_free_result(pgquery("DELETE FROM ID_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND DST = E'\\\\x{$_GET['DST']}' AND ID = {$_GET['key']};"));
-						echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and DST ', $h_DST, "deleted.<br/>\n";
-					} else {
+			} else if (!empty($_GET['key']) && isset($_GET['update'])) {
+				pg_free_result(pgquery("UPDATE ID_TWR SET(ID, TWR) = ({$_GET['ID']}, TIMESTAMP '{$_GET['TWR']}') WHERE SRC = E'\\\\x{$_GET['SRC']}' AND DST = E'\\\\x{$_GET['DST']}' AND ID = {$_GET['key']};"));
+				echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and DST ', $h_DST, "updated.<br/>\n";
+			}
+		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
+			if (isset($_GET['confirm'])) {
+				pg_free_result(pgquery("DELETE FROM ID_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND DST = E'\\\\x{$_GET['DST']}' AND ID = {$_GET['key']};"));
+				echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and DST ', $h_DST, "deleted.<br/>\n";
+			} else {
 ?>
-						Are you sure?
+				Are you sure?
 <?php
-						echo '<a href="?SRC=', $u_SRC, '&amp;DST=', $u_DST, '&amp;key=', urlencode($_GET['key']), "&amp;delete&amp;confirm\"Yes</a>\n";
-						echo '<a href="?SRC=', $u_SRC, '&amp;DST=', $u_DST, "\"No</a>\n";
-						exit(0);
-					}
-				}
+				echo '<a href="?SRC=', $u_SRC, '&amp;DST=', $u_DST, '&amp;key=', urlencode($_GET['key']), "&amp;delete&amp;confirm\"Yes</a>\n";
+				echo '<a href="?SRC=', $u_SRC, '&amp;DST=', $u_DST, "\"No</a>\n";
+				exit(0);
 			}
 		}
 		$result = pgquery("SELECT ID, TWR FROM ID_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND DST = E'\\\\x{$_GET['DST']}' ORDER BY ID ASC;");

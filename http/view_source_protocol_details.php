@@ -25,23 +25,21 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto']) && checkAuthorization(10, 'vi
 			if (isset($_GET['insert'])) {
 				pg_free_result(pgquery("INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR) VALUES(E'\\\\x{$_GET['SRC']}', '{$_GET['proto']}', E'\\\\x{$_GET['imm_SRC']}', TIMESTAMP '{$_GET['TWR']}');"));
 				echo 'Mapping ', htmlspecialchars($_GET['imm_SRC']), ' for SRC ', $h_SRC, ' and proto ', $h_proto, " inserted.<br/>\n";
-			} else if (!empty($_GET['key'])) {
-				if (isset($_GET['update'])) {
-					pg_free_result(pgquery("UPDATE iSRC_TWR SET (imm_SRC, TWR) = (E'\\\\x{$_GET['SRC']}', TIMESTAMP '{$_GET['TWR']}') WHERE SRC = E'\\\\x{$_GET['SRC']}' AND proto = '{$_GET['proto']}' AND imm_SRC = E'\\\\x{$_GET['imm_SRC']}';"));
-					echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and proto ', $h_proto, " updated.<br/>\n";
-				} else if (isset($_GET['delete'])) {
-					if (isset($_GET['confirm'])) {
-						pg_free_result(pgquery("DELETE FROM iSRC_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND proto = '{$_GET['proto']}' AND imm_SRC = E'\\\\x{$_GET['key']}';"));
-						echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and proto ', $h_proto, " deleted.<br/>\n";
-					} else {
+			} else if (!empty($_GET['key']) && isset($_GET['update'])) {
+				pg_free_result(pgquery("UPDATE iSRC_TWR SET (imm_SRC, TWR) = (E'\\\\x{$_GET['SRC']}', TIMESTAMP '{$_GET['TWR']}') WHERE SRC = E'\\\\x{$_GET['SRC']}' AND proto = '{$_GET['proto']}' AND imm_SRC = E'\\\\x{$_GET['imm_SRC']}';"));
+				echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and proto ', $h_proto, " updated.<br/>\n";
+			}
+		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
+			if (isset($_GET['confirm'])) {
+				pg_free_result(pgquery("DELETE FROM iSRC_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND proto = '{$_GET['proto']}' AND imm_SRC = E'\\\\x{$_GET['key']}';"));
+				echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and proto ', $h_proto, " deleted.<br/>\n";
+			} else {
 ?>
-						Are you sure?
+				Are you sure?
 <?php
-						echo '<a href="?SRC=', $u_SRC, '&amp;proto=', $u_proto, '&amp;key=', urlencode($_GET['key']), "&amp;delete&amp;confirm\">Yes</a>\n";
-						echo '<a href="?SRC=', $u_SRC, '&amp;proto=', $u_proto, "\">No</a>\n";
-						exit(0);
-					}
-				}
+				echo '<a href="?SRC=', $u_SRC, '&amp;proto=', $u_proto, '&amp;key=', urlencode($_GET['key']), "&amp;delete&amp;confirm\">Yes</a>\n";
+				echo '<a href="?SRC=', $u_SRC, '&amp;proto=', $u_proto, "\">No</a>\n";
+				exit(0);
 			}
 		}
 		$result = pgquery("SELECT imm_SRC, TWR FROM iSRC_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND proto = '{$_GET['proto']}' ORDER BY imm_SRC ASC;");
