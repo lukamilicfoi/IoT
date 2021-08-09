@@ -17,21 +17,21 @@ if (checkAuthorization(7, 'view rules')) {
 	} else if (!empty($_GET['id']) && !empty($_GET['username'])) {
 		if (isset($_SESSION['insert'])) {
 			$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_GET['username']}' AND NOT is_administrator;");
-			if ($_GET['username'] == "'{$_SESSION['username']}'" || $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root']) {
-				pg_free_result(pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) VALUES({$_GET['username']}, {$_GET['id']}, {$_GET['send_receive_seconds']}, {$_GET['filter']}, {$_GET['drop_modify_nothing']}, {$_GET['modification']}, {$_GET['query_command_nothing']}, {$_GET['query_command_1']}, {$_GET['send_inject_query_command_nothing']}, {$_GET['query_command_2']}, {$_GET['proto_id']}, E'\\\\x" . substr($_GET['imm_addr'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . "E, {$_GET['activate']}, {$_GET['deactivate']}, " . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E);"));
-				echo 'For username ', htmlspecialchars($_GET['username']), ' rule ', htmlspecialchars($_GET['id']), " inserted.<br/>\n";
+			if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root']) {
+				pg_free_result(pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) VALUES('{$_GET['username']}', {$_GET['id']}, {$_GET['send_receive_seconds']}, '{$_GET['filter']}', {$_GET['drop_modify_nothing']}, '{$_GET['modification']}', {$_GET['query_command_nothing']}, '{$_GET['query_command_1']}', {$_GET['send_inject_query_command_nothing']}, '{$_GET['query_command_2']}', '{$_GET['proto_id']}', E'\\\\x{$_GET['imm_addr']}, " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . "E, {$_GET['activate']}, {$_GET['deactivate']}, " . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E);"));
+				echo 'For username &apos;', htmlspecialchars($_GET['username']), '&apos; rule ', htmlspecialchars($_GET['id']), " inserted.<br/>\n";
 			}
 			pg_free_result($result);
 		} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
 			$result = pgquery("SELECT TRUE FROM users WHERE username = {$_GET['key1']} OR username = '{$_GET['username']}' AND is_administrator;");
-			if ($_GET['key1'] == "'{$_SESSION['username']}'" && $_GET['key1'] == $_GET['username'] || $_SESSION['is_administrator'] && !pg_fetch_row($result) || $_SESSION['is_root']) {
+			if ($_GET['key1'] == $_SESSION['username'] && $_GET['key1'] == $_GET['username'] || $_SESSION['is_administrator'] && !pg_fetch_row($result) || $_SESSION['is_root']) {
 				if (isset($_GET['update'])) {
-					pg_free_result(pgquery("UPDATE rules SET (username, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) = ({$_GET['username']}, {$_GET['id']}, {$_GET['send_receive_seconds']}, {$_GET['filter']}, {$_GET['drop_modify_nothing']}, {$_GET['modification']}, {$_GET['query_command_nothing']}, {$_GET['query_command_2']}, {$_GET['send_inject_query_command_nothing']}, {$_GET['query_command_2']}, {$_GET['proto_id']}, E'\\\\x" . substr($_GET['imm_addr'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . "E, {$_GET['activate']}, {$_GET['deactivate']}, " . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E) WHERE user = {$_GET['key1']} AND id = {$_GET['key2']};"));
-					echo 'For username ', htmlspecialchars($_GET['key1']), ' rule ', htmlspecialchars($_GET['key2']), " updated.<br/>\n";
+					pg_free_result(pgquery("UPDATE rules SET (username, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) = ('{$_GET['username']}', {$_GET['id']}, {$_GET['send_receive_seconds']}, '{$_GET['filter']}', {$_GET['drop_modify_nothing']}, '{$_GET['modification']}', {$_GET['query_command_nothing']}, '{$_GET['query_command_2']}', {$_GET['send_inject_query_command_nothing']}, '{$_GET['query_command_2']}', '{$_GET['proto_id']}', E'\\\\x{$_GET['imm_addr']}, " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . "E, {$_GET['activate']}, {$_GET['deactivate']}, " . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E) WHERE user = '{$_GET['key1']}' AND id = {$_GET['key2']};"));
+					echo 'For username &apos;', htmlspecialchars($_GET['key1']), '&apos; rule ', htmlspecialchars($_GET['key2']), " updated.<br/>\n";
 				} else if (isset($_GET['delete'])) {
 					if (isset($_GET['confirm'])) {
-						pg_free_result(pgquery("DELETE FROM rules WHERE username = {$_GET['key1']} AND id = {$_GET['key2']};"));
-						echo 'For username ', htmlspecialchars($_GET['key1']), ' rule ', htmlspecialchars($_GET['key2']), " deleted.<br/>\n";
+						pg_free_result(pgquery("DELETE FROM rules WHERE username = '{$_GET['key1']}' AND id = {$_GET['key2']};"));
+						echo 'For username &apos;', htmlspecialchars($_GET['key1']), '&apos; rule ', htmlspecialchars($_GET['key2']), " deleted.<br/>\n";
 					} else {
 ?>
 						Are you sure?
@@ -54,58 +54,14 @@ if (checkAuthorization(7, 'view rules')) {
 <?php
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT rules.* FROM rules INNER JOIN users ON rules.username = users.username WHERE rules.username = '{$_SESSION['username']}' OR NOT users.is_administrator ORDER BY users.is_administrator DESC, rules.username ASC, rules.id ASC;");
-		echo 'Viewing table &quot;rules&quot; for ', htmlspecialchars($_SESSION['username']), " and non-administrators.<br/>\n";
+		echo 'Viewing table &quot;rules&quot; for &apos;', htmlspecialchars($_SESSION['username']), "&apos; and non-administrators.<br/>\n";
 	} else {
 		$result = pgquery("SELECT * FROM rules WHERE user = '{$_SESSION['username']}' ORDER BY id ASC;");
-		echo 'Viewing table &quot;rules&quot; for ', htmlspecialchars($_SESSION['username']), ".<br/>\n";
+		echo 'Viewing table &quot;rules&quot; for &apos;', htmlspecialchars($_SESSION['username']), "&apos.<br/>\n";
 	}
 ?>
 	<table border="1">
 		<tbody>
-			<tr>
-				<td>username</td>
-				<td>id</td>
-				<td>send_receive_seconds</td>
-				<td>filter</td>
-				<td>drop_modify_nothing</td>
-				<td>modification</td>
-				<td>query_command_nothing</td>
-				<td>query_command_1</td>
-				<td>send_inject_query_command_nothing</td>
-				<td>query_command_2</td>
-				<td>proto_id</td>
-				<td>imm_addr</td>
-				<td>CCF</td>
-				<td>ACF</td>
-				<td>broadcast</td>
-				<td>override_implicit_rules</td>
-				<td>activate</td>
-				<td>deactivate</td>
-				<td>active</td>
-				<td>last_run</td>
-			</tr>
-			<tr>
-				<td>TEXT</td>
-				<td>INTEGER</td>
-				<td>SMALLINT</td>
-				<td>CLOB</td>
-				<td>SMALLINT</td>
-				<td>CLOB</td>
-				<td>SMALLINT</td>
-				<td>CLOB</td>
-				<td>SMALLINT</td>
-				<td>CLOB</td>
-				<td>CLOB</td>
-				<td>BLOB</td>
-				<td>BOOLEAN</td>
-				<td>BOOLEAN</td>
-				<td>BOOLEAN</td>
-				<td>BOOLEAN</td>
-				<td>INTEGER</td>
-				<td>INTEGER</td>
-				<td>BOOLEAN</td>
-				<td>TIMESTAMP(0) WITH TIME ZONE</td>
-			</tr>
 			<tr>
 				<th>For username</th>
 				<th>this is rule number</th>
@@ -132,7 +88,14 @@ if (checkAuthorization(7, 'view rules')) {
 			<tr>
 				<td>
 <?php
-					echo '<input form="insert" type="text" name="username"', $_SESSION['is_administrator'] ? '' : ' value="&apos;' . htmlspecialchars($_SESSION['username']) . '&apos;" disabled="disabled" size="10"', "/>\n";
+					if ($_SESSION['is_administrator']) {
+?>
+						<input form="insert" type="text" name="username" size="10"/>
+<?php
+					} else {
+						echo '<input type="text" value="', htmlspecialchars($_SESSION['username']), "\" size=\"10\" disabled=\"disabled\"/>\n";
+						echo '<input form="insert" type="hidden" value="', htmlspecialchars($_SESSION['username']), "\"/>\n";
+					}
 ?>
 				</td>
 				<td nowrap="nowrap">
@@ -247,7 +210,12 @@ if (checkAuthorization(7, 'view rules')) {
 					<td>
 <?php
 						$username = htmlspecialchars($row[0]);
-						echo '<input form="update_', $username, '_', $row[1], 'type="text" name="username" value="&apos;', $username, '&apos;"', $_SESSION['is_administrator'] ? '' : ' disabled="disabled"' , "/>\n";
+						if ($_SESSION['is_administrator']) {
+							echo '<input form="update_', $username, '_', $row[1], 'type="text" name="username" value="', $username, "\"/>\n";
+						} else {
+							echo '<input type="text" value="', $username, "\" disabled=\"disabled\"/>\n";
+							echo '<input form="update_', $username, '_', $row[1], 'type="hidden" name="username" value="', $username, "\"/>\n";
+						}
 ?>
 					</td>
 					<td>
@@ -272,7 +240,7 @@ if (checkAuthorization(7, 'view rules')) {
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="filter" value="&apos;', htmlspecialchars($row[3]), "&apos;\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="filter" value="', htmlspecialchars($row[3]), "\"/>\n";
 ?>
 						.
 					</td>
@@ -292,7 +260,7 @@ if (checkAuthorization(7, 'view rules')) {
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="modification" value="&apos;', htmlspecialchars($row[5]), "&apos;\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="modification" value="', htmlspecialchars($row[5]), "\"/>\n";
 ?>
 						,
 					</td>
@@ -312,7 +280,7 @@ if (checkAuthorization(7, 'view rules')) {
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="query_command_1" value="&apos;', htmlspecialchars($row[7]), "&apos;\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="query_command_1" value="', htmlspecialchars($row[7]), "\"/>\n";
 ?>
 						,
 					</td>
@@ -340,17 +308,17 @@ if (checkAuthorization(7, 'view rules')) {
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="query_command_2" value="&apos;', htmlspecialchars($row[9]), "&apos;\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="query_command_2" value="', htmlspecialchars($row[9]), "\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="proto_id" value="&apos;', htmlspecialchars($row[10]), "&apos;\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="proto_id" value="', htmlspecialchars($row[10]), "\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="imm_addr" value="X&apos;', htmlspecialchars(strtoupper(substr($row[11], 2))), "&apos;\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="imm_addr" value="', htmlspecialchars(strtoupper(substr($row[11], 2))), "\"/>\n";
 ?>
 					</td>
 					<td>
@@ -395,7 +363,7 @@ if (checkAuthorization(7, 'view rules')) {
 					<td>
 <?php
 						echo '<form id="update_', $username, '_', $row[1], "\" action=\"\" method=\"GET\">\n";
-							echo '<input type="hidden" name="key1" value="&apos;', $username, "&apos;\"/>\n";
+							echo '<input type="hidden" name="key1" value="', $username, "\"/>\n";
 							echo '<input type="hidden" name="key2" value="', $row[1], "\"/>\n";
 ?>
 							<input type="submit" name="update" value="UPDATE"/>;
@@ -405,7 +373,7 @@ if (checkAuthorization(7, 'view rules')) {
 ?>
 						<form action="" method="GET">
 <?php
-							echo '<input type="hidden" name="key1" value="&apos;', $username, "&apos;\"/>\n";
+							echo '<input type="hidden" name="key1" value="', $username, "\"/>\n";
 							echo '<input type="hidden" name="key2" value="', $row[1], "\"/>\n";
 ?>
 							<input type="submit" name="delete" value="DELETE"/>
@@ -421,6 +389,8 @@ if (checkAuthorization(7, 'view rules')) {
 	Modification is performed like &quot;UPDATE message SET &lt;semicolon-separated command 1&gt;; UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;&quot;.<br/>
 	During SQL queries the current message is stored in table "formatted_message_for_send_receive" and columns HD, ID, etc.<br/>
 	bash commands are NOT executed as /root/, but as the user who started the database.<br/>
+	Filter can be either a number or a string.
+	Leaving a field empty indicates null value.
 	Deactivating a rule deletes its timer. Changing a period does not.<br/>
 	Id must be unique. Smaller value indicates bigger priority.<br/>
 	When broadcasting a message any imm_DST is ignored.<br/>

@@ -29,17 +29,17 @@ if (checkAuthorization(7, 'view rules')) {
 <?php
 if (checkAuthorization(4, 'send messages')) {
 	if (!empty($_GET['msgtosend']) && !empty($_GET['proto_id']) && !empty($_GET['imm_DST'])) {
-		pg_free_result(pgquery('SELECT send_inject(E\'\\\\x' . substr($_GET['msgtosend'], 2) . ", '{$_GET['proto_id']}', E'\\\\x" . substr($_GET['imm_DST'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, TRUE);'));
+		pg_free_result(pgquery("SELECT send_inject(E'\\\\x{$_GET['msgtosend']}, '{$_GET['proto_id']}', E'\\\\x{$_GET['imm_DST']}, " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, TRUE);'));
 		echo 'Message ', htmlspecialchars($_GET['msgtosend']), " sent.\n";
 	}
 ?>
 	<form action="" method="GET">
-		Send raw message (write as binary string)
-		<input type="text" name="msgtosend" value="X&apos;&apos;"/>
-		using protocol id (write as string)
-		<input type="text" name="proto_id" value="&apos;&apos;"/><br/>
-		and imm_DST (write as binary string)
-		<input type="text" name="imm_DST" value="X&apos;&apos;"/>
+		Send raw message (hex)
+		<input type="text" name="msgtosend"/>
+		using protocol id (string)
+		<input type="text" name="proto_id"/><br/>
+		and imm_DST (hex)
+		<input type="text" name="imm_DST"/>
 		using CCF
 		<input type="checkbox" name="CCF"/>
 		and ACF
@@ -55,17 +55,17 @@ if (checkAuthorization(4, 'send messages')) {
 }
 if (checkAuthorization(5, 'inject messages')) {
 	if (!empty($_GET['msgtoinject']) && !empty($_GET['proto_id']) && !empty($_GET['imm_SRC'])) {
-		pg_free_result(pgquery('SELECT send_inject(E\'\\\\x' . substr($_GET['msgtoinject'], 2) . ", '{$_GET['proto_id']}', E'\\\\x" . substr($_GET['imm_SRC'], 2) . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : ' FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, FALSE);'));
+		pg_free_result(pgquery("SELECT send_inject(E'\\\\x{$_GET['msgtoinject']}, '{$_GET['proto_id']}', E'\\\\x{$_GET['imm_SRC']}, " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : ' FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, FALSE);'));
 		echo 'Message ', htmlspecialchars($_GET['msgtoinject']), " injected.\n";
 	}
 ?>
 	<form action="" method="GET">
-		Inject raw message (write as binary string)
-		<input type="text" name="msgtoinject" value="X&apos;&apos;"/>
-		using protocol id (write as string)
-		<input type="text" name="proto_id" value="&apos;&apos;"/><br/>
-		and imm_SRC (write as binary string)
-		<input type="text" name="imm_SRC" value="X&apos;&apos;"/>
+		Inject raw message (hex)
+		<input type="text" name="msgtoinject"/>
+		using protocol id (string)
+		<input type="text" name="proto_id"/><br/>
+		and imm_SRC (hex)
+		<input type="text" name="imm_SRC"/>
 		using CCF
 		<input type="checkbox" name="CCF"/>
 		and ACF
@@ -145,13 +145,20 @@ if (checkAuthorization(11, 'manually execute timed rules')) {
 			pg_free_result(pgquery("SELECT manually_execute_timed_rule('{$_GET['username']}', {$_GET['id']});"));
 		}
 		pg_free_result($result);
-		echo 'For username ', htmlspecialchars($_GET['username']), ' timed rule ', htmlspecialchars($_GET['id']), " manually executed.\n";
+		echo 'For username &apos;', htmlspecialchars($_GET['username']), '&apos; timed rule ', htmlspecialchars($_GET['id']), " manually executed.\n";
 	}
 ?>
 	<form action="" method="GET">
 		For username
 <?php
-		echo '<input type="text" name="username"', $_SESSION['is_administrator'] ? '' : ' value="' . htmlspecialchars($_SESSION['username']) . '" disabled="disabled"', "/>\n";
+		if ($_SESSION['is_administrator']) {
+?>
+			<input type="text" name="username"/>
+<?php
+		} else {
+			echo '<input type="text" value="', htmlspecialchars($_SESSION['username']), "\" disabled=\"disabled\"/>\n";
+			echo '<input type="hidden" name="username" value="', htmlspecialchars($_SESSION['username']), "\"/>\n";
+		}
 ?>
 		manually execute timed rule
 		<input type="text" name="id"/>

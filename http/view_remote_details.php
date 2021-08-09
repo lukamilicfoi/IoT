@@ -13,33 +13,33 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['addr'])) {
 		} else if (isset($_GET['random'])) {
 			pg_free_result(pgquery('UPDATE addr_oID SET out_ID = ' . rand(0, 255) . " WHERE addr = E'\\\\x{$_GET['addr']}';"));
 			echo 'out_ID randomized for DST ', $h_addr, ".<br/>\n";
-		} else if (!empty($_GET['add1'])) {
-			pg_free_result(pgquery("INSERT INTO SRC_proto(SRC, proto) VALUES(E'\\\\x{$_GET['addr']}', (SELECT proto FROM proto_name WHERE name = '{$_GET['add1']}'));"));
-			echo 'proto ', htmlspecialchars($_GET['add1']), ' added for SRC ', $h_addr, ".<br/>\n";
-		} else if (!empty($_GET['add2'])) {
-			pg_free_result(pgquery("INSERT INTO SRC_DST(SRC, DST) VALUES(E'\\\\x{$_GET['addr']}', E'\\\\x{$_GET['add2']}';"));
-			echo 'DST ', htmlspecialchars($_GET['add2']), ' added for SRC ', $h_addr, ".<br/>\n";
-		} else if (!empty($_GET['remove1'])) {
+		} else if (!empty($_GET['add_proto'])) {
+			pg_free_result(pgquery("INSERT INTO SRC_proto(SRC, proto) VALUES(E'\\\\x{$_GET['addr']}', (SELECT proto FROM proto_name WHERE name = '{$_GET['add_proto']}'));"));
+			echo 'proto &apos;', htmlspecialchars($_GET['add_proto']), '&apos; added for SRC ', $h_addr, ".<br/>\n";
+		} else if (!empty($_GET['add_DST'])) {
+			pg_free_result(pgquery("INSERT INTO SRC_DST(SRC, DST) VALUES(E'\\\\x{$_GET['addr']}', E'\\\\x{$_GET['add_DST']}';"));
+			echo 'DST ', htmlspecialchars($_GET['add_DST']), ' added for SRC ', $h_addr, ".<br/>\n";
+		} else if (!empty($_GET['remove_proto'])) {
 			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM SRC_proto WHERE SRC = E'\\\\x{$_GET['addr']}' AND proto = (SELECT proto FROM proto_name WHERE name = '{$_GET['remove1']}');"));
-				echo 'proto ', htmlspecialchars($_GET['remove1']), ' removed for SRC ', $h_addr, ".<br/>\n";
+				pg_free_result(pgquery("DELETE FROM SRC_proto WHERE SRC = E'\\\\x{$_GET['addr']}' AND proto = (SELECT proto FROM proto_name WHERE name = '{$_GET['remove_proto']}');"));
+				echo 'proto &apos;', htmlspecialchars($_GET['remove_proto']), '&apos; removed for SRC ', $h_addr, ".<br/>\n";
 			} else {
 ?>
 				Are you sure?
 <?php
-				echo '<a href="?addr=', $u_addr, '&amp;remove1=', urlencode($_GET['remove1']), "&amp;confirm\">Yes</a>\n";
+				echo '<a href="?addr=', $u_addr, '&amp;remove_proto=', urlencode($_GET['remove_proto']), "&amp;confirm\">Yes</a>\n";
 				echo '<a href="?addr=', $u_addr, "\">No</a>\n";
 				exit(0);
 			}
-		} else if (!empty($_GET['remove2'])) {
+		} else if (!empty($_GET['remove_DST'])) {
 			if (isset($_GET['confirm'])) {
 				pg_free_result(pgquery("DELETE FROM SRC_DST WHERE SRC = E'\\\\x{$_GET['addr']}' AND DST = E'\\\\x{$_GET['DST']}';"));
-				echo 'DST ', htmlspecialchars($_GET['remove2']), ' removed for SRC ', htmlspecialchars($_GET['addr']), ".<br/>\n";
+				echo 'DST ', htmlspecialchars($_GET['remove_DST']), ' removed for SRC ', htmlspecialchars($_GET['addr']), ".<br/>\n";
 			} else {
 ?>
 				Are you sure?
 <?php
-				echo '<a href="?addr=', $u_addr, '&amp;remove2=', urlencode($_GET['remove2']), "&amp;confirm\">Yes</a>\n";
+				echo '<a href="?addr=', $u_addr, '&amp;remove_DST=', urlencode($_GET['remove_DST']), "&amp;confirm\">Yes</a>\n";
 				echo '<a href="?addr=', $u_addr, "\">No</a>\n";
 				exit(0);
 			}
@@ -52,11 +52,11 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['addr'])) {
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 				$str = substr($row[0], 2);
 				echo '<a href="view_source_destination_details.php?SRC=', $u_addr, '&amp;DST=', $str, '">', $str, "</a>\n";
-				echo '<a href="?addr=', urlencode($_GET['addr']), '&amp;remove2=', $str, "\">(remove)</a>\n";
+				echo '<a href="?addr=', urlencode($_GET['addr']), '&amp;remove_DST=', $str, "\">(remove)</a>\n";
 			}
 			echo '<input type="hidden" name="addr" value="', $h_addr, "\"/>\n";
 ?>
-			<input type="text" name="add2"/>
+			<input type="text" name="add_DST"/>
 			<input type="submit" value="(add)"/>
 		</form>
 		outgoing ID
@@ -83,11 +83,11 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['addr'])) {
 			$result = pgquery("SELECT SRC_proto.proto, proto_name.name FROM SRC_proto INNER JOIN proto_name ON SRC_proto.proto = proto_name.proto WHERE SRC = E'\\\\x{$_GET['addr']}' ORDER BY SRC_proto.proto ASC;");
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 				echo '<a href="view_source_protocol_details.php?SRC=', $u_addr, '&amp;proto=', $row[0], '">', $row[1], "</a>\n";
-				echo '<a href="?addr=', urlencode($_GET['addr']), '&amp;remove1=', $row[1], "\">(remove)</a>\n";
+				echo '<a href="?addr=', urlencode($_GET['addr']), '&amp;remove_proto=', $row[1], "\">(remove)</a>\n";
 			}
 			echo '<input type="hidden" name="addr" value="', $h_addr, "\"/>\n";
 ?>
-			<input type="text" name="add1"/>
+			<input type="text" name="add_proto"/>
 			<input type="submit" value="(add)"/>
 		</form>
 		<a href="view_remotes.php">Done</a>
