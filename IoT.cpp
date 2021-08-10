@@ -325,7 +325,7 @@ struct refresh_next_timed_rule_time_struct {
 struct update_permissions_struct { };
 
 struct manually_execute_timed_rule_struct {
-	char user[256];//username cannot exceed
+	char username[256];//username cannot exceed
 	int id;
 };
 
@@ -410,7 +410,7 @@ struct configuration {
 	BYTE8 default_gateway;
 };
 
-map<string, configuration *> user_configuration;
+map<string, configuration *> username_configuration;
 
 my_time_point beginning;
 
@@ -503,7 +503,7 @@ void send_inject_from_rule(const char *message, const char *proto_id, const char
 		bool CCF, bool ACF, bool broadcast, bool override_implicit_rules, bool send);
 
 void apply_rule_beginning(PGresult *res_rules, int &current_id, int i, const char *type,
-		string &current_user);
+		string &current_username);
 
 void insert_message(const formatted_message &fmsg, const raw_message &rmsg);
 
@@ -512,7 +512,7 @@ formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool 
 void select_message(formatted_message &fmsg, raw_message &rmsg);
 
 void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int offset,
-		string &select, string &current_user);
+		string &select, string &current_username);
 
 BYTE8 c17charp_to_BYTE8(const char *address);
 
@@ -625,7 +625,7 @@ protocol *find_protocol_by_id(const char *id);
 
 protocol *find_protocol_by_name(const char *name);
 
-bool check_permissions(const char *table, BYTE8 address);
+bool check_permissions(const char *tablename, BYTE8 address);
 
 class protocol {
 
@@ -2477,10 +2477,10 @@ int main(int argc, char *argv[]) {
 			"imm_SRC BYTEA, TWR TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, "
 			"PRIMARY KEY(SRC, proto, imm_SRC), FOREIGN KEY(SRC, proto) "
 			"REFERENCES SRC_proto(SRC, proto) ON DELETE CASCADE ON UPDATE CASCADE)"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS configuration("
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS configuration(username TEXT, "
 			"forward_messages BOOLEAN NOT NULL, use_internet_switch_algorithm BOOLEAN NOT NULL, "
 			"nsecs_id INTEGER NOT NULL, nsecs_src INTEGER NOT NULL, "
-			"trust_everyone BOOLEAN NOT NULL, default_gateway BYTEA NOT NULL, username TEXT, "
+			"trust_everyone BOOLEAN NOT NULL, default_gateway BYTEA NOT NULL, "
 			"PRIMARY KEY(username), FOREIGN KEY(username) REFERENCES users(username) "
 			"ON DELETE CASCADE ON UPDATE CASCADE)"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS current_username(current_username TEXT)"));
@@ -2724,7 +2724,7 @@ void destroy_vars() {
 		}
 		delete a_r.second;
 	}
-	for (auto u_c : user_configuration) {
+	for (auto u_c : username_configuration) {
 		delete u_c.second;
 	}
 	for (protocol *p : protocols) {
@@ -2871,15 +2871,15 @@ PGresult *execcheckreturn(string query) {
 
 //this function is executed in another process!!!
 extern "C" Datum manually_execute_timed_rule(PG_FUNCTION_ARGS) {
-	text *user_sql = PG_GETARG_TEXT_PP(0);
-	int user_len = VARSIZE_ANY_EXHDR(user_sql);
+	text *username_sql = PG_GETARG_TEXT_PP(0);
+	int username_len = VARSIZE_ANY_EXHDR(username_sql);
 	int id = PG_GETARG_INT32(1);
 	manually_execute_timed_rule_struct metrs = { "", id };
 	mqd_t manually_execute_timed_rule_mq = mq_open("/manually_execute_timed_rule", O_WRONLY);
 
 	THR(manually_execute_timed_rule_mq < 0,
 			system_exception("cannot open manually_execute_timed_rule_mq"));
-	memcpy(metrs.user, VARDATA_ANY(user_sql), user_len < 256 ? user_len : 256);
+	memcpy(metrs.username, VARDATA_ANY(username_sql), username_len < 256 ? username_len : 256);
 	THR(mq_send(manually_execute_timed_rule_mq, reinterpret_cast<char *>(&metrs),
 			sizeof(manually_execute_timed_rule_struct), 0) < 0,
 			system_exception("cannot send to manually_execute_timed_rule_mq"));
@@ -3216,20 +3216,20 @@ void config2() {
 	configuration *c;
 	int i = PQntuples(res);
 
-	user_configuration.clear();
+	username_configuration.clear();
 	while (--i >= 0) {
 		c = new configuration;
-		c->forward_messages = *PQgetvalue(res, i, 0) == 't';
-		c->use_internet_switch_algorithm = *PQgetvalue(res, i, 1) == 't';
-		iss.str(PQgetvalue(res, i, 2));
+		c->forward_messages = *PQgetvalue(res, i, 1) == 't';
+		c->use_internet_switch_algorithm = *PQgetvalue(res, i, 2) == 't';
+		iss.str(PQgetvalue(res, i, 3));
 		iss >> c->nsecs_id;
 		iss.clear();
-		iss.str(PQgetvalue(res, i, 3));
+		iss.str(PQgetvalue(res, i, 4));
 		iss >> c->nsecs_src;
 		iss.clear();
-		c->trust_everyone = *PQgetvalue(res, i, 4) == 't';
-		c->default_gateway = c17charp_to_BYTE8(PQgetvalue(res, i, 5) + 2);
-		user_configuration.insert(make_pair(PQgetvalue(res, i, 6), c));
+		c->trust_everyone = *PQgetvalue(res, i, 5) == 't';
+		c->default_gateway = c17charp_to_BYTE8(PQgetvalue(res, i, 6) + 2);
+		username_configuration.insert(make_pair(PQgetvalue(res, i, 0), c));
 	}
 	PQclear(res);
 }
@@ -3458,7 +3458,7 @@ ostream &operator<<(ostream &os, const my_time_point &point) noexcept {
 void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg) {
 	auto t_u = table_user.find("t"s + BYTE8_to_c17charp(fmsg.SRC));
 
-	if (user_configuration[t_u != table_user.cend() ? t_u->second : "root"]->trust_everyone) {
+	if (username_configuration[t_u != table_user.cend() ? t_u->second : "root"]->trust_everyone) {
 		LOG_CPP("trusting everyone for sending" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding rules for sending" << endl);
@@ -3506,7 +3506,7 @@ void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg) {
 	auto t_u = table_user.find("t"s + BYTE8_to_c17charp(fmsg.DST));
 
-	if (user_configuration[t_u != table_user.cend() ? t_u->second : "root"]->trust_everyone) {
+	if (username_configuration[t_u != table_user.cend() ? t_u->second : "root"]->trust_everyone) {
 		LOG_CPP("trusting everyone for receiving" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding checks for receiving" << endl);
@@ -3539,7 +3539,7 @@ formatted_message *receive_formatted_message() {
 				r->out_ID = uid(dre);
 			}
 			iter_t_u = table_user.find("t"s + BYTE8_to_c17charp(fmsg->DST));
-			c = user_configuration[iter_t_u != table_user.cend() ? iter_t_u->second : "root"];
+			c = username_configuration[iter_t_u != table_user.cend() ? iter_t_u->second : "root"];
 			if (c->use_internet_switch_algorithm) {
 				map<BYTE8, my_time_point> *&iT = r->proto_iSRC_TWR[rmsg->proto];
 				if (iT == nullptr) {
@@ -3700,7 +3700,7 @@ raw_message *receive_raw_message() {
 	stringstream ss(ss.in | ss.out | ss.ate);
 	update_permissions_struct ups;
 	manually_execute_timed_rule_struct metrs;
-	string current_user;
+	string current_username;
 
 	clock_gettime(CLOCK_REALTIME, &ts);
 	do {
@@ -3790,13 +3790,13 @@ raw_message *receive_raw_message() {
 			select = ss.str();
 			res_rules = execcheckreturn(select + " ORDER BY username ASC, id ASC");
 			for (i = 0, j = PQntuples(res_rules); i < j; i++) {
-				current_user = PQgetvalue(res_rules, i, 0);
-				apply_rule_beginning(res_rules, current_id, i, "timed", current_user);
+				current_username = PQgetvalue(res_rules, i, 0);
+				apply_rule_beginning(res_rules, current_id, i, "timed", current_username);
 				PQclear(execcheckreturn("UPDATE rules SET (last_run, next_run) = (last_run "
 						"+ run_period, CAST(EXTRACT(EPOCH FROM last_run + 2 * run_period) "
 						"AS BIGINT)) WHERE id = "s + PQgetvalue(res_rules, i, 1)
 						+ " AND username = \'" + PQgetvalue(res_rules, i, 0) + '\''));
-				apply_rule_end(res_rules, current_id, i, j, 0, select, current_user);
+				apply_rule_end(res_rules, current_id, i, j, 0, select, current_username);
 			}
 			PQclear(res_rules);
 			res_rules = execcheckreturn("SELECT MIN(next_run) FROM rules");
@@ -3820,13 +3820,13 @@ raw_message *receive_raw_message() {
 }
 #endif /* OFFLINE */
 
-bool check_permissions(const char *table, BYTE8 address) {
-	multimap<string, string>::const_iterator iter1 = table_user.find(table),
+bool check_permissions(const char *tablename, BYTE8 address) {
+	multimap<string, string>::const_iterator iter1 = table_user.find(tablename),
 			iter2 = table_user.find("t"s + BYTE8_to_c17charp(address));
 
 	if (iter1 != table_user.cend()) {
 		if (iter2 != table_user.cend()) {
-			for (; iter1 != table_user.cend() && iter1->first == table; iter1++) {
+			for (; iter1 != table_user.cend() && iter1->first == tablename; iter1++) {
 				if (iter1->second == iter2->second) {
 					return true;
 				}
@@ -3923,11 +3923,11 @@ void send_inject_from_rule(const char *message, const char *proto_id, const char
 }
 
 void apply_rule_beginning(PGresult *res_rules, int &current_id, int i, const char *type,
-		string &current_user) {
+		string &current_username) {
 	istringstream iss(PQgetvalue(res_rules, i, 1));
 
 	iss >> current_id;
-	LOG_CPP("applying " << type << " rule " << current_id << " for user " << current_user << endl);
+	LOG_CPP("applying " << type << " rule " << current_id << " for username " << current_username << endl);
 }
 
 void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
@@ -3952,7 +3952,7 @@ void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
 
 formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool send) {
 	auto t_u = table_user.find("t"s + BYTE8_to_c17charp(send ? fmsg->SRC : fmsg->DST));
-	string current_user(t_u != table_user.cend() ? t_u->second : "root"), select((send
+	string current_username(t_u != table_user.cend() ? t_u->second : "root"), select((send
 			? "SELECT username, id, send_receive_seconds, filter, drop_modify_nothing, "
 			"modification, query_command_nothing, query_command_1, "
 			"send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, "
@@ -3963,7 +3963,7 @@ formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool 
 			"send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, "
 			"broadcast, override_implicit_rules, activate, deactivate, is_active FROM rules "
 			"WHERE send_receive_seconds = 1 AND is_active AND username = \'")
-			+ current_user + '\'');
+			+ current_username + '\'');
 	PGresult *res_fields, *res_rules;
 	int i = 0, j, current_id;
 	bool to_delete = false;
@@ -3979,7 +3979,7 @@ formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool 
 				+ " FROM formatted_message_for_send_receive");
 		if (PQntuples(res_fields) == 1 && PQnfields(res_fields) == 1
 				&& strcmp(PQgetvalue(res_fields, 0, 0), "t") == 0) {
-			apply_rule_beginning(res_rules, current_id, i, send ? "send" : "receive", current_user);
+			apply_rule_beginning(res_rules, current_id, i, send ? "send" : "receive", current_username);
 			value = PQgetvalue(res_rules, i, 4);
 			if (*value == '0') {
 				LOG_CPP("marking for deletion" << endl);
@@ -3989,7 +3989,7 @@ formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool 
 				execute_semicolon_separated_commands("UPDATE formatted_message_for_send_receive "
 						"SET ", *fmsg, *rmsg, PQgetvalue(res_rules, i, 5));
 			}
-			apply_rule_end(res_rules, current_id, i, j, 3, select, current_user);
+			apply_rule_end(res_rules, current_id, i, j, 3, select, current_username);
 		}
 		PQclear(res_fields);
 	}
@@ -4039,7 +4039,7 @@ void select_message(formatted_message &fmsg, raw_message &rmsg) {
 
 //todo check permissions
 void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int offset,
-		string &select, string &current_user) {
+		string &select, string &current_username) {
 	int new_id;
 	stringstream ss(ss.in | ss.out | ss.ate);
 	bool reset = false;
@@ -4083,7 +4083,7 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	if (*value != '\0') {
 		LOG_CPP("activating rule " << value << endl);
 		PQclear(execcheckreturn("UPDATE rules SET is_active = TRUE WHERE id = "s + value
-				+ " AND \"user\" = \'" + current_user + '\''));
+				+ " AND \"username\" = \'" + current_username + '\''));
 		ss.str(value);
 		ss >> new_id;
 		if (new_id > current_id) {
@@ -4095,7 +4095,7 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	if (*value != '\0') {
 		LOG_CPP("deactivating rule " << value << endl);
 		PQclear(execcheckreturn("UPDATE rules SET is_active = FALSE WHERE id = "s + value
-				+ " AND \"user\" = \'" + current_user + '\''));
+				+ " AND \"username\" = \'" + current_username + '\''));
 		ss.str(value);
 		ss.clear();
 		ss >> new_id;
@@ -4109,7 +4109,7 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 		PQclear(res_rules);
 		ss.str(select);
 		ss.clear();
-		ss << " AND id > " << current_id << " AND username = \'" << current_user
+		ss << " AND id > " << current_id << " AND username = \'" << current_username
 				<< "\' ORDER BY id ASC";
 		res_rules = execcheckreturn(ss.str());
 		j = PQntuples(res_rules);
@@ -4152,14 +4152,14 @@ void manually_execute_timed_rule2(const manually_execute_timed_rule_struct &metr
 			"broadcast, override_implicit_rules, activate, deactivate, is_active, FROM rules "
 			"WHERE id = ");
 	PGresult *res_rules;
-	string select, current_user(metrs.user);
+	string select, current_username(metrs.username);
 	int i, j = 1;
 
-	oss << metrs.id << " AND username = \'" << current_user << '\'';
+	oss << metrs.id << " AND username = \'" << current_username << '\'';
 	select = oss.str();
 	res_rules = execcheckreturn(select);
-	apply_rule_beginning(res_rules, i, 0, "timed", current_user);
-	apply_rule_end(res_rules, metrs.id, i, j, 0, select, current_user);
+	apply_rule_beginning(res_rules, i, 0, "timed", current_username);
+	apply_rule_end(res_rules, metrs.id, i, j, 0, select, current_username);
 	PQclear(res_rules);
 }
 
@@ -4787,7 +4787,7 @@ void send_formatted_message(formatted_message *fmsg) {
 	unique_ptr<formatted_message> copy, dummy_f(fmsg);
 	map<string, string>::const_iterator iter_table_user
 			= table_user.find("t"s + BYTE8_to_c17charp(fmsg->SRC));
-	configuration *c = user_configuration[iter_table_user != table_user.cend()
+	configuration *c = username_configuration[iter_table_user != table_user.cend()
 			? iter_table_user->second : "root"];
 
 	THR(iter_DST_destination == addr_remote.end(), message_exception("DST does not exist"));
