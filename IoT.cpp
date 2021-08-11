@@ -2486,16 +2486,16 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS current_username(current_username TEXT)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE current_username"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS ext(addr_id TEXT) CASCADE"));
-	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS send_inject(message BYTEA, proto_id TEXT, "
-			"imm_addr BYTEA, CCF BOOLEAN, ACF BOOLEAN, send BOOLEAN, broadcast BOOLEAN, "
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS send_inject(send BOOLEAN, message BYTEA, "
+			"proto_id TEXT, imm_addr BYTEA, CCF BOOLEAN, ACF BOOLEAN, broadcast BOOLEAN, "
 			"override_implicit_rules BOOLEAN)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS load_store(load BOOLEAN)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS config()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS refresh_next_timed_rule_time("
 			"next_timed_rule BIGINT)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS update_permissions()"));
-	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS manually_execute_timed_rule(id INTEGER, "
-			"username TEXT)"));
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS manually_execute_timed_rule(username TEXT, "
+			"id INTEGER)"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_username() CASCADE"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS raw_message_for_query_command("
 			"message BYTEA)"));
@@ -2511,21 +2511,21 @@ int main(int argc, char *argv[]) {
 			"ON UPDATE CASCADE ON DELETE CASCADE)"));
 	PQclear(execcheckreturn("CREATE PROCEDURE ext(addr_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'ext\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE send_inject(message BYTEA, proto_id TEXT, "
-			"imm_addr BYTEA, CCF BOOLEAN, ACF BOOLEAN, send BOOLEAN, broadcast BOOLEAN, "
+	PQclear(execcheckreturn("CREATE PROCEDURE send_inject(send BOOLEAN, message BYTEA, "
+			"proto_id TEXT, imm_addr BYTEA, CCF BOOLEAN, ACF BOOLEAN, broadcast BOOLEAN, "
 			"override_implicit_rules BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'send_inject\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE load_store(load BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'load_store\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE config() AS \'"s + cwd
 			+ "/libIoT\', \'config\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_timed_rule_time(next_timed_rule BIGINT) "
+	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_timed_rule_time(next_timed_rule BIHINT) "
 			"RETURNS void AS \'"s + cwd + "/libIoT\', \'refresh_next_timed_rule_time\' "
 			"LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE update_permissions() AS \'"s + cwd
 			+ "/libIoT\', \'update_permissions\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE manually_execute_timed_rule(id INTEGER, "
-			"username TEXT) AS\'"s + cwd + "/libIoT\', \'manually_execute_timed_rule\' "
+	PQclear(execcheckreturn("CREATE PROCEDURE manually_execute_timed_rule(username TEXT, "
+			"id INTEGER) AS\'"s + cwd + "/libIoT\', \'manually_execute_timed_rule\' "
 			"LANGUAGE C"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_username_update() CASCADE"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_username_delete() CASCADE"));
@@ -2903,10 +2903,10 @@ extern "C" Datum ext(PG_FUNCTION_ARGS) {
 
 //this function is executed in another process!!!
 extern "C" Datum send_inject(PG_FUNCTION_ARGS) {
-	bytea *message = PG_GETARG_BYTEA_PP(0), *imm_addr = PG_GETARG_BYTEA_PP(2);
-	text *proto_id_sql = PG_GETARG_TEXT_PP(1);
-	bool CCF = PG_GETARG_BOOL(3), ACF = PG_GETARG_BOOL(4), send = PG_GETARG_BOOL(5),
+	bool send = PG_GETARG_BOOL(0), CCF = PG_GETARG_BOOL(4), ACF = PG_GETARG_BOOL(5),
 			broadcast = PG_GETARG_BOOL(6), override_implicit_rules = PG_GETARG_BOOL(7);
+	bytea *message = PG_GETARG_BYTEA_PP(1), *imm_addr = PG_GETARG_BYTEA_PP(3);
+	text *proto_id_sql = PG_GETARG_TEXT_PP(2);
 	int message_length = VARSIZE_ANY_EXHDR(message), proto_id_len = VARSIZE_ANY_EXHDR(proto_id_sql),
 			fd = open("/tmp/flock_cpp", O_WRONLY | O_CREAT);
 	send_inject_struct *sis = new(message_length) send_inject_struct(message_length);
@@ -3927,7 +3927,8 @@ void apply_rule_beginning(PGresult *res_rules, int &current_id, int i, const cha
 	istringstream iss(PQgetvalue(res_rules, i, 1));
 
 	iss >> current_id;
-	LOG_CPP("applying " << type << " rule " << current_id << " for username " << current_username << endl);
+	LOG_CPP("applying " << type << " rule " << current_id << " for username "
+			<< current_username << endl);
 }
 
 void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
@@ -3979,7 +3980,8 @@ formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool 
 				+ " FROM formatted_message_for_send_receive");
 		if (PQntuples(res_fields) == 1 && PQnfields(res_fields) == 1
 				&& strcmp(PQgetvalue(res_fields, 0, 0), "t") == 0) {
-			apply_rule_beginning(res_rules, current_id, i, send ? "send" : "receive", current_username);
+			apply_rule_beginning(res_rules, current_id, i,
+					send ? "send" : "receive", current_username);
 			value = PQgetvalue(res_rules, i, 4);
 			if (*value == '0') {
 				LOG_CPP("marking for deletion" << endl);
@@ -4083,7 +4085,7 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	if (*value != '\0') {
 		LOG_CPP("activating rule " << value << endl);
 		PQclear(execcheckreturn("UPDATE rules SET is_active = TRUE WHERE id = "s + value
-				+ " AND \"username\" = \'" + current_username + '\''));
+				+ " AND username = \'" + current_username + '\''));
 		ss.str(value);
 		ss >> new_id;
 		if (new_id > current_id) {
@@ -4095,7 +4097,7 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	if (*value != '\0') {
 		LOG_CPP("deactivating rule " << value << endl);
 		PQclear(execcheckreturn("UPDATE rules SET is_active = FALSE WHERE id = "s + value
-				+ " AND \"username\" = \'" + current_username + '\''));
+				+ " AND username = \'" + current_username + '\''));
 		ss.str(value);
 		ss.clear();
 		ss >> new_id;
