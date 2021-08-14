@@ -1,2 +1,2 @@
 #!/bin/bash
-./IoT &
+sudo ./IoT &
