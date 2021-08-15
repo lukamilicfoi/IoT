@@ -1,2 +1,2 @@
 #!/bin/bash
-killall -s SIGINT IoT
+sudo killall -s SIGINT IoT
