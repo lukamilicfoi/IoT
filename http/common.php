@@ -13,10 +13,10 @@ if ($needs_login && !isset($_SESSION['username'])) {
 	<head>
 
 <?php
-if (isset($_SESSION['is_root']) && $_SESSION['root']) {
+if (isset($_SESSION['is_root']) && $_SESSION['is_root']) {
 	$trail = ' as root';
 	$username = 'postgres';
-} else if (isset($_SESSION['is_administrator']) && $_SESSION['root']) {
+} else if (isset($_SESSION['is_administrator']) && $_SESSION['is_root']) {
 	$trail = ' as administrator';
 	$username = 'administrator';
 } else {

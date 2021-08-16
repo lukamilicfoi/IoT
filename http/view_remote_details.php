@@ -17,7 +17,7 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['addr'])) {
 			pg_free_result(pgquery("INSERT INTO SRC_proto(SRC, proto) VALUES(E'\\\\x{$_GET['addr']}', (SELECT proto FROM proto_name WHERE name = '{$_GET['add_proto']}'));"));
 			echo 'proto &apos;', htmlspecialchars($_GET['add_proto']), '&apos; added for SRC ', $h_addr, ".<br/>\n";
 		} else if (!empty($_GET['add_DST'])) {
-			pg_free_result(pgquery("INSERT INTO SRC_DST(SRC, DST) VALUES(E'\\\\x{$_GET['addr']}', E'\\\\x{$_GET['add_DST']}';"));
+			pg_free_result(pgquery("INSERT INTO SRC_DST(SRC, DST) VALUES(E'\\\\x{$_GET['addr']}', E'\\\\x{$_GET['add_DST']}');"));
 			echo 'DST ', htmlspecialchars($_GET['add_DST']), ' added for SRC ', $h_addr, ".<br/>\n";
 		} else if (!empty($_GET['remove_proto'])) {
 			if (isset($_GET['confirm'])) {
@@ -33,7 +33,7 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['addr'])) {
 			}
 		} else if (!empty($_GET['remove_DST'])) {
 			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM SRC_DST WHERE SRC = E'\\\\x{$_GET['addr']}' AND DST = E'\\\\x{$_GET['DST']}';"));
+				pg_free_result(pgquery("DELETE FROM SRC_DST WHERE SRC = E'\\\\x{$_GET['addr']}' AND DST = E'\\\\x{$_GET['remove_DST']}';"));
 				echo 'DST ', htmlspecialchars($_GET['remove_DST']), ' removed for SRC ', htmlspecialchars($_GET['addr']), ".<br/>\n";
 			} else {
 ?>

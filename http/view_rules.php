@@ -102,7 +102,7 @@ if (checkAuthorization(7, 'view rules')) {
 					<input form="insert" type="text" name="id" size="10"/>
 					.
 				</td>
-				<td>
+				<td nowrap="nowrap">
 					<input form="insert" type="radio" name="send_receive_seconds" value="0" checked="checked"/>
 					on sending when:<br/>
 					<input form="insert" type="radio" name="send_receive_seconds" value="1"/>
@@ -114,7 +114,7 @@ if (checkAuthorization(7, 'view rules')) {
 					<input form="insert" type="text" name="filter" size="10"/>
 					.
 				</td>
-				<td>
+				<td nowrap="nowrap">
 					<input form="insert" type="radio" name="drop_modify_nothing" value="0" checked="checked"/>
 					drop message<br/>
 					<input form="insert" type="radio" name="drop_modify_nothing" value="1"/>
@@ -126,7 +126,7 @@ if (checkAuthorization(7, 'view rules')) {
 					<input form="insert" type="text" name="modification" size="10"/>
 					,
 				</td>
-				<td>
+				<td nowrap="nowrap">
 					<input form="insert" type="radio" name="query_command_nothing" value="0" checked="checked"/>
 					SQL query:<br/>
 					<input form="insert" type="radio" name="query_command_nothing" value="1"/>
@@ -138,7 +138,7 @@ if (checkAuthorization(7, 'view rules')) {
 					<input form="insert" type="text" name="query_command_1" size="10"/>
 					,
 				</td>
-				<td>
+				<td nowrap="nowrap">
 					<input form="insert" type="radio" name="send_inject_query_command_nothing" value="0" checked="checked"/>
 					query and send it:<br/>
 					<input form="insert" type="radio" name="send_inject_query_command_nothing" value="1"/>

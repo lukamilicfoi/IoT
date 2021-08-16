@@ -17,8 +17,8 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST']) && checkAuthorization(10, 'view
 ?>
 				Are you sure?
 <?php
-				echo '<a href="?SRC=', $u_SRC, '&amp;DST=', $u_DST, "&amp;truncate&amp;confirm\"Yes</a>\n";
-				echo '<a href="?SRC=', $u_SRC, '&amp;DST=', $u_DST, "\"No</a>\n";
+				echo '<a href="?SRC=', $u_SRC, '&amp;DST=', $u_DST, "&amp;truncate&amp;confirm\">Yes</a>\n";
+				echo '<a href="?SRC=', $u_SRC, '&amp;DST=', $u_DST, "\">No</a>\n";
 				exit(0);
 			}
 		} else if (!empty($_GET['ID']) && !empty($_GET['TWR'])) {
@@ -27,18 +27,18 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST']) && checkAuthorization(10, 'view
 				echo 'Mapping ', htmlspecialchars($_GET['ID']), ' for SRC ', $h_SRC, ' and DST ', $h_DST, " inserted.<br/>\n";
 			} else if (!empty($_GET['key']) && isset($_GET['update'])) {
 				pg_free_result(pgquery("UPDATE ID_TWR SET(ID, TWR) = ({$_GET['ID']}, TIMESTAMP '{$_GET['TWR']}') WHERE SRC = E'\\\\x{$_GET['SRC']}' AND DST = E'\\\\x{$_GET['DST']}' AND ID = {$_GET['key']};"));
-				echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and DST ', $h_DST, "updated.<br/>\n";
+				echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and DST ', $h_DST, " updated.<br/>\n";
 			}
 		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
 				pg_free_result(pgquery("DELETE FROM ID_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND DST = E'\\\\x{$_GET['DST']}' AND ID = {$_GET['key']};"));
-				echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and DST ', $h_DST, "deleted.<br/>\n";
+				echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and DST ', $h_DST, " deleted.<br/>\n";
 			} else {
 ?>
 				Are you sure?
 <?php
-				echo '<a href="?SRC=', $u_SRC, '&amp;DST=', $u_DST, '&amp;key=', urlencode($_GET['key']), "&amp;delete&amp;confirm\"Yes</a>\n";
-				echo '<a href="?SRC=', $u_SRC, '&amp;DST=', $u_DST, "\"No</a>\n";
+				echo '<a href="?SRC=', $u_SRC, '&amp;DST=', $u_DST, '&amp;key=', urlencode($_GET['key']), "&amp;delete&amp;confirm\">Yes</a>\n";
+				echo '<a href="?SRC=', $u_SRC, '&amp;DST=', $u_DST, "\">No</a>\n";
 				exit(0);
 			}
 		}
@@ -83,23 +83,22 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST']) && checkAuthorization(10, 'view
 					<tr>
 						<td>
 <?php
-							$str = strtoupper(substr($row[0], 2));
-							echo '<input form="update', $str, '" type="text" name="ID" value="', $str, "\"/>\n";
+							echo '<input form="update', $row[0], '" type="text" name="ID" value="', $row[0], "\"/>\n";
 ?>
 						</td>
 						<td>
 <?php
-							echo '<input form="update', $str, '" type="text" name="TWR" value="', $row[1], "\"/>\n";
+							echo '<input form="update', $row[0], '" type="text" name="TWR" value="', $row[1], "\"/>\n";
 ?>
 						</td>
 						<td>
 <?php
-							echo '<form id="update', $str, "\" action=\"\" method=\"GET\"/>\n";
+							echo '<form id="update', $row[0], "\" action=\"\" method=\"GET\"/>\n";
 								echo '<input type="hidden" name="SRC" value="', $h_SRC, "\"/>\n";
 								echo '<input type="hidden" name="DST" value="', $h_DST, "\"/>\n";
-								echo '<input type="hidden" name="key" value="', $str, "\"/>\n";
+								echo '<input type="hidden" name="key" value="', $row[0], "\"/>\n";
 ?>
-								<input type="submit" name="update" value="Update this mapping for this SRC and this DST\"/>
+								<input type="submit" name="update" value="Update this mapping for this SRC and this DST\"/><br/>
 								<input type="reset" value="reset"/>
 <?php
 							echo "</form>\n";
@@ -108,7 +107,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST']) && checkAuthorization(10, 'view
 <?php
 								echo '<input type="hidden" name="SRC" value="', $h_SRC, "\"/>\n";
 								echo '<input type="hidden" name="DST" value="', $h_DST, "\"/>\n";
-								echo '<input type="hidden" name="key" value="', $str, "/>\n";
+								echo '<input type="hidden" name="key" value="', $row[0], "/>\n";
 ?>
 								<input type="submit" name="delete" value="Delete this mapping for this SRC and this DST"/>
 							</form>

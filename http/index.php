@@ -12,7 +12,7 @@ if (checkAuthorization(3, 'view tables')) {
 	View table:
 <?php
 	for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
-		echo '<a href="view_table.php?table=', urlencode($row[0]), '">', htmlspecialchars($row[0]), "</a>\n";
+		echo '<a href="view_table.php?tablename=', urlencode($row[0]), '">', htmlspecialchars($row[0]), "</a>\n";
 	}
 	pg_free_result($result);
 ?>

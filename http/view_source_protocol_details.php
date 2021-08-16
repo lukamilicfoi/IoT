@@ -26,7 +26,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto']) && checkAuthorization(10, 'vi
 				pg_free_result(pgquery("INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR) VALUES(E'\\\\x{$_GET['SRC']}', '{$_GET['proto']}', E'\\\\x{$_GET['imm_SRC']}', TIMESTAMP '{$_GET['TWR']}');"));
 				echo 'Mapping ', htmlspecialchars($_GET['imm_SRC']), ' for SRC ', $h_SRC, ' and proto ', $h_proto, " inserted.<br/>\n";
 			} else if (!empty($_GET['key']) && isset($_GET['update'])) {
-				pg_free_result(pgquery("UPDATE iSRC_TWR SET (imm_SRC, TWR) = (E'\\\\x{$_GET['SRC']}', TIMESTAMP '{$_GET['TWR']}') WHERE SRC = E'\\\\x{$_GET['SRC']}' AND proto = '{$_GET['proto']}' AND imm_SRC = E'\\\\x{$_GET['imm_SRC']}';"));
+				pg_free_result(pgquery("UPDATE iSRC_TWR SET (imm_SRC, TWR) = (E'\\\\x{$_GET['imm_SRC']}', TIMESTAMP '{$_GET['TWR']}') WHERE SRC = E'\\\\x{$_GET['SRC']}' AND proto = '{$_GET['proto']}' AND imm_SRC = E'\\\\x{$_GET['imm_SRC']}';"));
 				echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and proto ', $h_proto, " updated.<br/>\n";
 			}
 		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {

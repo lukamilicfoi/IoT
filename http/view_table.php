@@ -91,14 +91,15 @@ if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
 				for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
 					$query .= pg_field_name($result, $i) . ', ';
 				}
-				$query = substr($query, 0, -2) . ') = (';
+				$query = substr($query, 0, -2) . ') = ROW (';
 				for ($i = 0; $i < $j; $i++) {
 					$query .= standardToPostgresqlInput($_GET[pg_field_name($result, $i)], pg_field_type_oid($result, $i)) . ', ';
 				}
 				$result = pgquery(substr($query, 0, -2) . ") WHERE t = {$_GET['key']};");
 				echo 'Row ', htmlspecialchars($_GET['key']), " updated.<br/>\n";
 				pg_free_result($result);
-		} else if (!empty($_GET['t']) && isset($_GET['delete'])) {
+			}
+		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
 				$result = pgquery("DELETE FROM {$_GET['tablename']} WHERE t = {$_GET['key']};");
 				echo 'Row ', htmlspecialchars($_GET['key']), " deleted.<br/>\n";
@@ -140,14 +141,14 @@ if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
 					<td>
 						<form id="insert" action="" method="GET">
 <?php
-							echo '<input type="hidden" name="table" value="', $h_tablename, "\"/>\n";
+							echo '<input type="hidden" name="tablename" value="', $h_tablename, "\"/>\n";
 ?>
 							<input type="submit" name="insert" value="INSERT"/><br/>
 							<input type="reset" value="reset"/>
 						</form>
 						<form action="" method="GET">
 <?php
-							echo '<input type="hidden" name="table" value="', $h_tablename, "\"/>\n";
+							echo '<input type="hidden" name="tablename" value="', $h_tablename, "\"/>\n";
 ?>
 							<input type="submit" name="truncate" value="TRUNCATE"/>
 						</form>
@@ -173,7 +174,7 @@ if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
 <?php
 							echo '<form id="update', $row[$t], "\" action=\"\" method=\"GET\">\n";
 								echo '<input type="hidden" name="key" value="TIMESTAMP ', pg_field_type_oid($result, $t) == 1184 ? 'WITH TIME ZONE ' : '', '&apos;', $row[$t], "&apos;\"/>\n";
-								echo '<input type="hidden" name="table" value="', $h_tablename, "\"/>\n";
+								echo '<input type="hidden" name="tablename" value="', $h_tablename, "\"/>\n";
 ?>
 								<input type="submit" name="update" value="UPDATE"/><br/>
 								<input type="reset" value="reset"/>
@@ -183,7 +184,7 @@ if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
 							<form action="" method="GET">
 <?php
 								echo '<input type="hidden" name="key" value="TIMESTAMP ', pg_field_type_oid($result, $t) == 1184 ? 'WITH TIME ZONE ' : '', '&apos;', $row[$t], "&apos;\"/>\n";
-								echo '<input type="hidden" name="table" value="', $h_table, "\"/>\n";
+								echo '<input type="hidden" name="tablename" value="', $h_tablename, "\"/>\n";
 ?>
 								<input type="submit" name="delete" value="DELETE"/>
 							</form>

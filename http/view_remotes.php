@@ -2,13 +2,13 @@
 require_once 'common.php';
 if (checkAuthorization(10, 'view remotes')) {
 	if (isset($_GET['load'])) {
-		pg_free_result(pgquery('SELECT load_store(TRUE);'));
+		pg_free_result(pgquery('CALL load_store(TRUE);'));
 		$_SESSION['loaded'] = true;
 ?>
 		Loaded remotes from running program.
 <?php
 	} else if (isset($_GET['store'])) {
-		pg_free_result(pgquery('SELECT load_store(FALSE);'));
+		pg_free_result(pgquery('CALL load_store(FALSE);'));
 		unset($_SESSION['loaded']);
 ?>
 		Stored remotes to running program.
@@ -26,9 +26,9 @@ if (checkAuthorization(10, 'view remotes')) {
 		pg_free_result($result3);
 	} else if (!empty($_GET['remove'])) {
 		if (isset($_GET['confirm'])) {
-			$result1 = pgquery("SELECT TRUE FROM table_user WHERE tablename = 't{$_GET['add']}';");
-			$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = 't{$_GET['add']}' AND username = '{$_SESSION['username']}';");
-			$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.username = users.username WHERE NOT users.is_administrator AND table_user.tablename = 't{$_GET['add']}';");
+			$result1 = pgquery("SELECT TRUE FROM table_user WHERE tablename = 't{$_GET['remove']}';");
+			$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = 't{$_GET['remove']}' AND username = '{$_SESSION['username']}';");
+			$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.username = users.username WHERE NOT users.is_administrator AND table_user.tablename = 't{$_GET['remove']}';");
 			if (!pg_fetch_row($result1) || pg_fetch_row($result2) || $_SESSION['is_administrator'] && pg_fetch_row($result3) || $_SESSION['is_root']) {
 				pg_free_result(pgquery("DELETE FROM addr_oID WHERE addr = E'\\\\x{$_GET['remove']}';"));
 				echo 'Remote ', htmlspecialchars($_GET['remove']), " removed.\n";
