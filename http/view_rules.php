@@ -57,7 +57,7 @@ if (checkAuthorization(7, 'view rules')) {
 		echo 'Viewing table &quot;rules&quot; for &apos;', htmlspecialchars($_SESSION['username']), "&apos; and non-administrators.<br/>\n";
 	} else {
 		$result = pgquery("SELECT * FROM rules WHERE user = '{$_SESSION['username']}' ORDER BY id ASC;");
-		echo 'Viewing table &quot;rules&quot; for &apos;', htmlspecialchars($_SESSION['username']), "&apos.<br/>\n";
+		echo 'Viewing table &quot;rules&quot; for &apos;', htmlspecialchars($_SESSION['username']), "&apos;.<br/>\n";
 	}
 ?>
 	<table border="1">

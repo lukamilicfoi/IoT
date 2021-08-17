@@ -14,7 +14,7 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 <?php
 		exit(0);
 	}
-} else if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator']) || $_SESSION['is_root']))) && isset($_POST['insert'])) {
+} else if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator']) || $_SESSION['is_root'])) && isset($_POST['insert'])) {
 	$query = 'INSERT INTO users(username, password';
 	$fields = array('is_administrator', 'can_view_tables', 'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules', 'can_view_configuration', 'can_view_permissions', 'can_view_remotes', 'can_execute_rules', 'can_actually_login');
 	for ($i = 0; $i < 11; $i++) {
@@ -39,6 +39,7 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 			$query .= isset($_POST[$fields[$i]]) ? ', TRUE' : ', FALSE';
 		}
 		pg_free_result(pgquery($query . ") WHERE username = '{$_POST['username']}';"));
+		pg_free_result(pgquery("INSERT INTO configuration(username, forward_messages, use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway) SELECT '{$_POST['username']}', forward_messages, use_internet_switch_algorithm, trust_everyone, default_gateway FROM configuration WHERE username = 'root';"));
 		echo 'User \'', htmlspecialchars($_POST['username']), "' updated.<br/>\n";
 	}
 	pg_free_result($result);
@@ -52,7 +53,7 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 ?>
 			Are you sure?
 <?php
-			echo '<a href="?username=', urlencode($_GET['username']), "&amp;delete&amp;confirm\">Yes</a>\n";
+			echo '<a href="?key=', urlencode($_GET['key']), "&amp;delete&amp;confirm\">Yes</a>\n";
 ?>
 			<a href="?">No</a>
 <?php
@@ -66,11 +67,11 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 	Password updated - for this username.<br/>
 <?php
 }
-$result1 = pgquery("SELECT * FROM users WHERE username = '{$_SESSION['username']}';");
+$result1 = pgquery("SELECT username, username, is_administrator, can_view_tables, can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_view_configuration, can_view_permissions, can_view_remotes, can_execute_rules, can_actually_login FROM users WHERE username = '{$_SESSION['username']}';");
 if ($_SESSION['is_root']) {
 	$result2 = pgquery("SELECT * FROM users WHERE username <> 'root' ORDER BY is_administrator DESC, username ASC;");
 } else if ($_SESSION['is_administrator']) {
-	$result2 = pqguery("SELECT * FROM users WHERE NOT is_administrator AND username <> '{$_SESSION['username']}' ORDER BY username ASC;");
+	$result2 = pgquery("SELECT username, username, is_administrator, can_view_tables, can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_view_configuration, can_view_permissions, can_view_remotes, can_execute_rules, can_actually_login FROM users WHERE NOT is_administrator AND username <> '{$_SESSION['username']}' ORDER BY username ASC;");
 }
 ?>
 Viewing table &quot;users&quot;.
