@@ -195,6 +195,7 @@ if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
 ?>
 			</tbody>
 		</table>
+		<a href="index.php">Done</a>
 <?php
 		pg_free_result($result);
 	}
@@ -203,4 +204,3 @@ if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
 	pg_free_result($result3);
 }
 ?>
-<a href="index.php">Done</a>

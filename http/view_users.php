@@ -14,7 +14,7 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 <?php
 		exit(0);
 	}
-} else if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator']) || $_SESSION['is_root'])) && isset($_POST['insert'])) {
+} else if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator']) || $_SESSION['is_root']) && isset($_POST['insert'])) {
 	$query = 'INSERT INTO users(username, password';
 	$fields = array('is_administrator', 'can_view_tables', 'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules', 'can_view_configuration', 'can_view_permissions', 'can_view_remotes', 'can_execute_rules', 'can_actually_login');
 	for ($i = 0; $i < 11; $i++) {
@@ -39,7 +39,6 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 			$query .= isset($_POST[$fields[$i]]) ? ', TRUE' : ', FALSE';
 		}
 		pg_free_result(pgquery($query . ") WHERE username = '{$_POST['username']}';"));
-		pg_free_result(pgquery("INSERT INTO configuration(username, forward_messages, use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway) SELECT '{$_POST['username']}', forward_messages, use_internet_switch_algorithm, trust_everyone, default_gateway FROM configuration WHERE username = 'root';"));
 		echo 'User \'', htmlspecialchars($_POST['username']), "' updated.<br/>\n";
 	}
 	pg_free_result($result);
@@ -215,7 +214,7 @@ Viewing table &quot;users&quot;.
 ?>
 						<td>
 <?php
-							echo '<input form="update1_', $username, '" type="checkbox" name="', pg_field_name($result, $i), '"', $row[$i] == 't' ? ' checked="checked"' : '', "/>\n";
+							echo '<input form="update1_', $username, '" type="checkbox" name="', pg_field_name($result2, $i), '"', $row[$i] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
 						</td>
 <?php

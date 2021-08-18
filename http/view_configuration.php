@@ -39,45 +39,50 @@ if (checkAuthorization(8, 'view configuration')) {
 				<tr>
 					<td>
 <?php
-						echo '<input type="text" value="', htmlspecialchars($row[0]), "\" disabled=\"disabled\"/>\n";
-						echo '<input form="update" type="hidden" name="username" value="', htmlspecialchars($row[0]), "\"/>\n";
+						$username = htmlspecialchars($row[0]);
+						echo '<input type="text" value="', $username, "\" disabled=\"disabled\"/>\n";
+						echo '<input form="update_', $username, '" type="hidden" name="username" value="', $username, "\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update" type="checkbox" name="forward_messages"', $row[1] == 't' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '" type="checkbox" name="forward_messages"', $row[1] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update" type="checkbox" name="use_internet_switch_algorithm"', $row[2] == 't' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '" type="checkbox" name="use_internet_switch_algorithm"', $row[2] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update" type="text" name="nsecs_id" value="', $row[3], "\"/>\n";
+						echo '<input form="update_', $username, '" type="text" name="nsecs_id" value="', $row[3], "\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update" type="text" name="nsecs_src" value="', $row[4], "\"/>\n";
+						echo '<input form="update_', $username, '" type="text" name="nsecs_src" value="', $row[4], "\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update" type="checkbox" name="trust_everyone"', $row[5] == 't' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '" type="checkbox" name="trust_everyone"', $row[5] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update" type="text" name="default_gateway" value="', strtoupper(substr($row[6], 2)), "\"/>\n";
+						echo '<input form="update_', $username, '" type="text" name="default_gateway" value="', strtoupper(substr($row[6], 2)), "\"/>\n";
 ?>
 					</td>
 					<td>
-						<form id="update" action="" method="GET">
+<?php
+						echo '<form id="update_', $username, "\" action=\"\" method=\"GET\">\n";
+?>
 							<input type="submit" name="update" value="UPDATE"/>
 							<input type="reset" value="reset"/>
-						</form>
+<?php
+						echo "</form>\n";
+?>
 					</td>
 				</tr>
 <?php

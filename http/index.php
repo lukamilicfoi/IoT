@@ -34,11 +34,11 @@ if (checkAuthorization(4, 'send messages')) {
 	}
 ?>
 	<form action="" method="GET">
-		Send raw message (hex)
+		Send raw message
 		<input type="text" name="msgtosend"/>
-		using protocol id (string)
+		using protocol id
 		<input type="text" name="proto_id"/><br/>
-		and imm_DST (hex)
+		and imm_DST
 		<input type="text" name="imm_DST"/>
 		using CCF
 		<input type="checkbox" name="CCF"/>
@@ -51,6 +51,7 @@ if (checkAuthorization(4, 'send messages')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
+	Write message and imm_DST as a binary string, e.g., abababababababab; write protocol as a string, e.g., tcp.<br/>
 <?php
 }
 if (checkAuthorization(5, 'inject messages')) {
@@ -60,11 +61,11 @@ if (checkAuthorization(5, 'inject messages')) {
 	}
 ?>
 	<form action="" method="GET">
-		Inject raw message (hex)
+		Inject raw message
 		<input type="text" name="msgtoinject"/>
-		using protocol id (string)
+		using protocol id
 		<input type="text" name="proto_id"/><br/>
-		and imm_SRC (hex)
+		and imm_SRC
 		<input type="text" name="imm_SRC"/>
 		using CCF
 		<input type="checkbox" name="CCF"/>
@@ -77,6 +78,7 @@ if (checkAuthorization(5, 'inject messages')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
+	Write message and imm_DST as a binary string, e.g., abababababababab; write protocol as a string, e.g., tcp.<br/>
 <?php
 }
 if (checkAuthorization(6, 'send queries to database')) {
@@ -136,6 +138,7 @@ if (checkAuthorization(6, 'send queries to database')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
+	Write query as a string, e.g., SELECT a FROM b;.<br/>
 <?php
 }
 if (checkAuthorization(11, 'manually execute timed rules')) {
@@ -166,6 +169,7 @@ if (checkAuthorization(11, 'manually execute timed rules')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
+	Write username and rule as a string and an integer, e.g., root and 11.<br/>
 <?php
 }
 if (checkAuthorization(8, 'view configuration')) {

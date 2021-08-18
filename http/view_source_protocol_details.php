@@ -12,7 +12,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto']) && checkAuthorization(10, 'vi
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
 				pg_free_result(pgquery("DELETE FROM iSRC_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND proto = '{$_GET['proto']}';"));
-				echo 'Table &quot;iSRC_TWR&quot; truncated for SRC ', $h_SRC, ' and proto ', $h_proto, ".<br/>\n";
+				echo 'Table &quot;iSRC_TWR&quot; truncated for SRC X&apos;', $h_SRC, '&apos; and proto &apos;', $h_proto, "&apos;.<br/>\n";
 			} else {
 ?>
 				Are you sure?
@@ -23,16 +23,16 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto']) && checkAuthorization(10, 'vi
 			}
 		} else if (!empty($_GET['imm_SRC']) && !empty($_GET['TWR'])) {
 			if (isset($_GET['insert'])) {
-				pg_free_result(pgquery("INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR) VALUES(E'\\\\x{$_GET['SRC']}', '{$_GET['proto']}', E'\\\\x{$_GET['imm_SRC']}', TIMESTAMP '{$_GET['TWR']}');"));
-				echo 'Mapping ', htmlspecialchars($_GET['imm_SRC']), ' for SRC ', $h_SRC, ' and proto ', $h_proto, " inserted.<br/>\n";
+				pg_free_result(pgquery("INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR) VALUES(E'\\\\x{$_GET['SRC']}', (SELECT proto FROM proto WHERE name = '{$_GET['proto']}'), E'\\\\x{$_GET['imm_SRC']}', TIMESTAMP '{$_GET['TWR']}');"));
+				echo 'Mapping X&apos;', htmlspecialchars($_GET['imm_SRC']), '&apos; for SRC X&apos;', $h_SRC, '&apos; and proto &apos;', $h_proto, "&apos; inserted.<br/>\n";
 			} else if (!empty($_GET['key']) && isset($_GET['update'])) {
-				pg_free_result(pgquery("UPDATE iSRC_TWR SET (imm_SRC, TWR) = (E'\\\\x{$_GET['imm_SRC']}', TIMESTAMP '{$_GET['TWR']}') WHERE SRC = E'\\\\x{$_GET['SRC']}' AND proto = '{$_GET['proto']}' AND imm_SRC = E'\\\\x{$_GET['imm_SRC']}';"));
-				echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and proto ', $h_proto, " updated.<br/>\n";
+				pg_free_result(pgquery("UPDATE iSRC_TWR SET (imm_SRC, TWR) = (E'\\\\x{$_GET['imm_SRC']}', TIMESTAMP '{$_GET['TWR']}') WHERE SRC = E'\\\\x{$_GET['SRC']}' AND proto = (SELECT proto FROM proto WHERE name = '{$_GET['proto']}') AND imm_SRC = E'\\\\x{$_GET['imm_SRC']}';"));
+				echo 'Mapping X&apos;', htmlspecialchars($_GET['key']), '&apos; for SRC X&apos;', $h_SRC, '&apos; and proto &apos;', $h_proto, "&apos; updated.<br/>\n";
 			}
 		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM iSRC_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND proto = '{$_GET['proto']}' AND imm_SRC = E'\\\\x{$_GET['key']}';"));
-				echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and proto ', $h_proto, " deleted.<br/>\n";
+				pg_free_result(pgquery("DELETE FROM iSRC_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND proto = (SELECT proto FROM proto WHERE name = '{$_GET['proto']}') AND imm_SRC = E'\\\\x{$_GET['key']}';"));
+				echo 'Mapping X&apos;', htmlspecialchars($_GET['key']), '&apos; for SRC X&apos;', $h_SRC, '&apos; and proto &apos;', $h_proto, "&apos; deleted.<br/>\n";
 			} else {
 ?>
 				Are you sure?
@@ -43,7 +43,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto']) && checkAuthorization(10, 'vi
 			}
 		}
 		$result = pgquery("SELECT imm_SRC, TWR FROM iSRC_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND proto = '{$_GET['proto']}' ORDER BY imm_SRC ASC;");
-		echo 'Viewing table &quot;iSRC_TWR&quot; for SRC ', $h_SRC, ' and proto ', $h_proto, ".\n";
+		echo 'Viewing table &quot;iSRC_TWR&quot; for SRC X&apos;', $h_SRC, '&apos; and proto &apos;', $h_proto, "&apos;.\n";
 ?>
 		<table border="1">
 			<tbody>
@@ -119,6 +119,8 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto']) && checkAuthorization(10, 'vi
 ?>
 			</tbody>
 		</table>
+		Write the first column as a binary string, e.g., abababababababab.<br/>
+		Write the second column as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
 <?php
 		echo '<a href="view_remote_details.php?addr=', $u_SRC, "\">Done</a>\n";
 		pg_free_result($result);

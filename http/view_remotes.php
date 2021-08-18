@@ -19,7 +19,7 @@ if (checkAuthorization(10, 'view remotes')) {
 		$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.username = users.username WHERE NOT users.is_administrator AND table_user.tablename = 't{$_GET['add']}';");
 		if (!pg_fetch_row($result1) || pg_fetch_row($result2) || $_SESSION['is_administrator'] && pg_fetch_row($result3) || $_SESSION['is_root']) {
 			pg_free_result(pgquery("INSERT INTO addr_oID(addr, out_ID) VALUES(E'\\\\x{$_GET['add']}', " . rand(0, 255) . ');'));
-			echo 'Remote ', htmlspecialchars($_GET['add']), " added.\n";
+			echo 'Remote X&apos;', htmlspecialchars($_GET['add']), "&apos; added.\n";
 		}
 		pg_free_result($result1);
 		pg_free_result($result2);
@@ -31,7 +31,7 @@ if (checkAuthorization(10, 'view remotes')) {
 			$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.username = users.username WHERE NOT users.is_administrator AND table_user.tablename = 't{$_GET['remove']}';");
 			if (!pg_fetch_row($result1) || pg_fetch_row($result2) || $_SESSION['is_administrator'] && pg_fetch_row($result3) || $_SESSION['is_root']) {
 				pg_free_result(pgquery("DELETE FROM addr_oID WHERE addr = E'\\\\x{$_GET['remove']}';"));
-				echo 'Remote ', htmlspecialchars($_GET['remove']), " removed.\n";
+				echo 'Remote X&apos;', htmlspecialchars($_GET['remove']), "&apos; removed.\n";
 			}
 			pg_free_result($result1);
 			pg_free_result($result2);
@@ -68,6 +68,7 @@ if (checkAuthorization(10, 'view remotes')) {
 			<input type="text" name="add"/>
 			<input type="submit" value="(add)"/>
 		</form>
+		Write remote as a binary string, e.g., abababababababab.<br/>
 		<a href="?load">Reload all remotes from running program</a><br/>
 		<a href="?store">Store all remotes to running program</a><br/>
 <?php

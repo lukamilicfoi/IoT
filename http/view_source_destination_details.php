@@ -12,7 +12,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST']) && checkAuthorization(10, 'view
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
 				pg_free_result(pgquery("DELETE FROM ID_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND DST = E'\\\\x{$_GET['DST']}';"));
-				echo 'Table &quot;ID_TWR&quot; truncated for SRC ', $h_SRC, ' and DST ', $h_DST, ".<br/>\n";
+				echo 'Table &quot;ID_TWR&quot; truncated for SRC X&apos;', $h_SRC, '&apos; and DST X&apos;', $h_DST, "&apos;.<br/>\n";
 			} else {
 ?>
 				Are you sure?
@@ -24,15 +24,15 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST']) && checkAuthorization(10, 'view
 		} else if (!empty($_GET['ID']) && !empty($_GET['TWR'])) {
 			if (isset($_GET['insert'])) {
 				pg_free_result(pgquery("INSERT INTO ID_TWR(SRC, DST, ID, TWR) VALUES(E'\\\\x{$_GET['SRC']}', E'\\\\x{$_GET['DST']}', {$_GET['ID']}, TIMESTAMP '{$_GET['TWR']}');"));
-				echo 'Mapping ', htmlspecialchars($_GET['ID']), ' for SRC ', $h_SRC, ' and DST ', $h_DST, " inserted.<br/>\n";
+				echo 'Mapping ', htmlspecialchars($_GET['ID']), ' for SRC X&apos;', $h_SRC, '&apos; and DST X&apos;', $h_DST, "&apos; inserted.<br/>\n";
 			} else if (!empty($_GET['key']) && isset($_GET['update'])) {
 				pg_free_result(pgquery("UPDATE ID_TWR SET(ID, TWR) = ({$_GET['ID']}, TIMESTAMP '{$_GET['TWR']}') WHERE SRC = E'\\\\x{$_GET['SRC']}' AND DST = E'\\\\x{$_GET['DST']}' AND ID = {$_GET['key']};"));
-				echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and DST ', $h_DST, " updated.<br/>\n";
+				echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC X&apos;', $h_SRC, '&apos; and DST X&apos;', $h_DST, "&apos; updated.<br/>\n";
 			}
 		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
 				pg_free_result(pgquery("DELETE FROM ID_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND DST = E'\\\\x{$_GET['DST']}' AND ID = {$_GET['key']};"));
-				echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC ', $h_SRC, ' and DST ', $h_DST, " deleted.<br/>\n";
+				echo 'Mapping ', htmlspecialchars($_GET['key']), ' for SRC X&apos;', $h_SRC, '&apos; and DST X&apos;', $h_DST, "&apos; deleted.<br/>\n";
 			} else {
 ?>
 				Are you sure?
@@ -43,7 +43,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST']) && checkAuthorization(10, 'view
 			}
 		}
 		$result = pgquery("SELECT ID, TWR FROM ID_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND DST = E'\\\\x{$_GET['DST']}' ORDER BY ID ASC;");
-		echo 'Viewing table &quot;ID_TWR&quot; for SRC ', $h_SRC, ' and DST ', $h_DST, ".\n";
+		echo 'Viewing table &quot;ID_TWR&quot; for SRC X&apos;', $h_SRC, '&apos; and DST X&apos;', $h_DST, "&apos;.\n";
 ?>
 		<table border="1">
 			<tbody>
@@ -118,6 +118,8 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST']) && checkAuthorization(10, 'view
 ?>
 			</tbody>
 		</table>
+		Write the first column as an integer, e.g., 11.<br/>
+		Write the second column as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
 <?php
 		echo '<a href="view_remote_details.php?addr=', $u_SRC, "\">Done</a>\n";
 		pg_free_result($result);
