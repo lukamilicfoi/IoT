@@ -15,10 +15,10 @@ if (checkAuthorization(8, 'view configuration')) {
 <?php
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT configuration.* FROM configuration INNER JOIN users ON configuration.username = users.username WHERE NOT users.is_administrator OR configuration.username = '{$_SESSION['username']}' ORDER BY users.is_administrator DESC, configuration.username ASC;");
-		echo 'Viewing table &quot;configuration&quot; for username ', htmlspecialchars($_SESSION['username']), " and non-administrators.\n";
+		echo 'Viewing table &quot;configuration&quot; for username \'', htmlspecialchars($_SESSION['username']), "' and non-administrators.\n";
 	} else {
 		$result = pgquery("SELECT * FROM configuration WHERE username = '{$_SESSION['username']}';");
-		echo 'Viewing table &quot;configuration&quot; for username ', htmlspecialchars($_SESSION['username']), ".\n";
+		echo 'Viewing table &quot;configuration&quot; for username \'', htmlspecialchars($_SESSION['username']), "'.\n";
 	}
 ?>
 	<table border="1">

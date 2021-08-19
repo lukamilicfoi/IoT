@@ -4,7 +4,7 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 	if (isset($_GET['confirm'])) {
 		pg_free_result(pgquery('DELETE FROM users WHERE username <> \'root\';'));
 ?>
-		Table &quot;users&quot; truncated - except for root.<br/>
+		Table &quot;users&quot; truncated - except for &apos;root&apos;.<br/>
 <?php
 	} else {
 ?>
@@ -25,6 +25,7 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		$query .= isset($_POST[$fields[$i]]) ? ', TRUE' : ', FALSE';
 	}
 	pg_free_result(pgquery($query . ');'));
+	pg_free_result(pgquery("INSERT INTO configuration(username, forward_messages, use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway) SELECT '{$_POST['username']}', forward_messages, use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway FROM configuration WHERE username = 'root';"));
 	echo 'User \'', htmlspecialchars($_POST['username']), "' inserted.<br/>\n";
 } else if (isset($_POST['update1']) && isset($_POST['username'])) {
 	$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_POST['username']}' AND NOT is_administrator;");
@@ -69,11 +70,15 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 $result1 = pgquery("SELECT username, username, is_administrator, can_view_tables, can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_view_configuration, can_view_permissions, can_view_remotes, can_execute_rules, can_actually_login FROM users WHERE username = '{$_SESSION['username']}';");
 if ($_SESSION['is_root']) {
 	$result2 = pgquery("SELECT * FROM users WHERE username <> 'root' ORDER BY is_administrator DESC, username ASC;");
+?>
+	Viewing table &quot;users&quot;.
+<?php
 } else if ($_SESSION['is_administrator']) {
 	$result2 = pgquery("SELECT username, username, is_administrator, can_view_tables, can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_view_configuration, can_view_permissions, can_view_remotes, can_execute_rules, can_actually_login FROM users WHERE NOT is_administrator AND username <> '{$_SESSION['username']}' ORDER BY username ASC;");
-}
+	echo "Viewing table &quot;users&quot; for username &apos;{$_SESSION['username']}&apos; and non-administrators.\n";
+} else {
+	echo "Viewing table &quot;users&quot; for username &apos;{$_SESSION['username']}&apos;.\n";
 ?>
-Viewing table &quot;users&quot;.
 <table border="1">
 	<tbody>
 		<tr>
@@ -110,8 +115,7 @@ Viewing table &quot;users&quot;.
 <?php
 					} else {
 ?>
-						<input type="checkbox"/>
-						<input form="insert" type="checkbox" name="is_administrator" disabled="disabled"/>
+						<input type="checkbox" disabled="disabled"/>
 <?php
 					}
 ?>

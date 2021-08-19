@@ -50,10 +50,10 @@ if (checkAuthorization(9, 'view permissions')) {
 <?php
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT table_user.* FROM table_user LEFT OUTER JOIN users ON table_user.username = users.username WHERE NOT users.is_administrator OR table_user.username = '{$_SESSION['username']}' ORDER BY users.is_administrator DESC, table_user.username ASC, table_user.tablename ASC;");
-		echo 'Viewing table &quot;table_user&quot; for username ', htmlspecialchars($_SESSION['username']), " and non-administrators.<br/>\n";
+		echo 'Viewing table &quot;table_user&quot; for username \'', htmlspecialchars($_SESSION['username']), "' and non-administrators.<br/>\n";
 	} else {
 		$result = pgquery("SELECT * FROM table_user WHERE user = '{$_SESSION['username']}' ORDER BY tablename ASC;");
-		echo 'Viewing table &quot;table_user&quot; for username ', htmlspecialchars($_SESSION['username']), ".<br/>\n";
+		echo 'Viewing table &quot;table_user&quot; for username \'', htmlspecialchars($_SESSION['username']), "'.<br/>\n";
 	}
 ?>
 	<table border="1">

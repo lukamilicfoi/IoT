@@ -51,14 +51,22 @@ if (checkAuthorization(10, 'view remotes')) {
 		if ($_SESSION['is_root']) {
 			$result = pgquery('SELECT addr FROM addr_oID ORDER BY addr ASC;');
 		} else if ($_SESSION['is_administrator']) {
-			$result = pgquery("SELECT addr_oID.addr FROM addr_oID LEFT OUTER JOIN table_user ON 't' || encode(addr_oID.addr, 'hex') == table_user.tablename LEFT OUTER JOIN users ON table_user.username = users.username WHERE users.username IS NULL OR users.username = '{$_SESSION['username']}' OR NOT users.is_administrator ORDER BY addr_oID.addr ASC;");
+			$result = pgquery("SELECT addr_oID.addr FROM addr_oID LEFT OUTER JOIN table_user ON 't' || encode(addr_oID.addr, 'hex') = table_user.tablename LEFT OUTER JOIN users ON table_user.username = users.username WHERE users.username IS NULL OR users.username = '{$_SESSION['username']}' OR NOT users.is_administrator ORDER BY addr_oID.addr ASC;");
 		} else {
-			$result = pgquery("SELECT addr_oID.addr FROM addr_oID LEFT OUTER JOIN table_user ON 't' || encode(addr_oID.addr, 'hex') == table_user.tablename WHERE table_user.username = '{$_SESSION['username']}' ORDER BY addr_oID.addr ASC;");
+			$result = pgquery("SELECT addr_oID.addr FROM addr_oID LEFT OUTER JOIN table_user ON 't' || encode(addr_oID.addr, 'hex') = table_user.tablename WHERE table_user.username = '{$_SESSION['username']}' ORDER BY addr_oID.addr ASC;");
 		}
 ?>
 		<form action="" method="GET">
-			View remote:
 <?php
+			if ($_SESSION['is_root']) {
+?>
+				View remote:
+<?php
+			} else if ($_SESSION['is_administrator']) {
+				echo "View remote (public, '{$_SESSION['username']}''s, non-administrators' shown):\n";
+			} else {
+				echo "View remote (public, '{$_SESSION['username']}''s shown):\n";
+			}
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 				$str = substr($row[0], 2);
 				echo '<a href="view_remote_details.php?addr=', $str, '">', $str, "</a>\n";

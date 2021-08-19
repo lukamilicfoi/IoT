@@ -3,14 +3,16 @@ require_once 'common.php';
 if (checkAuthorization(3, 'view tables')) {
 	if ($_SESSION['is_root']) {
 		$result = pgquery('(SELECT relname FROM pg_class WHERE relname LIKE \'t________________\' AND relname <> \'table_constraints\' ORDER BY relname ASC) UNION ALL (SELECT tablename FROM table_user WHERE tablename NOT LIKE \'t________________\' OR tablename = \'table_constraints\' ORDER BY tablename ASC);');
+?>
+		View table:
+<?php
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("(SELECT pg_class.relname FROM pg_class LEFT OUTER JOIN table_user ON pg_class.relname = table_user.tablename LEFT OUTER JOIN users ON table_user.username = users.username WHERE pg_class.relname LIKE 't________________' AND pg_class.relname <> 'table_constraints' AND (table_user.username IS NULL OR table_user.username = '{$_SESSION['username']}' OR NOT users.is_administrator) ORDER BY pg_class.relname ASC) UNION ALL (SELECT table_user.tablename FROM table_user LEFT OUTER JOIN users ON table_user.username = users.username WHERE (table_user.tablename NOT LIKE 't________________' OR table_user.tablename = 'table_constraints') AND (table_user.username IS NULL OR table_user.username = '{$_SESSION['username']}' OR NOT users.is_administrator) ORDER BY table_user.tablename ASC);");
+		echo "View table (public, '{$_SESSION['username']}'s, non-administrators' shown):\n";
 	} else {
 		$result = pgquery("(SELECT pg_class.relname FROM pg_class LEFT OUTER JOIN table_user ON pg_class.relname = table_user.tablename LEFT OUTER JOIN users ON table_user.username = users.username WHERE pg_class.relname LIKE 't________________' AND pg_class.relname <> 'table_constraints' AND (table_user.username IS NULL OR table_user.username = '{$_SESSION['username']}') ORDER BY pg_class.relname ASC) UNION ALL (SELECT tablename FROM table_user WHERE (tablename NOT LIKE 't________________' OR tablename = 'table_constraints') AND (username IS NULL OR username = '{$_SESSION['username']}') ORDER BY tablename ASC);");
+		echo "View table (public, '{$_SESSION['username']}'s shown):\n";
 	}
-?>
-	View table:
-<?php
 	for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 		echo '<a href="view_table.php?tablename=', urlencode($row[0]), '">', htmlspecialchars($row[0]), "</a>\n";
 	}

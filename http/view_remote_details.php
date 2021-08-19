@@ -10,7 +10,7 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['addr'])) {
 		if (!empty($_GET['out_ID'])) {
 			pg_free_result(pgquery("UPDATE addr_oID SET out_ID = {$_GET['out_ID']} WHERE addr = E'\\\\x{$_GET['addr']}';"));
 			echo 'out_ID changed for DST X&apos;', $h_addr, "&apos;.<br/>\n";
-		} else if (isset($_GET['random'])) {
+		} else if (isset($_GET['randomize'])) {
 			pg_free_result(pgquery('UPDATE addr_oID SET out_ID = ' . rand(0, 255) . " WHERE addr = E'\\\\x{$_GET['addr']}';"));
 			echo 'out_ID randomized for DST X&apos;', $h_addr, "&apos;.<br/>\n";
 		} else if (!empty($_GET['add_proto'])) {
@@ -71,7 +71,7 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['addr'])) {
 <?php
 		echo '<input form="random" type="hidden" name="addr" value="', $h_addr, "\"/>\n";
 ?>
-		<input form="random" type="submit" name="random" value="randomize"/>
+		<input form="random" type="submit" name="randomize" value="randomize"/>
 		<form id="change" action="" method="GET"></form>
 		<form id="random" action="" method="GET"></form>
 		<form action="" method="GET">
