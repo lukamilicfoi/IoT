@@ -54,6 +54,11 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['addr'])) {
 				echo '<a href="view_source_destination_details.php?SRC=', $u_addr, '&amp;DST=', $str, '">', $str, "</a>\n";
 				echo '<a href="?addr=', urlencode($_GET['addr']), '&amp;remove_DST=', $str, "\">(remove)</a>\n";
 			}
+			if (pg_num_rows($result) == 0) {
+?>
+				&lt;no destinations&gt;
+<?php
+			}
 			echo '<input type="hidden" name="addr" value="', $h_addr, "\"/>\n";
 ?>
 			<input type="text" name="add_DST"/>
@@ -78,10 +83,15 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['addr'])) {
 			View protocol:
 <?php
 			pg_free_result($result);
-			$result = pgquery("SELECT SRC_proto.proto, proto_name.name FROM SRC_proto INNER JOIN proto_name ON SRC_proto.proto = proto_name.proto WHERE SRC = E'\\\\x{$_GET['addr']}' ORDER BY SRC_proto.proto ASC;");
+			$result = pgquery("SELECT proto_name.name FROM SRC_proto INNER JOIN proto_name ON SRC_proto.proto = proto_name.proto WHERE SRC = E'\\\\x{$_GET['addr']}' ORDER BY SRC_proto.proto ASC;");
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
-				echo '<a href="view_source_protocol_details.php?SRC=', $u_addr, '&amp;proto=', $row[0], '">', $row[1], "</a>\n";
-				echo '<a href="?addr=', urlencode($_GET['addr']), '&amp;remove_proto=', $row[1], "\">(remove)</a>\n";
+				echo '<a href="view_source_protocol_details.php?SRC=', $u_addr, '&amp;proto=', $row[0], '">', $row[0], "</a>\n";
+				echo '<a href="?addr=', urlencode($_GET['addr']), '&amp;remove_proto=', $row[0], "\">(remove)</a>\n";
+			}
+			if (pg_num_rows($result) == 0) {
+?>
+				&lt;no protocols&gt;
+<?php
 			}
 			echo '<input type="hidden" name="addr" value="', $h_addr, "\"/>\n";
 ?>

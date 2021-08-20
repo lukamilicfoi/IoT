@@ -16,6 +16,11 @@ if (checkAuthorization(3, 'view tables')) {
 	for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 		echo '<a href="view_table.php?tablename=', urlencode($row[0]), '">', htmlspecialchars($row[0]), "</a>\n";
 	}
+	if (pg_num_rows($result) == 0) {
+?>
+		&lt;no tables&gt;
+<?php
+	}
 	pg_free_result($result);
 ?>
 	<br/>
@@ -36,12 +41,12 @@ if (checkAuthorization(4, 'send messages')) {
 	}
 ?>
 	<form action="" method="GET">
-		Send raw message
+		Send message
 		<input type="text" name="msgtosend"/>
-		using protocol id
-		<input type="text" name="proto_id"/><br/>
+		using protocol
+		<input type="text" name="proto_id"/>
 		and imm_DST
-		<input type="text" name="imm_DST"/>
+		<input type="text" name="imm_DST"/><br/>
 		using CCF
 		<input type="checkbox" name="CCF"/>
 		and ACF
@@ -63,12 +68,12 @@ if (checkAuthorization(5, 'inject messages')) {
 	}
 ?>
 	<form action="" method="GET">
-		Inject raw message
+		Inject message
 		<input type="text" name="msgtoinject"/>
-		using protocol id
-		<input type="text" name="proto_id"/><br/>
+		using protocol
+		<input type="text" name="proto_id"/>
 		and imm_SRC
-		<input type="text" name="imm_SRC"/>
+		<input type="text" name="imm_SRC"/><br/>
 		using CCF
 		<input type="checkbox" name="CCF"/>
 		and ACF
@@ -80,7 +85,7 @@ if (checkAuthorization(5, 'inject messages')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write message and imm_DST as a binary string, e.g., abababababababab; write protocol as a string, e.g., tcp.<br/>
+	Write message and imm_ as a binary string, e.g., abababababababab; write protocol as a string, e.g., tcp.<br/>
 <?php
 }
 if (checkAuthorization(6, 'send queries to database')) {
@@ -147,7 +152,7 @@ if (checkAuthorization(11, 'manually execute timed rules')) {
 	if (!empty($_GET['username']) && !empty($_GET['id'])) {
 		$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_GET['username']}' AND NOT is_administrator;");
 		if ($_GET['user'] == $_SESSION['username'] || $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root']) {
-			pg_free_result(pgquery("SELECT manually_execute_timed_rule('{$_GET['username']}', {$_GET['id']});"));
+			pg_free_result(pgquery("CALL manually_execute_timed_rule('{$_GET['username']}', {$_GET['id']});"));
 		}
 		pg_free_result($result);
 		echo 'For username &apos;', htmlspecialchars($_GET['username']), '&apos; timed rule ', htmlspecialchars($_GET['id']), " manually executed.\n";

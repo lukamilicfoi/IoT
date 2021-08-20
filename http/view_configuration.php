@@ -5,20 +5,20 @@ if (checkAuthorization(8, 'view configuration')) {
 	if (isset($_GET['update']) && !empty($_GET['username']) && ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root'])) {
 		pg_free_result(pgquery('UPDATE configuration SET (forward_messages, use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway) = (' . (isset($_GET['forward_messages']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['use_internet_switch_algorithm']) ? 'TRU' : 'FALS') . "E, {$_GET['nsecs_id']}, {$_GET['nsecs_src']}, " . (isset($_GET['trust_everyone']) ? 'TRU' : 'FALS') . "E, E'\\\\x{$_GET['default_gateway']}') WHERE username = '{$_GET['username']}';"));
 		pg_free_result(pgquery('CALL config();'));
-		echo 'Configuration updated for username \'', htmlspecialchars($_GET['username']), "'.<br/>\n";
+		echo 'Configuration updated for username &apos;', htmlspecialchars($_GET['username']), "&apos;.<br/>\n";
 	}
 	pg_free_result($result);
 	if ($_SESSION['is_root']) {
-		$result = pgquery('TABLE configuration ORDER BY username ASC;');
+		$result = pgquery('SELECT configuration.* FROM configuration INNER JOIN users ON configuration.username = users.username ORDER BY users.is_administrator DESC, configuration.username ASC;');
 ?>
 		Viewing table &quot;configuration&quot;.
 <?php
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT configuration.* FROM configuration INNER JOIN users ON configuration.username = users.username WHERE NOT users.is_administrator OR configuration.username = '{$_SESSION['username']}' ORDER BY users.is_administrator DESC, configuration.username ASC;");
-		echo 'Viewing table &quot;configuration&quot; for username \'', htmlspecialchars($_SESSION['username']), "' and non-administrators.\n";
+		echo 'Viewing table &quot;configuration&quot; for username &apos;', htmlspecialchars($_SESSION['username']), "&apos; and non-administrators.\n";
 	} else {
 		$result = pgquery("SELECT * FROM configuration WHERE username = '{$_SESSION['username']}';");
-		echo 'Viewing table &quot;configuration&quot; for username \'', htmlspecialchars($_SESSION['username']), "'.\n";
+		echo 'Viewing table &quot;configuration&quot; for username &apos;', htmlspecialchars($_SESSION['username']), "&apos;.\n";
 	}
 ?>
 	<table border="1">
@@ -71,7 +71,7 @@ if (checkAuthorization(8, 'view configuration')) {
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $username, '" type="text" name="default_gateway" value="', strtoupper(substr($row[6], 2)), "\"/>\n";
+						echo '<input form="update_', $username, '" type="text" name="default_gateway" value="', substr($row[6], 2), "\"/>\n";
 ?>
 					</td>
 					<td>
@@ -90,6 +90,7 @@ if (checkAuthorization(8, 'view configuration')) {
 ?>
 		</tbody>
 	</table>
+	Write default gateway as a binary string, e.g., abababababababab.<br/>
 	<a href="index.php">Done</a>
 <?php
 	pg_free_result($result);

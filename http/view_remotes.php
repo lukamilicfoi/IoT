@@ -5,13 +5,13 @@ if (checkAuthorization(10, 'view remotes')) {
 		pg_free_result(pgquery('CALL load_store(TRUE);'));
 		$_SESSION['loaded'] = true;
 ?>
-		Loaded remotes from running program.
+		Loaded remotes from running program.<br/>
 <?php
 	} else if (isset($_GET['store'])) {
 		pg_free_result(pgquery('CALL load_store(FALSE);'));
 		unset($_SESSION['loaded']);
 ?>
-		Stored remotes to running program.
+		Stored remotes to running program.<br/>
 <?php
 	} else if (!empty($_GET['add'])) {
 		$result1 = pgquery("SELECT TRUE FROM table_user WHERE tablename = 't{$_GET['add']}';");
@@ -72,6 +72,11 @@ if (checkAuthorization(10, 'view remotes')) {
 				echo '<a href="view_remote_details.php?addr=', $str, '">', $str, "</a>\n";
 				echo '<a href="?remove=', $str, "\">(remove)</a>\n";
 			}
+			if (pg_num_rows($result) == 0) {
+?>
+				&lt;no remotes&gt;
+<?php
+			}
 ?>
 			<input type="text" name="add"/>
 			<input type="submit" value="(add)"/>
@@ -83,7 +88,7 @@ if (checkAuthorization(10, 'view remotes')) {
 		pg_free_result($result);
 	} else {
 ?>
-		<br/><a href="?load">Load all remotes from running program</a><br/>
+		<a href="?load">Load all remotes from running program</a><br/>
 		<a href="?store">Delete all remotes from running program</a><br/>
 <?php
 	}

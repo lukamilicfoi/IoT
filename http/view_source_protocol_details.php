@@ -83,7 +83,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto']) && checkAuthorization(10, 'vi
 					<tr>
 						<td>
 <?php
-							$str = strtoupper(substr($row[0], 2));
+							$str = substr($row[0], 2);
 							echo '<input form="update', $str, '" type="text" name="imm_SRC" value="', $str, "\"/>\n";
 ?>
 						</td>
