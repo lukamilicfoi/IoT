@@ -27,19 +27,19 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 	pg_free_result(pgquery($query . ');'));
 	pg_free_result(pgquery("INSERT INTO configuration(username, forward_messages, use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway) SELECT '{$_POST['username']}', forward_messages, use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway FROM configuration WHERE username = 'root';"));
 	echo 'User &apos;', htmlspecialchars($_POST['username']), "&apos; inserted.<br/>\n";
-} else if (isset($_POST['update1']) && isset($_POST['username'])) {
+} else if (isset($_POST['update1']) && isset($_POST['username']) ) {
 	$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_POST['username']}' AND NOT is_administrator;");
 	if ($_SESSION['is_administrator'] && !isset($_POST['is_administrator']) && pg_fetch_row($result) || $_SESSION['is_root']) {
-		$query = 'UPDATE users SET (password';
+		$query = 'UPDATE users SET (' . $_SESSION['is_root'] ? 'password, ' : '';
 		$fields = array('is_administrator', 'can_view_tables', 'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules', 'can_view_configuration', 'can_view_permissions', 'can_view_remotes', 'can_execute_rules', 'can_actually_login');
-		for ($i = 0; $i < 11; $i++) {
-			$query .= ", {$fields[$i]}";
+		for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 11; $i++) {
+			$query .= "{$fields[$i]}, ";
 		}
-		$query .= ") = (" . (!empty($_POST['password']) ? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : 'password');
-		for ($i = 0; $i < 11; $i++) {
-			$query .= isset($_POST[$fields[$i]]) ? ', TRUE' : ', FALSE';
+		$query = substr($query, 0, -2) . ") = (" . (!empty($_POST['password']) ? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\', ' : '');
+		for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 11; $i++) {
+			$query .= isset($_POST[$fields[$i]]) ? 'TRUE, ' : 'FALSE, ';
 		}
-		pg_free_result(pgquery($query . ") WHERE username = '{$_POST['username']}';"));
+		pg_free_result(pgquery(substr($query, 0, -2) . ") WHERE username = '{$_POST['username']}';"));
 		echo 'User &apos;', htmlspecialchars($_POST['username']), "&apos; updated.<br/>\n";
 	}
 	pg_free_result($result);
@@ -67,14 +67,14 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 	Password updated - for this username.<br/>
 <?php
 }
-$result1 = pgquery("SELECT username, username, is_administrator, can_view_tables, can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_view_configuration, can_view_permissions, can_view_remotes, can_execute_rules, can_actually_login FROM users WHERE username = '{$_SESSION['username']}';");
+$result1 = pgquery("SELECT username, TRUE, is_administrator, can_view_tables, can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_view_configuration, can_view_permissions, can_view_remotes, can_execute_rules, can_actually_login FROM users WHERE username = '{$_SESSION['username']}';");
 if ($_SESSION['is_root']) {
 	$result2 = pgquery("SELECT * FROM users WHERE username <> 'root' ORDER BY is_administrator DESC, username ASC;");
 ?>
-	Viewing table &quot;users&quot;.
+	Viewing table &quot;users&quot;, administrators first.
 <?php
 } else if ($_SESSION['is_administrator']) {
-	$result2 = pgquery("SELECT username, username, is_administrator, can_view_tables, can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_view_configuration, can_view_permissions, can_view_remotes, can_execute_rules, can_actually_login FROM users WHERE NOT is_administrator AND username <> '{$_SESSION['username']}' ORDER BY username ASC;");
+	$result2 = pgquery("SELECT username, TRUE, is_administrator, can_view_tables, can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_view_configuration, can_view_permissions, can_view_remotes, can_execute_rules, can_actually_login FROM users WHERE NOT is_administrator AND username <> '{$_SESSION['username']}' ORDER BY username ASC;");
 	echo "Viewing table &quot;users&quot; for username &apos;{$_SESSION['username']}&apos; and non-administrators.\n";
 } else {
 	echo "Viewing table &quot;users&quot; for username &apos;{$_SESSION['username']}&apos;.\n";}
@@ -218,7 +218,7 @@ if ($_SESSION['is_root']) {
 ?>
 						<td>
 <?php
-							echo '<input form="update1_', $username, '" type="checkbox" name="', pg_field_name($result2, $i), '"', $row[$i] == 't' ? ' checked="checked"' : '', "/>\n";
+							echo '<input form="update1_', $username, '" type="checkbox" name="', pg_field_name($result2, $i), '"', $row[$i] == 't' ? ' checked="checked"' : '', !$_SESSION['is_administrator'] && $i == 2 ? ' disabled="disabled"' : '', "/>\n";
 ?>
 						</td>
 <?php

@@ -18,14 +18,14 @@ if (checkAuthorization(7, 'view rules')) {
 		if (isset($_GET['insert'])) {
 			$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_GET['username']}' AND NOT is_administrator;");
 			if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root']) {
-				pg_free_result(pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) VALUES('{$_GET['username']}', {$_GET['id']}, {$_GET['send_receive_seconds']}, '{$_GET['filter']}', {$_GET['drop_modify_nothing']}, '{$_GET['modification']}', {$_GET['query_command_nothing']}, '{$_GET['query_command_1']}', {$_GET['send_inject_query_command_nothing']}, '{$_GET['query_command_2']}', '{$_GET['proto_id']}', E'\\\\x{$_GET['imm_addr']}, " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, ' . (!empty($_GET['activate']) ? $_GET['activate'] : 'NULL') . ', ' . (!empty($_GET['deactivate']) ? $_GET['deactivate'] : 'NULL') . ', ' . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E);"));
+				pg_free_result(pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) VALUES('{$_GET['username']}', {$_GET['id']}, {$_GET['send_receive_seconds']}, '{$_GET['filter']}', {$_GET['drop_modify_nothing']}, " . (!empty($_GET['modification']) ? "'{$_GET['modification']}'" : 'NULL') . ", {$_GET['query_command_nothing']}, " . (!empty($_GET['query_command_1']) ? "'{$_GET['query_command_1']}'" : 'NULL') . ", {$_GET['send_inject_query_command_nothing']}, " . (!empty($_GET['query_command_2']) ? "'{$_GET['query_command_2']}'" : 'NULL') . ", (SELECT proto FROM proto_name WHERE name = '{$_GET['proto_id']}'), " . (!empty($_GET['imm_addr']) ? "E'\\\\x{$_GET['imm_addr']}" : 'NULL') . ", " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, ' . (!empty($_GET['activate']) ? $_GET['activate'] : 'NULL') . ', ' . (!empty($_GET['deactivate']) ? $_GET['deactivate'] : 'NULL') . ', ' . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E);"));
 				echo 'For username &apos;', htmlspecialchars($_GET['username']), '&apos; rule ', htmlspecialchars($_GET['id']), " inserted.<br/>\n";
 			}
 			pg_free_result($result);
 		} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
 			$result = pgquery("SELECT TRUE FROM users WHERE (username = '{$_GET['key1']}' OR username = '{$_GET['username']}') AND is_administrator;");
-			if (($_GET['key1'] == $_SESSION['username'] && $_GET['key1'] == $_GET['username'] || $_SESSION['is_administrator'] && !pg_fetch_row($result) || $_SESSION['is_root'])) && isset($_GET['update'])) {
-				pg_free_result(pgquery("UPDATE rules SET (username, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) = ('{$_GET['username']}', {$_GET['id']}, {$_GET['send_receive_seconds']}, '{$_GET['filter']}', {$_GET['drop_modify_nothing']}, '{$_GET['modification']}', {$_GET['query_command_nothing']}, '{$_GET['query_command_2']}', {$_GET['send_inject_query_command_nothing']}, '{$_GET['query_command_2']}', '{$_GET['proto_id']}', E'\\\\x{$_GET['imm_addr']}, " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, ' . (!empty($_GET['activate']) ? $_GET['activate'] : 'NULL') . ', ' . (!empty($_GET['deactivate']) ? $_GET['deactivate'] : 'NULL') . ', ' . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E) WHERE user = '{$_GET['key1']}' AND id = {$_GET['key2']};"));
+			if (($_GET['key1'] == $_SESSION['username'] && $_GET['key1'] == $_GET['username'] || $_SESSION['is_administrator'] && !pg_fetch_row($result) || $_SESSION['is_root']) && isset($_GET['update'])) {
+				pg_free_result(pgquery("UPDATE rules SET (username, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) = ('{$_GET['username']}', {$_GET['id']}, {$_GET['send_receive_seconds']}, '{$_GET['filter']}', {$_GET['drop_modify_nothing']}, " . (!empty($_GET['modification']) ? "'{$_GET['modification']}'" : 'NULL') . ", {$_GET['query_command_nothing']}, " . (!empty($_GET['query_command_1']) = "'{$_GET['query_command_1']}'" : 'NULL') . ", {$_GET['send_inject_query_command_nothing']}, " . (!empty($_GET['query_command_2']) ? "'{$_GET['query_command_2']}'" : 'NULL') . ", (SELECT proto FROM proto_name WHERE name = '{$_GET['proto_id']}'), " . (!empty($_GET['imm_addr']) ? "E'\\\\x{$_GET['imm_addr']}" : 'NULL') . ", " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, ' . (!empty($_GET['activate']) ? $_GET['activate'] : 'NULL') . ', ' . (!empty($_GET['deactivate']) ? $_GET['deactivate'] : 'NULL') . ', ' . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E) WHERE user = '{$_GET['key1']}' AND id = {$_GET['key2']};"));
 				echo 'For username &apos;', htmlspecialchars($_GET['key1']), '&apos; rule ', htmlspecialchars($_GET['key2']), " updated.<br/>\n";
 			}
 			pg_free_result($result);
@@ -262,7 +262,7 @@ if (checkAuthorization(7, 'view rules')) {
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="modification" value="', htmlspecialchars($row[5]), "\" size=\"10\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="modification" value="', $row[5] === null ? '' : htmlspecialchars($row[5]), "\" size=\"10\"/>\n";
 ?>
 						,
 					</td>
@@ -282,7 +282,7 @@ if (checkAuthorization(7, 'view rules')) {
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="query_command_1" value="', htmlspecialchars($row[7]), "\" size=\"10\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="query_command_1" value="', $row[7] === null ? '' : htmlspecialchars($row[7]), "\" size=\"10\"/>\n";
 ?>
 						,
 					</td>
@@ -310,7 +310,7 @@ if (checkAuthorization(7, 'view rules')) {
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="query_command_2" value="', htmlspecialchars($row[9]), "\" size=\"10\"/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="text" name="query_command_2" value="', $row[9] === null ? '' : htmlspecialchars($row[9]), "\" size=\"10\"/>\n";
 ?>
 					</td>
 					<td>
@@ -373,8 +373,8 @@ if (checkAuthorization(7, 'view rules')) {
 							echo '<input type="hidden" name="key1" value="', $username, "\"/>\n";
 							echo '<input type="hidden" name="key2" value="', $row[1], "\"/>\n";
 ?>
-							<input type="submit" name="update" value="UPDATE"/>;
-							<input type="reset" value="reset"/>;
+							<input type="submit" name="update" value="UPDATE"/><br/>
+							<input type="reset" value="reset"/>
 <?php
 						echo "</form>";
 ?>
@@ -402,7 +402,7 @@ if (checkAuthorization(7, 'view rules')) {
 	Id must be unique. Smaller value indicates bigger priority.<br/>
 	When broadcasting a message any imm_DST is ignored.<br/>
 	On send and receive rules last_run is meaningless.<br/>
-	Strings are written without excess quotes, e.g., proto = 'tcp'.<br/>
+	Strings are written without excess quotations, e.g., proto = 'tcp'.<br/>
 	<a href="index.php">Done</a>
 <?php
 	pg_free_result($result);

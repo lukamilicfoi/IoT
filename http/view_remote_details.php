@@ -99,7 +99,7 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['addr'])) {
 			<input type="submit" value="(add)"/>
 		</form>
 		Write destination as a binary string, e.g., abababababababab.<br/>
-		Write id as and integer, e.g., 11.<br/>
+		Write id as andd integer, e.g., 11.<br/>
 		Write protocol as a string, e.g., tcp.<br/>
 		<a href="view_remotes.php">Done</a>
 <?php

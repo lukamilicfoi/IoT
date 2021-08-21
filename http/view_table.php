@@ -114,7 +114,7 @@ if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
 			}
 		}
 		$result = pgquery("TABLE {$_GET['tablename']} ORDER BY t DESC;");
-		echo 'Viewing table &quot;', $h_tablename, "&quot;.\n";
+		echo 'Viewing table &quot;', $h_tablename, "&quot;, newest first.\n";
 ?>
 		<table border="1">
 			<tbody>

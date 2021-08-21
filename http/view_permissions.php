@@ -24,7 +24,7 @@ if (checkAuthorization(9, 'view permissions')) {
 			$result = pgquery("SELECT TRUE FROM users WHERE (username = '{$_GET['key2']}' OR username = '{$_GET['username']}') AND is_administrator;");
 			if ($_GET['key2'] == $_SESSION['username'] && $_GET['key2'] == $_GET['username'] || $_SESSION['is_administrator'] && !pg_fetch_row($result) || $_SESSION['is_root']) {
 				pg_free_result(pgquery("UPDATE table_user SET (tablename, username) = ('{$_GET['tablename']}', '{$_GET['username']}') WHERE tablename = '{$_GET['key1']}' AND username = '{$_GET['key2']}';"));
-				echo 'Row (\'', htmlspecialchars($_GET['key1']), '\', \'', htmlspecialchars($_GET['key2']), "') updated.<br/>\n";
+				echo 'Row (&apos;', htmlspecialchars($_GET['key1']), '&apos;, &apos;', htmlspecialchars($_GET['key2']), "&apos;) updated.<br/>\n";
 			}
 		}
 		pg_free_result($result);
@@ -33,7 +33,7 @@ if (checkAuthorization(9, 'view permissions')) {
 		if (($_GET['key2'] == $_SESSION['username'] || $_SESSION['is_administrator'] && !pg_fetch_row($result) || $_SESSION['is_root']) && isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
 				pg_free_result(pgquery("DELETE FROM table_user WHERE tablename = '{$_GET['key1']}' AND username = '{$_GET['key2']}';"));
-				echo 'Row (\'', htmlspecialchars($_GET['key1']), '\', \'', htmlspecialchars($_GET['key2']), "') deleted.<br/>\n";
+				echo 'Row (&apos;', htmlspecialchars($_GET['key1']), '&apos;, &apos;', htmlspecialchars($_GET['key2']), "&apos;) deleted.<br/>\n";
 			} else {
 ?>
 				Are you sure?
@@ -54,10 +54,10 @@ if (checkAuthorization(9, 'view permissions')) {
 <?php
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT table_user.* FROM table_user LEFT OUTER JOIN users ON table_user.username = users.username WHERE NOT users.is_administrator OR table_user.username = '{$_SESSION['username']}' ORDER BY users.is_administrator DESC, table_user.username ASC, table_user.tablename ASC;");
-		echo 'Viewing table &quot;table_user&quot; for username \'', htmlspecialchars($_SESSION['username']), "' and non-administrators.<br/>\n";
+		echo 'Viewing table &quot;table_user&quot; for username &apos;', htmlspecialchars($_SESSION['username']), "&apos; and non-administrators.<br/>\n";
 	} else {
 		$result = pgquery("SELECT * FROM table_user WHERE user = '{$_SESSION['username']}' ORDER BY tablename ASC;");
-		echo 'Viewing table &quot;table_user&quot; for username \'', htmlspecialchars($_SESSION['username']), "'.<br/>\n";
+		echo 'Viewing table &quot;table_user&quot; for username &apos;', htmlspecialchars($_SESSION['username']), "&apos;.<br/>\n";
 	}
 ?>
 	<table border="1">

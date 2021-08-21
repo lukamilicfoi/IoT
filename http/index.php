@@ -1,6 +1,11 @@
 <?php
 require_once 'common.php';
 if (checkAuthorization(3, 'view tables')) {
+	if (!empty($_GET['add'])) {
+		#todo
+	} else if (!empty($_GET['remove'])) {
+		#todo
+	}
 	if ($_SESSION['is_root']) {
 		$result = pgquery('(SELECT relname FROM pg_class WHERE relname LIKE \'t________________\' AND relname <> \'table_constraints\' ORDER BY relname ASC) UNION ALL (SELECT tablename FROM table_user WHERE tablename NOT LIKE \'t________________\' OR tablename = \'table_constraints\' ORDER BY tablename ASC);');
 ?>
@@ -8,13 +13,14 @@ if (checkAuthorization(3, 'view tables')) {
 <?php
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("(SELECT pg_class.relname FROM pg_class LEFT OUTER JOIN table_user ON pg_class.relname = table_user.tablename LEFT OUTER JOIN users ON table_user.username = users.username WHERE pg_class.relname LIKE 't________________' AND pg_class.relname <> 'table_constraints' AND (table_user.username IS NULL OR table_user.username = '{$_SESSION['username']}' OR NOT users.is_administrator) ORDER BY pg_class.relname ASC) UNION ALL (SELECT table_user.tablename FROM table_user LEFT OUTER JOIN users ON table_user.username = users.username WHERE (table_user.tablename NOT LIKE 't________________' OR table_user.tablename = 'table_constraints') AND (table_user.username IS NULL OR table_user.username = '{$_SESSION['username']}' OR NOT users.is_administrator) ORDER BY table_user.tablename ASC);");
-		echo "View table (public, '{$_SESSION['username']}'s, non-administrators' shown):\n";
+		echo "View table (public, &apos;{$_SESSION['username']}&apos;&apos;s, non-administrators' shown):\n";
 	} else {
 		$result = pgquery("(SELECT pg_class.relname FROM pg_class LEFT OUTER JOIN table_user ON pg_class.relname = table_user.tablename LEFT OUTER JOIN users ON table_user.username = users.username WHERE pg_class.relname LIKE 't________________' AND pg_class.relname <> 'table_constraints' AND (table_user.username IS NULL OR table_user.username = '{$_SESSION['username']}') ORDER BY pg_class.relname ASC) UNION ALL (SELECT tablename FROM table_user WHERE (tablename NOT LIKE 't________________' OR tablename = 'table_constraints') AND (username IS NULL OR username = '{$_SESSION['username']}') ORDER BY tablename ASC);");
-		echo "View table (public, '{$_SESSION['username']}'s shown):\n";
+		echo "View table (public, &apos;{$_SESSION['username']}&apos;&apos;s shown):\n";
 	}
 	for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 		echo '<a href="view_table.php?tablename=', urlencode($row[0]), '">', htmlspecialchars($row[0]), "</a>\n";
+		#todo
 	}
 	if (pg_num_rows($result) == 0) {
 ?>
@@ -22,22 +28,16 @@ if (checkAuthorization(3, 'view tables')) {
 <?php
 	}
 	pg_free_result($result);
+	#todo
 ?>
 	<br/>
 <?php
 }
-if (checkAuthorization(7, 'view rules')) {
-?>
-	<a href="view_rules.php">View rules</a><br/>
-<?php
-}
-?>
-<a href="view_users.php">View users</a><br/>
 <?php
 if (checkAuthorization(4, 'send messages')) {
 	if (!empty($_GET['msgtosend']) && !empty($_GET['proto_id']) && !empty($_GET['imm_DST'])) {
 		pg_free_result(pgquery("SELECT send_inject(E'\\\\x{$_GET['msgtosend']}, '{$_GET['proto_id']}', E'\\\\x{$_GET['imm_DST']}, " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, TRUE);'));
-		echo 'Message ', htmlspecialchars($_GET['msgtosend']), " sent.\n";
+		echo 'Message X&apos;', htmlspecialchars($_GET['msgtosend']), "&apos; sent.\n";
 	}
 ?>
 	<form action="" method="GET">
@@ -58,7 +58,7 @@ if (checkAuthorization(4, 'send messages')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write message and imm_DST as a binary string, e.g., abababababababab; write protocol as a string, e.g., tcp.<br/>
+	Write message and imm_DST as a binary string, e.g., abababababababab; write protocol as a string, e.g., tcp.<br/><br/>
 <?php
 }
 if (checkAuthorization(5, 'inject messages')) {
@@ -85,7 +85,7 @@ if (checkAuthorization(5, 'inject messages')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write message and imm_ as a binary string, e.g., abababababababab; write protocol as a string, e.g., tcp.<br/>
+	Write message and imm_SRC as a binary string, e.g., abababababababab; write protocol as a string, e.g., tcp.<br/><br/>
 <?php
 }
 if (checkAuthorization(6, 'send queries to database')) {
@@ -179,6 +179,13 @@ if (checkAuthorization(11, 'manually execute timed rules')) {
 	Write username and rule as a string and an integer, e.g., root and 11.<br/>
 <?php
 }
+if (checkAuthorization(7, 'view rules')) {
+?>
+	<a href="view_rules.php">View rules</a><br/>
+<?php
+}
+?>
+<a href="view_users.php">View users</a><br/>
 if (checkAuthorization(8, 'view configuration')) {
 ?>
 	<a href="view_configuration.php">View configuration</a><br/>

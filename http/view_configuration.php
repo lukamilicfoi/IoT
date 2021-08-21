@@ -11,7 +11,7 @@ if (checkAuthorization(8, 'view configuration')) {
 	if ($_SESSION['is_root']) {
 		$result = pgquery('SELECT configuration.* FROM configuration INNER JOIN users ON configuration.username = users.username ORDER BY users.is_administrator DESC, configuration.username ASC;');
 ?>
-		Viewing table &quot;configuration&quot;.
+		Viewing table &quot;configuration&quot;, administrators first.
 <?php
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT configuration.* FROM configuration INNER JOIN users ON configuration.username = users.username WHERE NOT users.is_administrator OR configuration.username = '{$_SESSION['username']}' ORDER BY users.is_administrator DESC, configuration.username ASC;");
