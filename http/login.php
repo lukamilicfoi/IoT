@@ -10,6 +10,7 @@ if (!empty($_POST['username']) && !empty($_POST['password'])) {
 		$_SESSION['is_root'] = $_POST['username'] == 'root';
 		$_SESSION['is_administrator'] = $row[1] == 't';
 		$_SESSION['username'] = $_POST['username'];
+		$_SESSION['html_username'] = htmlspecialchars($_SESSION['username']);
 	}
 	pg_free_result($result);
 } else if (isset($_GET['logout'])) {

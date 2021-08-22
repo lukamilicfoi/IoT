@@ -8,7 +8,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST']) && checkAuthorization(10, 'view
 	$h_DST = htmlspecialchars($_GET['DST']);
 	$u_SRC = urlencode($_GET['SRC']);
 	$u_DST = urlencode($_GET['DST']);
-	if ($_SESSION['is_root'] || !pg_fetch_row($result1) || pg_fetch_row($result2) || $_SESSION['is_administrator'] && pg_fetch_row($result3)) {
+	if (!pg_fetch_row($result1) || pg_fetch_row($result2) || pg_fetch_row($result3) && $_SESSION['is_administrator'] || $_SESSION['is_root']) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
 				pg_free_result(pgquery("DELETE FROM ID_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND DST = E'\\\\x{$_GET['DST']}';"));

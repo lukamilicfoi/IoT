@@ -18,14 +18,14 @@ if (checkAuthorization(7, 'view rules')) {
 		if (isset($_GET['insert'])) {
 			$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_GET['username']}' AND NOT is_administrator;");
 			if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root']) {
-				pg_free_result(pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) VALUES('{$_GET['username']}', {$_GET['id']}, {$_GET['send_receive_seconds']}, '{$_GET['filter']}', {$_GET['drop_modify_nothing']}, " . (!empty($_GET['modification']) ? "'{$_GET['modification']}'" : 'NULL') . ", {$_GET['query_command_nothing']}, " . (!empty($_GET['query_command_1']) ? "'{$_GET['query_command_1']}'" : 'NULL') . ", {$_GET['send_inject_query_command_nothing']}, " . (!empty($_GET['query_command_2']) ? "'{$_GET['query_command_2']}'" : 'NULL') . ", (SELECT proto FROM proto_name WHERE name = '{$_GET['proto_id']}'), " . (!empty($_GET['imm_addr']) ? "E'\\\\x{$_GET['imm_addr']}" : 'NULL') . ", " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, ' . (!empty($_GET['activate']) ? $_GET['activate'] : 'NULL') . ', ' . (!empty($_GET['deactivate']) ? $_GET['deactivate'] : 'NULL') . ', ' . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E);"));
+				pg_free_result(pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) VALUES('{$_GET['username']}', {$_GET['id']}, {$_GET['send_receive_seconds']}, '{$_GET['filter']}', {$_GET['drop_modify_nothing']}, " . (!empty($_GET['modification']) ? "'{$_GET['modification']}'" : 'NULL') . ", {$_GET['query_command_nothing']}, " . (!empty($_GET['query_command_1']) ? "'{$_GET['query_command_1']}'" : 'NULL') . ", {$_GET['send_inject_query_command_nothing']}, " . (!empty($_GET['query_command_2']) ? "'{$_GET['query_command_2']}'" : 'NULL') . ', ' . (!empty($_GET['proto_id']) ? "(SELECT proto FROM proto_name WHERE name = '{$_GET['proto_id']}')" : 'NULL') . ', ' . (!empty($_GET['imm_addr']) ? "E'\\\\x{$_GET['imm_addr']}" : 'NULL') . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, ' . (!empty($_GET['activate']) ? $_GET['activate'] : 'NULL') . ', ' . (!empty($_GET['deactivate']) ? $_GET['deactivate'] : 'NULL') . ', ' . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E);"));
 				echo 'For username &apos;', htmlspecialchars($_GET['username']), '&apos; rule ', htmlspecialchars($_GET['id']), " inserted.<br/>\n";
 			}
 			pg_free_result($result);
 		} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
 			$result = pgquery("SELECT TRUE FROM users WHERE (username = '{$_GET['key1']}' OR username = '{$_GET['username']}') AND is_administrator;");
 			if (($_GET['key1'] == $_SESSION['username'] && $_GET['key1'] == $_GET['username'] || $_SESSION['is_administrator'] && !pg_fetch_row($result) || $_SESSION['is_root']) && isset($_GET['update'])) {
-				pg_free_result(pgquery("UPDATE rules SET (username, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) = ('{$_GET['username']}', {$_GET['id']}, {$_GET['send_receive_seconds']}, '{$_GET['filter']}', {$_GET['drop_modify_nothing']}, " . (!empty($_GET['modification']) ? "'{$_GET['modification']}'" : 'NULL') . ", {$_GET['query_command_nothing']}, " . (!empty($_GET['query_command_1']) = "'{$_GET['query_command_1']}'" : 'NULL') . ", {$_GET['send_inject_query_command_nothing']}, " . (!empty($_GET['query_command_2']) ? "'{$_GET['query_command_2']}'" : 'NULL') . ", (SELECT proto FROM proto_name WHERE name = '{$_GET['proto_id']}'), " . (!empty($_GET['imm_addr']) ? "E'\\\\x{$_GET['imm_addr']}" : 'NULL') . ", " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, ' . (!empty($_GET['activate']) ? $_GET['activate'] : 'NULL') . ', ' . (!empty($_GET['deactivate']) ? $_GET['deactivate'] : 'NULL') . ', ' . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E) WHERE user = '{$_GET['key1']}' AND id = {$_GET['key2']};"));
+				pg_free_result(pgquery("UPDATE rules SET (username, id, send_receive_seconds, filter, drop_modify_nothing, modification, query_command_nothing, query_command_1, send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate, deactivate, is_active) = ('{$_GET['username']}', {$_GET['id']}, {$_GET['send_receive_seconds']}, '{$_GET['filter']}', {$_GET['drop_modify_nothing']}, " . (!empty($_GET['modification']) ? "'{$_GET['modification']}'" : 'NULL') . ", {$_GET['query_command_nothing']}, " . (!empty($_GET['query_command_1']) ? "'{$_GET['query_command_1']}'" : 'NULL') . ", {$_GET['send_inject_query_command_nothing']}, " . (!empty($_GET['query_command_2']) ? "'{$_GET['query_command_2']}'" : 'NULL') . ', ' . (!empty($_GET['proto_id']) ? "(SELECT proto FROM proto_name WHERE name = '{$_GET['proto_id']}')" : 'NULL') . ', ' . (!empty($_GET['imm_addr']) ? "E'\\\\x{$_GET['imm_addr']}" : 'NULL') . ', ' . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, ' . (!empty($_GET['activate']) ? $_GET['activate'] : 'NULL') . ', ' . (!empty($_GET['deactivate']) ? $_GET['deactivate'] : 'NULL') . ', ' . (isset($_GET['is_active']) ? 'TRU' : 'FALS') . "E) WHERE user = '{$_GET['key1']}' AND id = {$_GET['key2']};"));
 				echo 'For username &apos;', htmlspecialchars($_GET['key1']), '&apos; rule ', htmlspecialchars($_GET['key2']), " updated.<br/>\n";
 			}
 			pg_free_result($result);
@@ -83,12 +83,12 @@ if (checkAuthorization(7, 'view rules')) {
 				<th>and override implicit rules</th>
 				<th>Also activate rule number</th>
 				<th>Also deactivate rule number</th>
-				<th>Is rule active?</th>
-				<th>Last run on</th>
+				<th>Is active?</th>
+				<th>Last run on:</th>
 				<th>(actions)</th>
 			</tr>
 			<tr>
-				<td>
+				<td nowrap="nowrap">
 <?php
 					if ($_SESSION['is_administrator']) {
 ?>
@@ -99,6 +99,7 @@ if (checkAuthorization(7, 'view rules')) {
 						echo '<input form="insert" type="hidden" name="username" value="', htmlspecialchars($_SESSION['username']), "\"/>\n";
 					}
 ?>
+					,
 				</td>
 				<td nowrap="nowrap">
 					<input form="insert" type="text" name="id" size="10"/>
@@ -182,9 +183,8 @@ if (checkAuthorization(7, 'view rules')) {
 					<input form="insert" type="text" name="deactivate"/>
 					.
 				</td>
-				<td nowrap="nowrap">
+				<td>
 					<input form="insert" type="checkbox" name="active"/>
-					.
 				</td>
 				<td>
 					<input form="insert" type="text" name="last_run" value="CURRENT_TIMESTAMP(0)" disabled="disabled"/>
@@ -219,6 +219,7 @@ if (checkAuthorization(7, 'view rules')) {
 							echo '<input form="update_', $username, '_', $row[1], '\" type="hidden" name="username" value="', $username, "\" size=\"10\"/>\n";
 						}
 ?>
+						,
 					</td>
 					<td>
 <?php
@@ -360,7 +361,6 @@ if (checkAuthorization(7, 'view rules')) {
 <?php
 						echo '<input form="update_', $username, '_', $row[1], '" type="checkbox" name="active"', $row[18] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
-						.
 					</td>
 					<td>
 <?php

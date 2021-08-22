@@ -78,8 +78,8 @@ if (checkAuthorization(9, 'view permissions')) {
 						<input form="insert" type="text" name="username"/>
 <?php
 					} else {
-						echo '<input type="text" value="', $_SESSION['username'], "\" disabled=\"disabled\"/>\n";
-						echo '<input form="insert" type="hidden" name="username" value="', $_SESSION['username'], "\"/>\n";
+						echo '<input type="text" value="', htmlspecialchars($_SESSION['username']), "\" disabled=\"disabled\"/>\n";
+						echo '<input form="insert" type="hidden" name="username" value="', htmlspecialchars($_SESSION['username']), "\"/>\n";
 					}
 ?>
 				</td>

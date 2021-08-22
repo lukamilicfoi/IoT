@@ -8,7 +8,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto']) && checkAuthorization(10, 'vi
 	$h_proto = htmlspecialchars($_GET['proto']);
 	$u_SRC = urlencode($_GET['SRC']);
 	$u_proto = urlencode($_GET['proto']);
-	if ($_SESSION['is_root'] || !pg_fetch_row($result1) || pg_fetch_row($result2) || $_SESSION['is_administrator'] && pg_fetch_row($result3)) {
+	if (!pg_fetch_row($result1) || pg_fetch_row($result2) || pg_fetch_row($result3) && $_SESSION['is_administrator'] || $_SESSION['is_root']) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
 				pg_free_result(pgquery("DELETE FROM iSRC_TWR WHERE SRC = E'\\\\x{$_GET['SRC']}' AND proto = '{$_GET['proto']}';"));

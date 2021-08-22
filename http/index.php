@@ -2,10 +2,38 @@
 require_once 'common.php';
 if (checkAuthorization(3, 'view tables')) {
 	if (!empty($_GET['add'])) {
-		#todo
+		pg_free_result(pgquery("CREATE TABLE {$_GET['add']};"));
+		pg_free_result(pgquery("INSERT INTO tables(tablename) VALUES('{$_GET['add']}');"));
+		if (substr($_GET['add'], 0, 1) != 't' || strlen($_GET['add']) != 17) {
+			pg_free_result(pgquery("INSERT INTO table_user(tablename, username) VALUES('{$_GET['add']}', NULL);"));
+		}
 	} else if (!empty($_GET['remove'])) {
-		#todo
+		$result1 = pgquery("SELECT username FROM table_user WHERE tablename = '{$_GET['remove']}';");
+		$result2 = pgquery("SELECT TRUE FROM table_user WHERE username = '{$_SESSION['username']}' AND tablename = '{$_GET['remove']}';");
+		$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.username = users.username WHERE table_user.tablename = '{$_GET['remove']}' AND NOT users.is_administrator;");
+		$row = pg_fetch_row($result1);
+		if (!$row || $row[0] === null || pg_fetch_row($result2) || pg_fetch_row($result3) && $_SESSION['is_administrator'] || $_SESSION['is_root']) {
+			if (isset($_GET['confirm'])) {
+				pg_free_result(pgquery("DROP TABLE {$_GET['remove']};"));
+				pg_free_result(pgquery("DELETE FROM tables WHERE tablename = '{$_GET['remove']}';"));
+			} else {
+?>
+				Are you sure?
+<?php
+				echo '<a href="?remove=', urlencode($_GET['remove']), "\">Yes</a>\n";
+?>
+				<a href="">No</a>
+<?php
+				exit(0);
+			}
+		}
+		pg_free_result($result1);
+		pg_free_result($result2);
+		pg_free_result($result3);
 	}
+?>
+	<form action="" method="GET">
+<?php
 	if ($_SESSION['is_root']) {
 		$result = pgquery('(SELECT relname FROM pg_class WHERE relname LIKE \'t________________\' AND relname <> \'table_constraints\' ORDER BY relname ASC) UNION ALL (SELECT tablename FROM table_user WHERE tablename NOT LIKE \'t________________\' OR tablename = \'table_constraints\' ORDER BY tablename ASC);');
 ?>
@@ -20,7 +48,7 @@ if (checkAuthorization(3, 'view tables')) {
 	}
 	for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 		echo '<a href="view_table.php?tablename=', urlencode($row[0]), '">', htmlspecialchars($row[0]), "</a>\n";
-		#todo
+		echo '<a href="?remove=', urlencode($row[0]), "\">(remove)</a>\n";
 	}
 	if (pg_num_rows($result) == 0) {
 ?>
@@ -28,12 +56,13 @@ if (checkAuthorization(3, 'view tables')) {
 <?php
 	}
 	pg_free_result($result);
-	#todo
 ?>
+		<input type="text" name="add"/>
+		<input type="submit" value="(add)"/>
+	</form>
 	<br/>
 <?php
 }
-<?php
 if (checkAuthorization(4, 'send messages')) {
 	if (!empty($_GET['msgtosend']) && !empty($_GET['proto_id']) && !empty($_GET['imm_DST'])) {
 		pg_free_result(pgquery("SELECT send_inject(E'\\\\x{$_GET['msgtosend']}, '{$_GET['proto_id']}', E'\\\\x{$_GET['imm_DST']}, " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, TRUE);'));
@@ -64,7 +93,7 @@ if (checkAuthorization(4, 'send messages')) {
 if (checkAuthorization(5, 'inject messages')) {
 	if (!empty($_GET['msgtoinject']) && !empty($_GET['proto_id']) && !empty($_GET['imm_SRC'])) {
 		pg_free_result(pgquery("SELECT send_inject(E'\\\\x{$_GET['msgtoinject']}, '{$_GET['proto_id']}', E'\\\\x{$_GET['imm_SRC']}, " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : ' FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, FALSE);'));
-		echo 'Message ', htmlspecialchars($_GET['msgtoinject']), " injected.\n";
+		echo 'Message X&apos;', htmlspecialchars($_GET['msgtoinject']), "&apos; injected.\n";
 	}
 ?>
 	<form action="" method="GET">
@@ -107,7 +136,7 @@ if (checkAuthorization(6, 'send queries to database')) {
 		if (!$_SESSION['is_root']) {
 			fclose($flock);
 		}
-		echo 'Query \'', htmlspecialchars($_GET['query']), '\' sent to database (PostgreSQL ', pg_version()['client'], ").\n";
+		echo 'Query X&apos;', htmlspecialchars($_GET['query']), '&apos; sent to database (PostgreSQL ', pg_version()['client'], ").\n";
 ?>
 		<table border="1">
 			<tbody>
@@ -186,6 +215,7 @@ if (checkAuthorization(7, 'view rules')) {
 }
 ?>
 <a href="view_users.php">View users</a><br/>
+<?php
 if (checkAuthorization(8, 'view configuration')) {
 ?>
 	<a href="view_configuration.php">View configuration</a><br/>
