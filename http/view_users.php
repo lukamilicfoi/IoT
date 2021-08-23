@@ -30,7 +30,7 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 } else if (isset($_POST['update1']) && isset($_POST['username'])) {
 	$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_POST['username']}' AND NOT is_administrator;");
 	if ($_SESSION['is_administrator'] && !isset($_POST['is_administrator']) && pg_fetch_row($result) || $_SESSION['is_root']) {
-		$query = 'UPDATE users SET (' . (!empty($_POST['password'] ? 'password, ' : '');
+		$query = 'UPDATE users SET (' . (!empty($_POST['password']) ? 'password, ' : '');
 		$fields = array('is_administrator', 'can_view_tables', 'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules', 'can_view_configuration', 'can_view_permissions', 'can_view_remotes', 'can_execute_rules', 'can_actually_login');
 		for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 11; $i++) {
 			$query .= "{$fields[$i]}, ";
@@ -75,7 +75,8 @@ if ($_SESSION['is_root']) {
 	$result2 = pgquery("SELECT username, TRUE, is_administrator, can_view_tables, can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_view_configuration, can_view_permissions, can_view_remotes, can_execute_rules, can_actually_login FROM users WHERE NOT is_administrator AND username <> '{$_SESSION['username']}' ORDER BY username ASC;");
 	echo "Viewing table &quot;users&quot; for username &apos;{$_SESSION['username']}&apos; and non-administrators.\n";
 } else {
-	echo "Viewing table &quot;users&quot; for username &apos;{$_SESSION['username']}&apos;.\n";}
+	echo "Viewing table &quot;users&quot; for username &apos;{$_SESSION['username']}&apos;.\n";
+}
 ?>
 <table border="1">
 	<tbody>

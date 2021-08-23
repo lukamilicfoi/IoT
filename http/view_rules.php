@@ -30,7 +30,7 @@ if (checkAuthorization(7, 'view rules')) {
 			}
 			pg_free_result($result);
 		}
-	} else if (!empty($_GET['key1'] && !empty($_GET['key2']) {
+	} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
 		$result = pgquery("SELECT TRUE FROM users WHERE username = '{$_GET['key1']}' AND is_administrator;");
 		if (($_GET['key1'] == $_SESSION['username'] || $_SESSION['is_administrator'] && !pg_fetch_row($result) || $_SESSION['is_root']) && isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
@@ -52,13 +52,13 @@ if (checkAuthorization(7, 'view rules')) {
 	if ($_SESSION['is_root']) {
 		$result = pgquery('SELECT rules.* FROM rules INNER JOIN users ON rules.username = users.username ORDER BY users.is_administrator DESC, rules.username ASC, rules.id ASC;');
 ?>
-		Viewing table &quot;rules&quot;.
+		Viewing table &quot;rules&quot;, administrators first.
 <?php
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT rules.* FROM rules INNER JOIN users ON rules.username = users.username WHERE rules.username = '{$_SESSION['username']}' OR NOT users.is_administrator ORDER BY users.is_administrator DESC, rules.username ASC, rules.id ASC;");
 		echo 'Viewing table &quot;rules&quot; for username &apos;', htmlspecialchars($_SESSION['username']), "&apos; and non-administrators.<br/>\n";
 	} else {
-		$result = pgquery("SELECT * FROM rules WHERE username = '{$_SESSION['username']}' ORDER BY id ASC;");
+		$result = pgquery("SELECT rules.username, rules.id, rules.send_receive_seconds, rules.filter, rules.drop_modify_nothing, rules.modification, rules.query_command_nothing, rules.query_command_1, rules.query_command_send_inject_nothing, rules.query_command_2, proto_name.name, rules.imm_addr, rules.CCF, rules.ACF, rules.broadcast, rules.override_implicit_rules, rules.activate, rules.deactivate, rules.is_active, rules.last_run FROM rules INNER JOIN proto_name ON rules.proto_id = proto_name.proto WHERE rules.username = '{$_SESSION['username']}' ORDER BY rules.id ASC;");
 		echo 'Viewing table &quot;rules&quot; for username &apos;', htmlspecialchars($_SESSION['username']), "&apos;.<br/>\n";
 	}
 ?>
@@ -184,7 +184,7 @@ if (checkAuthorization(7, 'view rules')) {
 					.
 				</td>
 				<td>
-					<input form="insert" type="checkbox" name="active"/>
+					<input form="insert" type="checkbox" name="is_active"/>
 				</td>
 				<td>
 					<input form="insert" type="text" name="last_run" value="CURRENT_TIMESTAMP(0)" disabled="disabled"/>
@@ -359,7 +359,7 @@ if (checkAuthorization(7, 'view rules')) {
 					</td>
 					<td>
 <?php
-						echo '<input form="update_', $username, '_', $row[1], '" type="checkbox" name="active"', $row[18] == 't' ? ' checked="checked"' : '', "/>\n";
+						echo '<input form="update_', $username, '_', $row[1], '" type="checkbox" name="is_active"', $row[18] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
 					</td>
 					<td>

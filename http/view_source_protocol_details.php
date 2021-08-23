@@ -1,6 +1,6 @@
 <?php
 require_once 'common.php';
-if (!empty($_GET['SRC']) && !empty($_GET['proto']) && checkAuthorization(10, 'view remotes')) {
+if (checkAuthorization(10, 'view remotes') && !empty($_GET['SRC']) && !empty($_GET['proto'])) {
 	$result1 = pgquery("SELECT TRUE FROM table_user WHERE tablename = 't{$_GET['SRC']}';");
 	$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = 't{$_GET['SRC']}' AND username = '{$_SESSION['username']}';");
 	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.username = users.username WHERE tablename = 't{$_GET['SRC']}' AND NOT users.is_administrator;");

@@ -2,14 +2,14 @@
 require_once 'common.php';
 if (checkAuthorization(3, 'view tables')) {
 	if (!empty($_GET['add'])) {
-		pg_free_result(pgquery("CREATE TABLE {$_GET['add']};"));
+		pg_free_result(pgquery("CREATE TABLE {$_GET['add']}(t TIMESTAMP(4) WITHOUT TIME ZONE;"));
 		pg_free_result(pgquery("INSERT INTO tables(tablename) VALUES('{$_GET['add']}');"));
 		if (substr($_GET['add'], 0, 1) != 't' || strlen($_GET['add']) != 17) {
 			pg_free_result(pgquery("INSERT INTO table_user(tablename, username) VALUES('{$_GET['add']}', NULL);"));
 		}
 	} else if (!empty($_GET['remove'])) {
 		$result1 = pgquery("SELECT username FROM table_user WHERE tablename = '{$_GET['remove']}';");
-		$result2 = pgquery("SELECT TRUE FROM table_user WHERE username = '{$_SESSION['username']}' AND tablename = '{$_GET['remove']}';");
+		$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = '{$_GET['remove']}' AND username = '{$_SESSION['username']}';");
 		$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.username = users.username WHERE table_user.tablename = '{$_GET['remove']}' AND NOT users.is_administrator;");
 		$row = pg_fetch_row($result1);
 		if (!$row || $row[0] === null || pg_fetch_row($result2) || pg_fetch_row($result3) && $_SESSION['is_administrator'] || $_SESSION['is_root']) {
@@ -22,7 +22,7 @@ if (checkAuthorization(3, 'view tables')) {
 <?php
 				echo '<a href="?remove=', urlencode($_GET['remove']), "\">Yes</a>\n";
 ?>
-				<a href="">No</a>
+				<a href="?">No</a>
 <?php
 				exit(0);
 			}
@@ -58,14 +58,14 @@ if (checkAuthorization(3, 'view tables')) {
 	pg_free_result($result);
 ?>
 		<input type="text" name="add"/>
-		<input type="submit" value="(add)"/>
+		<input type="submit" value="(add as public)"/>
 	</form>
 	<br/>
 <?php
 }
 if (checkAuthorization(4, 'send messages')) {
 	if (!empty($_GET['msgtosend']) && !empty($_GET['proto_id']) && !empty($_GET['imm_DST'])) {
-		pg_free_result(pgquery("SELECT send_inject(E'\\\\x{$_GET['msgtosend']}, '{$_GET['proto_id']}', E'\\\\x{$_GET['imm_DST']}, " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, TRUE);'));
+		pg_free_result(pgquery("CALL send_inject(TRUE, E'\\\\x{$_GET['msgtosend']}', '{$_GET['proto_id']}', E'\\\\x{$_GET['imm_DST']}', " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E);'));
 		echo 'Message X&apos;', htmlspecialchars($_GET['msgtosend']), "&apos; sent.\n";
 	}
 ?>
@@ -92,7 +92,7 @@ if (checkAuthorization(4, 'send messages')) {
 }
 if (checkAuthorization(5, 'inject messages')) {
 	if (!empty($_GET['msgtoinject']) && !empty($_GET['proto_id']) && !empty($_GET['imm_SRC'])) {
-		pg_free_result(pgquery("SELECT send_inject(E'\\\\x{$_GET['msgtoinject']}, '{$_GET['proto_id']}', E'\\\\x{$_GET['imm_SRC']}, " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : ' FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E, FALSE);'));
+		pg_free_result(pgquery("CALL send_inject(FALSE, E'\\\\x{$_GET['msgtoinject']}', '{$_GET['proto_id']}', E'\\\\x{$_GET['imm_SRC']}', " . (isset($_GET['CCF']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['ACF']) ? 'TRU' : ' FALS') . 'E, ' . (isset($_GET['broadcast']) ? 'TRU' : 'FALS') . 'E, ' . (isset($_GET['override_implicit_rules']) ? 'TRU' : 'FALS') . 'E);'));
 		echo 'Message X&apos;', htmlspecialchars($_GET['msgtoinject']), "&apos; injected.\n";
 	}
 ?>
@@ -205,7 +205,7 @@ if (checkAuthorization(11, 'manually execute timed rules')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write username and rule as a string and an integer, e.g., root and 11.<br/>
+	Write username and rule as a string and aan integer, e.g., root and 11.<br/>
 <?php
 }
 if (checkAuthorization(7, 'view rules')) {

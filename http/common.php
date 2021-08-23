@@ -43,6 +43,10 @@ register_shutdown_function(function() {
 <?php
 });
 
+function pgescapebool() {
+
+}
+
 function pgquery($string) {
 	$result = pg_query($string);
 	if ($result) {
@@ -51,8 +55,8 @@ function pgquery($string) {
 	exit('Query failed - ' . pg_last_error());
 }
 
-function pgexecute($string) {
-	$result = pg_execute($string);
+function pgescapebytea($string) {
+	$result = pg_escape_literal($string);
 	if ($result) {
 		return $result;
 	}

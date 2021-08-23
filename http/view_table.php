@@ -83,7 +83,7 @@ if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
 					$query .= standardToPostgresqlInput($_GET[pg_field_name($result, $i)], pg_field_type_oid($result, $i)) . ', ';
 				}
 				$result = pgquery(substr($query, 0, -2) . ');');
-				echo 'Row ', htmlspecialchars($_GET['t']), " inserted.<br/>\n";
+				echo 'Row TIMESTAMP &apos;', htmlspecialchars($_GET['t']), "&apos; inserted.<br/>\n";
 				pg_free_result($result);
 			} else if (!empty($_GET['key']) && isset($_GET['update'])) {
 				$result = pgquery("SELECT * FROM {$_GET['tablename']} WHERE FALSE;");
@@ -96,13 +96,13 @@ if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
 					$query .= standardToPostgresqlInput($_GET[pg_field_name($result, $i)], pg_field_type_oid($result, $i)) . ', ';
 				}
 				$result = pgquery(substr($query, 0, -2) . ") WHERE t = {$_GET['key']};");
-				echo 'Row ', htmlspecialchars($_GET['key']), " updated.<br/>\n";
+				echo 'Row TIMESTAMP &apos;', htmlspecialchars($_GET['key']), "&apos; updated.<br/>\n";
 				pg_free_result($result);
 			}
 		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
 				$result = pgquery("DELETE FROM {$_GET['tablename']} WHERE t = {$_GET['key']};");
-				echo 'Row ', htmlspecialchars($_GET['key']), " deleted.<br/>\n";
+				echo 'Row TIMESTAMP &apos;', htmlspecialchars($_GET['key']), "&apos; deleted.<br/>\n";
 				pg_free_result($result);
 			} else {
 ?>

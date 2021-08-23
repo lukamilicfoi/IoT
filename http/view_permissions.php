@@ -48,9 +48,9 @@ if (checkAuthorization(9, 'view permissions')) {
 		pg_free_result($result);
 	}
 	if ($_SESSION['is_root']) {
-		$result = pgquery('TABLE table_user ORDER BY username ASC, tablename ASC;');
+		$result = pgquery('SELECT table_user.* FROM table_user LEFT OUTER JOIN users ON table_user.username = users.username ORDER BY users.is_administrators DESC, table_user.username ASC, table_user.tablename ASC;');
 ?>
-		Viewing table &quot;table_user&quot;.
+		Viewing table &quot;table_user&quot;, administrators first.
 <?php
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT table_user.* FROM table_user LEFT OUTER JOIN users ON table_user.username = users.username WHERE NOT users.is_administrator OR table_user.username = '{$_SESSION['username']}' ORDER BY users.is_administrator DESC, table_user.username ASC, table_user.tablename ASC;");

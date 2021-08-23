@@ -7,6 +7,7 @@ if (!empty($_POST['username']) && !empty($_POST['password'])) {
 	if ($row && password_verify($_POST['password'], $row[0]) && $row[2] == 't') {
 		session_destroy();
 		session_start();
+		$_SESSION['sql_username'] = pg_escape_literal($_POST['username']);
 		$_SESSION['is_root'] = $_POST['username'] == 'root';
 		$_SESSION['is_administrator'] = $row[1] == 't';
 		$_SESSION['username'] = $_POST['username'];
