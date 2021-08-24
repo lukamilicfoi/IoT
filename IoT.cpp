@@ -414,7 +414,7 @@ map<string, configuration *> username_configuration;
 
 my_time_point beginning;
 
-multimap<string, string> table_user;
+map<string, string *> table_user;
 
 PGconn *conn;
 
@@ -2724,6 +2724,9 @@ void destroy_vars() {
 		}
 		delete a_r.second;
 	}
+	for (auto t_u : table_user) {
+		delete t_u.second;
+	}
 	for (auto u_c : username_configuration) {
 		delete u_c.second;
 	}
@@ -3274,7 +3277,8 @@ void update_permissions2() {
 
 	table_user.clear();
 	while (--i >= 0) {
-		table_user.insert(make_pair(PQgetvalue(res, i, 0), PQgetvalue(res, i, 1)));
+		table_user.insert(make_pair(PQgetvalue(res, i, 0), PQgetisnull(res, i, 1)
+				? nullptr : new string(PQgetvalue(res, i, 1))));
 	}
 	PQclear(res);
 }
@@ -3458,7 +3462,8 @@ ostream &operator<<(ostream &os, const my_time_point &point) noexcept {
 void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg) {
 	auto t_u = table_user.find("t"s + BYTE8_to_c17charp(fmsg.SRC));
 
-	if (username_configuration[t_u != table_user.cend() ? t_u->second : "root"]->trust_everyone) {
+	if (username_configuration[t_u != table_user.cend() && t_u->second != nullptr
+			? *t_u->second : "root"]->trust_everyone) {
 		LOG_CPP("trusting everyone for sending" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding rules for sending" << endl);
@@ -3506,7 +3511,8 @@ void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg) {
 	auto t_u = table_user.find("t"s + BYTE8_to_c17charp(fmsg.DST));
 
-	if (username_configuration[t_u != table_user.cend() ? t_u->second : "root"]->trust_everyone) {
+	if (username_configuration[t_u != table_user.cend() && t_u->second != nullptr
+			? *t_u->second : "root"]->trust_everyone) {
 		LOG_CPP("trusting everyone for receiving" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding checks for receiving" << endl);
@@ -3821,15 +3827,13 @@ raw_message *receive_raw_message() {
 #endif /* OFFLINE */
 
 bool check_permissions(const char *tablename, BYTE8 address) {
-	multimap<string, string>::const_iterator iter1 = table_user.find(tablename),
+	map<string, string *>::const_iterator iter1 = table_user.find(tablename),
 			iter2 = table_user.find("t"s + BYTE8_to_c17charp(address));
 
-	if (iter1 != table_user.cend()) {
-		if (iter2 != table_user.cend()) {
-			for (; iter1 != table_user.cend() && iter1->first == tablename; iter1++) {
-				if (iter1->second == iter2->second) {
-					return true;
-				}
+	if (iter1 != table_user.cend() && iter1->second != nullptr) {
+		if (iter2 != table_user.cend() && iter2->second != nullptr) {
+			if (*iter1->second == *iter2->second) {
+				return true;
 			}
 			return false;
 		}
@@ -3953,7 +3957,8 @@ void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
 
 formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool send) {
 	auto t_u = table_user.find("t"s + BYTE8_to_c17charp(send ? fmsg->SRC : fmsg->DST));
-	string current_username(t_u != table_user.cend() ? t_u->second : "root"), select((send
+	string current_username(t_u != table_user.cend() && t_u->second != nullptr
+			? *t_u->second : "root"), select((send
 			? "SELECT username, id, send_receive_seconds, filter, drop_modify_nothing, "
 			"modification, query_command_nothing, query_command_1, "
 			"send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, "
@@ -4787,7 +4792,7 @@ void send_formatted_message(formatted_message *fmsg) {
 	istringstream iss;
 	chrono::system_clock::rep dt;
 	unique_ptr<formatted_message> copy, dummy_f(fmsg);
-	map<string, string>::const_iterator iter_table_user
+	multimap<string, string *>::const_iterator iter_table_user
 			= table_user.find("t"s + BYTE8_to_c17charp(fmsg->SRC));
 	configuration *c = username_configuration[iter_table_user != table_user.cend()
 			? iter_table_user->second : "root"];
