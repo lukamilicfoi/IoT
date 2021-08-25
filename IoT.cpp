@@ -2369,8 +2369,8 @@ int main(int argc, char *argv[]) {
 				"PRIMARY KEY(proto))"));
 		protocols.push_back(new tcp);
 		protocols.push_back(new udp);
-		protocols.push_back(new ble);
-		protocols.push_back(new _154);
+		//protocols.push_back(new ble);
+		//protocols.push_back(new _154);
 	} else {
 		instantiate_protocol_if_enabled<tcp>();
 		instantiate_protocol_if_enabled<udp>();
@@ -2502,13 +2502,14 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS tables(tablename NAME PRIMARY KEY)"));
 	PQclear(execcheckreturn("DELETE FROM tables WHERE tablename IN (SELECT tablename FROM tables "
-			"EXCEPT SELECT relname FROM pg_class)"));
-	PQclear(execcheckreturn("INSERT INTO tables SELECT tablename FROM tables "
+			"EXCEPT SELECT tablename FROM tables)"));
+	PQclear(execcheckreturn("INSERT INTO tables SELECT relname FROM pg_class "
 			"EXCEPT SELECT relname FROM pg_class"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_user(tablename NAME, username TEXT, "
-			"PRIMARY KEY(tablename, username), FOREIGN KEY(tablename) REFERENCES tables(tablename) "
+			"PRIMARY KEY(tablename), FOREIGN KEY(tablename) REFERENCES tables(tablename) "
 			"ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY(username) REFERENCES users(username) "
 			"ON UPDATE CASCADE ON DELETE CASCADE)"));
+
 	PQclear(execcheckreturn("CREATE PROCEDURE ext(addr_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'ext\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE send_inject(send BOOLEAN, message BYTEA, "
@@ -2519,7 +2520,7 @@ int main(int argc, char *argv[]) {
 			+ "/libIoT\', \'load_store\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE config() AS \'"s + cwd
 			+ "/libIoT\', \'config\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_timed_rule_time(next_timed_rule BIHINT) "
+	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_timed_rule_time(next_timed_rule BIGINT) "
 			"RETURNS void AS \'"s + cwd + "/libIoT\', \'refresh_next_timed_rule_time\' "
 			"LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE update_permissions() AS \'"s + cwd
@@ -3210,7 +3211,7 @@ void load_store2_store() {
 		PQclear(res2);
 	}
 	PQclear(res);
-	PQclear(execcheckreturn("TRUNCATE TABLE SRC_oID CASCADE"));
+	PQclear(execcheckreturn("TRUNCATE TABLE addr_oID CASCADE"));
 }
 
 void config2() {
@@ -3545,7 +3546,8 @@ formatted_message *receive_formatted_message() {
 				r->out_ID = uid(dre);
 			}
 			iter_t_u = table_user.find("t"s + BYTE8_to_c17charp(fmsg->DST));
-			c = username_configuration[iter_t_u != table_user.cend() ? iter_t_u->second : "root"];
+			c = username_configuration[iter_t_u != table_user.cend() && iter_t_u->second != nullptr
+					? *iter_t_u->second : "root"];
 			if (c->use_internet_switch_algorithm) {
 				map<BYTE8, my_time_point> *&iT = r->proto_iSRC_TWR[rmsg->proto];
 				if (iT == nullptr) {
@@ -4795,7 +4797,7 @@ void send_formatted_message(formatted_message *fmsg) {
 	multimap<string, string *>::const_iterator iter_table_user
 			= table_user.find("t"s + BYTE8_to_c17charp(fmsg->SRC));
 	configuration *c = username_configuration[iter_table_user != table_user.cend()
-			? iter_table_user->second : "root"];
+			&& iter_table_user->second != nullptr ? *iter_table_user->second : "root"];
 
 	THR(iter_DST_destination == addr_remote.end(), message_exception("DST does not exist"));
 	for (iter_proto_iDST_TWR = iter_DST_destination->second->proto_iSRC_TWR.begin();
