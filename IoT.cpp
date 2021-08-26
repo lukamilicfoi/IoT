@@ -2369,8 +2369,8 @@ int main(int argc, char *argv[]) {
 				"PRIMARY KEY(proto))"));
 		protocols.push_back(new tcp);
 		protocols.push_back(new udp);
-		//protocols.push_back(new ble);
-		//protocols.push_back(new _154);
+		protocols.push_back(new ble);
+		protocols.push_back(new _154);
 	} else {
 		instantiate_protocol_if_enabled<tcp>();
 		instantiate_protocol_if_enabled<udp>();
@@ -3531,7 +3531,7 @@ formatted_message *receive_formatted_message() {
 	unique_ptr<formatted_message> fmsg;
 	my_time_point now;
 	multimap<protocol *, BYTE8>::const_iterator iter_p_a;
-	map<string, string>::const_iterator iter_t_u;
+	map<string, string *>::const_iterator iter_t_u;
 	configuration *c;
 
 	do {
@@ -4794,7 +4794,7 @@ void send_formatted_message(formatted_message *fmsg) {
 	istringstream iss;
 	chrono::system_clock::rep dt;
 	unique_ptr<formatted_message> copy, dummy_f(fmsg);
-	multimap<string, string *>::const_iterator iter_table_user
+	map<string, string *>::const_iterator iter_table_user
 			= table_user.find("t"s + BYTE8_to_c17charp(fmsg->SRC));
 	configuration *c = username_configuration[iter_table_user != table_user.cend()
 			&& iter_table_user->second != nullptr ? *iter_table_user->second : "root"];
