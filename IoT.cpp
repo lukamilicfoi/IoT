@@ -2369,8 +2369,6 @@ int main(int argc, char *argv[]) {
 				"PRIMARY KEY(proto))"));
 		protocols.push_back(new tcp);
 		protocols.push_back(new udp);
-		protocols.push_back(new ble);
-		protocols.push_back(new _154);
 	} else {
 		instantiate_protocol_if_enabled<tcp>();
 		instantiate_protocol_if_enabled<udp>();
@@ -2509,7 +2507,6 @@ int main(int argc, char *argv[]) {
 			"PRIMARY KEY(tablename), FOREIGN KEY(tablename) REFERENCES tables(tablename) "
 			"ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY(username) REFERENCES users(username) "
 			"ON UPDATE CASCADE ON DELETE CASCADE)"));
-
 	PQclear(execcheckreturn("CREATE PROCEDURE ext(addr_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'ext\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE send_inject(send BOOLEAN, message BYTEA, "
@@ -3831,7 +3828,7 @@ raw_message *receive_raw_message() {
 bool check_permissions(const char *tablename, BYTE8 address) {
 	map<string, string *>::const_iterator iter1 = table_user.find(tablename),
 			iter2 = table_user.find("t"s + BYTE8_to_c17charp(address));
-
+//todo simplify
 	if (iter1 != table_user.cend() && iter1->second != nullptr) {
 		if (iter2 != table_user.cend() && iter2->second != nullptr) {
 			if (*iter1->second == *iter2->second) {
@@ -3843,7 +3840,7 @@ bool check_permissions(const char *tablename, BYTE8 address) {
 	}
 	return true;
 }
-
+//todo take regular tables into consideration
 void encode_bytes_to_stream(ostream &stream, const BYTE *bytes, size_t len) {
 	int i = -1;
 
