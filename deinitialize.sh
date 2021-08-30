@@ -1,2 +1,2 @@
 #!/bin/bash
-rm -rf data /srv/http
+sudo rm -rf data /srv/http
