@@ -18,7 +18,7 @@ GRANT SELECT ON TABLE current_username TO local, administrator;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE configuration, rules, table_user, addr_oID, SRC_DST,
 		SRC_proto, ID_TWR, iSRC_TWR TO local, administrator;
 GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLE `psql -U postgres -c "SELECT relname FROM
-				pg_catalog.pg_class WHERE relname LIKE 't________________' AND relname <>
+				pg_class WHERE relname LIKE 't________________' AND relname <>
 				'table_constraints';" | grep -Eo 't.{16}'` TO local, administrator;
 ALTER DEFAULT PRIVILEGES GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO local,
 		administrator;
