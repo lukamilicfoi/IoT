@@ -43,8 +43,8 @@ register_shutdown_function(function() {
 <?php
 });
 
-function pgescapebool() {
-
+function pgescapebool($&boolvar) {
+	return $boolvar !== null ? 'TRUE' : 'FALSE'
 }
 
 function pgquery($string) {
@@ -55,7 +55,7 @@ function pgquery($string) {
 	exit('Query failed - ' . pg_last_error());
 }
 
-function pgescapebytea($string) {
+function pgescapebytea($byteavarr) {
 	$result = pg_escape_literal($string);
 	if ($result) {
 		return $result;
