@@ -44,7 +44,7 @@ register_shutdown_function(function() {
 });
 
 function pgescapebool($&boolvar) {
-	return $boolvar !== null ? 'TRUE' : 'FALSE'
+	return $boolvar !== null ? 'TRUE' : 'FALSE';
 }
 
 function pgquery($string) {
@@ -55,12 +55,8 @@ function pgquery($string) {
 	exit('Query failed - ' . pg_last_error());
 }
 
-function pgescapebytea($byteavarr) {
-	$result = pg_escape_literal($string);
-	if ($result) {
-		return $result;
-	}
-	exit('Exec failed - ' . pg_last_error());
+function pgescapebytea($byteavar) {
+	return '\'\\x' . pg_escape_string($byteavar) . '\'';
 }
 
 function checkAuthorization($index, $text) {
