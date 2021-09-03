@@ -43,7 +43,7 @@ register_shutdown_function(function() {
 <?php
 });
 
-function pgescapebool($&boolvar) {
+function pgescapebool(&$boolvar) {
 	return $boolvar !== null ? 'TRUE' : 'FALSE';
 }
 
@@ -60,7 +60,10 @@ function pgescapebytea($byteavar) {
 }
 
 function checkAuthorization($index, $text) {
-	$result = pgquery("SELECT can_view_tables, can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_view_configuration, can_view_permissions, can_view_remotes, can_execute_rules FROM users WHERE username = '{$_SESSION['username']}'");
+	$result = pgquery("SELECT can_view_tables, can_send_messages, can_inject_messages,
+			can_send_queries, can_view_rules, can_view_configuration, can_view_permissions,
+			can_view_remotes, can_execute_rules FROM users
+			WHERE username = {$_SESSION['sql_username']};");
 	if (pg_fetch_row($result)[$index - 3] == 'f') {
 		echo "&lt;You are not authorized to $text.&gt;<br/>\n";
 		pg_free_result($result);
