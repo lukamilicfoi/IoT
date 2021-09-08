@@ -2,6 +2,7 @@
 require_once 'common.php';
 if (checkAuthorization(10, 'view remotes') && !empty($_GET['SRC']) && !empty($_GET['DST'])) {
 	$sql_SRC1 = '\'t' . pg_escape_string($_GET['SRC']) . '\'';
+	$sql_SRC2 = pgescapebytea($_GET['SRC']);
 	$result1 = pgquery("SELECT TRUE FROM table_user WHERE tablename = 't{$_GET['SRC']}';");
 	$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = 't{$_GET['SRC']}' AND username = '{$_SESSION['username']}';");
 	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.username = users.username WHERE table_user.tablename = 't{$_GET['SRC']}' AND NOT users.is_administrator;");
