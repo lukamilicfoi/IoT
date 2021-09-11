@@ -13,17 +13,17 @@ if ($needs_login && !isset($_SESSION['username'])) {
 	<head>
 
 <?php
-if (isset($_SESSION['is_root']) && $_SESSION['is_root']) {
-	$trail = ' as root';
-	$username = 'postgres';
-} else if (isset($_SESSION['is_administrator']) && $_SESSION['is_administrator']) {
-	$trail = ' as administrator';
-	$username = 'administrator';
-} else {
-	$username = $needs_login ? 'local' : 'login';
-	$trail = '';
-}
-echo '<title>', $page_name, $trail, "</title>\n";
+		if (isset($_SESSION['is_root']) && $_SESSION['is_root']) {
+			$trail = ' as root';
+			$username = 'postgres';
+		} else if (isset($_SESSION['is_administrator']) && $_SESSION['is_administrator']) {
+			$trail = ' as administrator';
+			$username = 'administrator';
+		} else {
+			$username = $needs_login ? 'local' : 'login';
+			$trail = '';
+		}
+		echo '<title>', $page_name, $trail, "</title>\n";
 ?>
 
 		<meta http_equiv="Content-Type" content="text/html; charset=utf-8"/>
@@ -71,5 +71,9 @@ function checkAuthorization($index, $text) {
 	}
 	pg_free_result($result);
 	return true;
+}
+
+function pgescapename($namevar) {
+	return '\'t' . pg_escape_string($namevar) , '\'';
 }
 ?>
