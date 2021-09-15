@@ -1,58 +1,75 @@
 <?php
 require_once 'common.php';
 if (checkAuthorization(10, 'view remotes') && !empty($_GET['SRC']) && !empty($_GET['proto'])) {
-	$sql_SRC1 = '\'t' . pg_escape_string($_GET['SRC']);
-	$sql_SRC2 = pgescapebytea($_GET['SRC']);
-	$sql_proto = pg_escape_literal($_GET['proto']);
-	$html_SRC2 = "X&apos;$html_SRC1&apos;";
-	$html_proto2 = "'$html_proto1'";
-	$result1 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $sql_SRC1;");
-	$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $sql_SRC2
-			AND username = {$_SESSION['sql_username']};");
-	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users
-			ON table_user.username = users.username WHERE tablename = $sql_SRC1
-			AND NOT users.is_administrator;");
-	$html_SRC1 = htmlspecialchars($_GET['SRC']);
-	$html_proto1 = htmlspecialchars($_GET['proto']);
-	$url_SRC2 = urlencode($_GET['SRC']);
-	$url_proto2 = urlencode($_GET['proto']);
+	$s1SRC = pgescapename($_GET['SRC']);
+	$s2SRC = pgescapebytea($_GET['SRC']);
+	$h1SRC = htmlspecialchars($_GET['SRC']);
+	$h2SRC = "X&apos;$h1SRC";
+	$u_SRC = urlencode($_GET['SRC']);
+	$s_proto = pg_escape_literal($_GET['proto']);
+	$h1proto = htmlspecialchars($_GET['proto']);
+	$h2proto = "&apos;$html_proto1&apos;";
+	$u_proto = urlencode($_GET['proto']);
+	$result1 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1SRC;");
+	$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1SRC
+			AND username = {$_SESSION['s_username']};");
+	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.username
+			= users.username WHERE tablename = $s1SRC AND NOT users.is_administrator;");
 	if (!pg_fetch_row($result1) || pg_fetch_row($result2) || pg_fetch_row($result3)
 			&& $_SESSION['is_administrator'] || $_SESSION['is_root']) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM iSRC_TWR WHERE SRC = $sql_SRC2 AND proto = $sql_proto;"));
-				echo "Table &quot;iSRC_TWR&quot; truncated for SRC $html_SRC1 and proto $html_proto1&apos;.<br/>\n";
+				pg_free_result(pgquery("DELETE FROM iSRC_TWR
+						WHERE SRC = $s1SRC AND proto = $s_proto;"));
+				echo "Table &quot;iSRC_TWR&quot; truncated for SRC $h2SRC
+						and proto $h2proto.<br/>\n";
 			} else {
 ?>
 				Are you sure?
 <?php
-				echo "<a href=\"?SRC=$url_SRC&amp;proto=$url_proto&amp;truncate&amp;confirm\">Yes</a>\n";
+				echo '<a href="?SRC=',
+						"$u_SRC&amp;proto=$u_proto&amp;truncate&amp;confirm\">Yes</a>\n";
 				echo "<a href=\"?SRC=$u_SRC&amp;proto=$u_proto\">No</a>\n";
 				exit(0);
 			}
 		} else if (!empty($_GET['imm_SRC']) && !empty($_GET['TWR'])) {
+			$s_imm_SRC = pgescapebytea($_GET['imm_SRC']);
+			$h_imm_SRC = 'X&apos;' . htmlspecialchars($_GET['imm_SRC']) . '&apos;';
+			$TWR = 'TIMESTAMP \'' . pg_escape_string($_GET['TWR']);
 			if (isset($_GET['insert'])) {
-				pg_free_result(pgquery("INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR) VALUES($sql_SRC2, (SELECT proto FROM proto WHERE name = $sql_proto), $sql_imm_SRC, $sql_TWR);"));
-				echo "Mapping $html_imm_SRC for SRC $html_SRC1 and proto $html_proto1 inserted.<br/>\n";
+				pg_free_result(pgquery("INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR)
+						VALUES($s2SRC, (SELECT proto FROM proto WHERE name = $s_proto), $s_imm_SRC,
+						$TWR);"));
+				echo "Mapping $h_imm_SRC for SRC $h2SRC and proto $h2proto inserted.<br/>\n";
 			} else if (!empty($_GET['key']) && isset($_GET['update'])) {
-				pg_free_result(pgquery("UPDATE iSRC_TWR SET (imm_SRC, TWR) = ($sql_imm_SRC, $sql_TWR) WHERE SRC = $sql_SRC2 AND proto = (SELECT proto FROM proto WHERE name = $sql_proto) AND imm_SRC = $sql_imm_SRC;"));
-				echo "Mapping $html_key for SRC $html_SRC1 and proto $html_proto1 updated.<br/>\n";
+				$s_key = pgescapebytea($_GET['key']);
+				$h_key = 'X&apos;' . htmlspecialchars($_GET['key']) . '&apos;';
+				pg_free_result(pgquery("UPDATE iSRC_TWR SET (imm_SRC, TWR) = ($s_imm_SRC, $TWR)
+						WHERE SRC = $s2SRC AND proto = (SELECT proto FROM proto
+						WHERE name = $s_proto) AND imm_SRC = $s_imm_SRC;"));
+				echo "Mapping $h_key for SRC $h2SRC and proto $h2proto updated.<br/>\n";
 			}
 		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
+			$s_key = pgescapebytea($_GET['key']);
+			$h_key = 'X&apos;' . htmlspecialchars($_GET['key']) . '&apos;';
+			$u_key = urlencode($_GET['key']);
 			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM iSRC_TWR WHERE SRC = $sql_SRC2 AND proto = (SELECT proto FROM proto WHERE name = $sql_proto) AND imm_SRC = $sql_key;"));
-				echo "Mapping $html_key for SRC $html_SRC1 and proto $html_proto deleted.<br/>\n";
+				pg_free_result(pgquery("DELETE FROM iSRC_TWR WHERE SRC = $s2SRC AND proto
+						= (SELECT proto FROM proto WHERE name = $s_proto) AND imm_SRC = $s_key;"));
+				echo "Mapping $h_key for SRC $h2SRC and proto $h2proto deleted.<br/>\n";
 			} else {
 ?>
 				Are you sure?
 <?php
-				echo "<a href=\"?SRC=$url_SRC&amp;proto=$url_proto&amp;key=$url_key&amp;delete&amp;confirm\">Yes</a>\n";
-				echo "<a href=\"?SRC=$url_SRC&amp;proto=$u_proto\">No</a>\n";
+				echo "<a href=\"?SRC=$u_SRC&amp;proto=$u_proto&amp;key=$u_key&amp;delete"
+						"&amp;confirm\">Yes</a>\n";
+				echo "<a href=\"?SRC=$u_SRC&amp;proto=$u_proto\">No</a>\n";
 				exit(0);
 			}
 		}
-		$result = pgquery("SELECT imm_SRC, TWR FROM iSRC_TWR WHERE SRC = $sql_SRC2 AND proto = $sql_proto ORDER BY imm_SRC ASC;");
-		echo "Viewing table &quot;iSRC_TWR&quot; for SRC $html_SRC1 and proto $html_proto.\n";
+		$result = pgquery("SELECT imm_SRC, TWR FROM iSRC_TWR WHERE SRC = $s2SRC
+				AND proto = $s_proto ORDER BY imm_SRC ASC;");
+		echo "Viewing table &quot;iSRC_TWR&quot; for SRC $h2SRC and proto $h2proto.\n";
 ?>
 		<table border="1">
 			<tbody>
@@ -71,8 +88,8 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['SRC']) && !empty($_G
 					<td>
 						<form id="insert" action="" method="GET">
 <?php
-							echo "<input type=\"hidden\" name=\"SRC\" value=\"$html_SRC1\"/>\n";
-							echo "<input type=\"hidden\" name=\"proto\" value=\"$html_proto1\"/>\n";
+							echo "<input type=\"hidden\" name=\"SRC\" value=\"$h1SRC\"/>\n";
+							echo "<input type=\"hidden\" name=\"proto\" value=\"$h1proto\"/>\n";
 ?>
 							<input type="submit" name="insert"
 									value="Insert new mapping for this SRC and this proto"/><br/>
@@ -80,8 +97,8 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['SRC']) && !empty($_G
 						</form>
 						<form action="" method="GET">
 <?php
-							echo "<input type=\"hidden\" name=\"SRC\" value=\"$html_SRC1\"/>\n";
-							echo "<input type=\"hidden\" name=\"proto\" value=\"$html_proto1\"/>\n";
+							echo "<input type=\"hidden\" name=\"SRC\" value=\"$h1SRC\"/>\n";
+							echo "<input type=\"hidden\" name=\"proto\" value=\"$h1proto\"/>\n";
 ?>
 							<input type="submit" name="truncate"
 									value="Truncate mappings for this SRC and this proto"/>
@@ -95,31 +112,34 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['SRC']) && !empty($_G
 						<td>
 <?php
 							$str = substr($row[0], 2);
-							echo "<input form=\"update$str\" type=\"text\" name=\"imm_SRC\" value=\"$str\"/>\n";
+							echo "<input form=\"update$str\" type=\"text\" name=\"imm_SRC\"
+									value=\"$str\"/>\n";
 ?>
 						</td>
 						<td>
 <?php
-							echo "<input form=\"update$str\" type=\"text\" name=\"TWR\" value=\"{$row[1]}\"/>\n";
+							echo "<input form=\"update$str\" type=\"text\" name=\"TWR\"
+									value=\"{$row[1]}\"/>\n";
 ?>
 						</td>
 						<td>
 <?php
 							echo "<form id=\"update$str\" action=\"\" method=\"GET\">\n";
-								echo "<input type=\"hidden\" name=\"SRC\" value=\"$html_SRC1\"/>\n";
-								echo "<input type=\"hidden\" name=\"proto\" value=\"$html_proto1\"/>\n";
+								echo "<input type=\"hidden\" name=\"SRC\" value=\"$h1SRC\"/>\n";
+								echo "<input type=\"hidden\" name=\"proto\" value=\"$h1proto\"/>\n";
 								echo "<input type=\"hidden\" name=\"key\" value=\"$str\"/>\n";
 ?>
-								<input type="submit" name="update"
-										value="Update this mapping for this SRC and this proto"/><br/>
+								<input type="submit" name="update" value="Update this mapping
+										for this SRC and this proto"/><br/>
 								<input type="reset" value="reset"/>
 <?php
 							echo "</form>\n";
 ?>
 							<form action="" method="GET">
 <?php
-								echo "<input type=\"hidden\" name=\"SRC\" value=\"{$h_SRC}\"/>\n";
-								echo "<input type=\"hidden\" name=\"proto\" value=\"{$h_proto}\"/>\n";
+								echo "<input type=\"hidden\" name=\"SRC\" value=\"{$h1SRC}\"/>\n";
+								echo "<input type=\"hidden\" name=\"proto\"
+										value=\"{$h1proto}\"/>\n";
 								echo "<input type=\"hidden\" name=\"key\" value=\"$str\"/>\n";
 ?>
 								<input type="submit" name="delete"
@@ -135,7 +155,7 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['SRC']) && !empty($_G
 		Write the first column as a binary string, e.g., abababababababab.<br/>
 		Write the second column as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
 <?php
-		echo '<a href="view_remote_details.php?addr=', $u_SRC, "\">Done</a>\n";
+		echo "<a href=\"view_remote_details.php?addr=$u_SRC\">Done</a>\n";
 		pg_free_result($result);
 	}
 	pg_free_result($result1);
