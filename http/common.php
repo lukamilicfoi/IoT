@@ -74,6 +74,6 @@ function checkAuthorization($index, $text) {
 }
 
 function pgescapename($namevar) {
-	return '\'t' . pg_escape_string($namevar) , '\'';
+	return '\'t' . pg_escape_string($namevar) . '\'';
 }
 ?>
