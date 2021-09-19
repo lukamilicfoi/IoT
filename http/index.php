@@ -81,7 +81,7 @@ if (checkAuthorization(3, 'view tables')) {
 	for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 		$u_tablename = urlencode($row[0]);
 		$h_tablename = htmlspecialchars($row[0]);
-		echo "<a href=\"view_table.php?tablename=$u_tablename\">$h_tablename\"</a>\n";
+		echo "<a href=\"view_table.php?tablename=$u_tablename\">$h_tablename</a>  \n";
 		echo "<a href=\"?remove=$u_tablename\">(remove)</a>\n";
 	}
 	if (pg_num_rows($result) == 0) {
