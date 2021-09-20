@@ -30,7 +30,7 @@ if (checkAuthorization(3, 'view tables')) {
 ?>
 				Are you sure?
 <?php
-				echo "<a href=\"?remove=$u_remove\">Yes</a>\n";
+				echo "<a href=\"?remove=$u_remove&amp;confirm\">Yes</a>\n"  ;
 ?>
 				<a href="?">No</a>
 <?php
