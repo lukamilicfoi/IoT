@@ -1,7 +1,7 @@
 <?php
 require_once 'common.php';
 if (checkAuthorization(10, 'view remotes') && !empty($_GET['addr'])) {
-	$s1addr = pgescapetable($_GET['addr']);
+	$s1addr = pgescapename($_GET['addr']);
 	$s2addr = pgescapebytea($_GET['addr']);
 	$h1addr = htmlspecialchars($_GET['addr']);
 	$h2addr = "X&apos;$h1addr&apos;";
@@ -26,7 +26,7 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['addr'])) {
 			$h_add_proto = '&apos;' . htmlspecialchars($_GET['add_proto']) . '&apos;';
 			pg_free_result(pgquery("INSERT INTO SRC_proto(SRC, proto) VALUES($s2addr,
 					(SELECT proto FROM proto_name WHERE name = $s_add_proto));"));
-			echo "proto $h_addr_proto added for SRC $h2addr.<br/>\n";
+			echo "proto $h_add_proto added for SRC $h2addr.<br/>\n";
 		} else if (!empty($_GET['add_DST'])) {
 			$s_add_DST = pgescapebytea($_GET['add_DST']);
 			$h_add_DST = 'X&apos;' . htmlspecialchars($_GET['add_DST']) . '&apos;';
@@ -34,7 +34,7 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['addr'])) {
 			echo "DST $h_add_DST added for SRC $h2addr.<br/>\n";
 		} else if (!empty($_GET['remove_proto'])) {
 			$s_remove_proto = pg_escape_literal($_GET['remove_proto']);
-			$h_remove_proto = '&apos' . htmlspecialchars($_GET['remove_proto']);
+			$h_remove_proto = '&apos;' . htmlspecialchars($_GET['remove_proto']) . '&apos;';
 			$u_remove_proto = urlencode($_GET['remove_proto']);
 			if (isset($_GET['confirm'])) {
 				pg_free_result(pgquery("DELETE FROM SRC_proto WHERE SRC = $s2addr

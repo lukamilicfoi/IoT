@@ -17,7 +17,7 @@ if (checkAuthorization(9, 'view permissions')) {
 		$s_tablename = pg_escape_literal($_GET['tablename']);
 		$h_tablename = '&apos;' . htmlspecialchars($_GET['tablename']) . '&apos;';
 		$s_username = pg_escape_literal($_GET['username']);
-		$h_username = '&apos;' . htmlspecialchars($_GET['tablename']) . '&apos;';
+		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 		if (isset($_GET['insert'])) {
 			$result = pgquery("SELECT TRUE FROM users WHERE username = $s_username
 					AND NOT is_administrator;");
@@ -73,7 +73,7 @@ if (checkAuthorization(9, 'view permissions')) {
 	}
 	if ($_SESSION['is_root']) {
 		$result = pgquery('SELECT table_user.* FROM table_user LEFT OUTER JOIN users
-				ON table_user.username = users.username ORDER BY users.is_administrators DESC,
+				ON table_user.username = users.username ORDER BY users.is_administrator DESC,
 				table_user.username ASC, table_user.tablename ASC;');
 ?>
 		Viewing table &quot;table_user&quot;, administrators first.
@@ -143,7 +143,7 @@ if (checkAuthorization(9, 'view permissions')) {
 						$username = htmlspecialchars($row[1]);
 						$form = "\"update_{$tablename}_$username\"";
 						echo "<input form=$form type=\"text\" name=\"tablename\"
-								value="$tablename\"/>\n";
+								value=\"$tablename\"/>\n";
 ?>
 					</td>
 					<td>
@@ -155,7 +155,7 @@ if (checkAuthorization(9, 'view permissions')) {
 							echo "<input type=\"text\" value=\"$username\"
 									disabled=\"disabled\"/>\n";
 							echo "<input form=$form type=\"hidden\" name=\"username\"
-									value="$username\" disabled=\"/>\n";
+									value=\"$username\" disabled=\"/>\n";
 						}
 ?>
 					</td>
@@ -184,7 +184,7 @@ if (checkAuthorization(9, 'view permissions')) {
 ?>
 		</tbody>
 	</table>
-	Write tablename and username as a string, e.g., abababababababab and root.<br/>
+	Write tablename and username as a string, e.g., tabababababababab and root.<br/>
 	<a href="index.php">Done</a>
 <?php
 	pg_free_result($result);

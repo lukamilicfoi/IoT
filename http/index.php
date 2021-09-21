@@ -4,7 +4,7 @@ if (checkAuthorization(3, 'view tables')) {
 	if (!empty($_GET['add'])) {
 		$s1add = pg_escape_identifier($_GET['add']);
 		$s2add = pg_escape_literal($_GET['add']);
-		pg_free_result(pgquery("CREATE TABLE $s1add(t TIMESTAMP(4) WITHOUT TIME ZONE;"));
+		pg_free_result(pgquery("CREATE TABLE $s1add(t TIMESTAMP(4) WITHOUT TIME ZONE);"));
 		pg_free_result(pgquery("INSERT INTO tables(tablename) VALUES($s2add);"));
 		if (substr($_GET['add'], 0, 1) != 't' || strlen($_GET['add']) != 17) {
 			pg_free_result(pgquery("INSERT INTO table_user(tablename, username)
@@ -30,7 +30,7 @@ if (checkAuthorization(3, 'view tables')) {
 ?>
 				Are you sure?
 <?php
-				echo "<a href=\"?remove=$u_remove&amp;confirm\">Yes</a>\n"  ;
+				echo "<a href=\"?remove=$u_remove&amp;confirm\">Yes</a>\n";
 ?>
 				<a href="?">No</a>
 <?php
@@ -81,7 +81,7 @@ if (checkAuthorization(3, 'view tables')) {
 	for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 		$u_tablename = urlencode($row[0]);
 		$h_tablename = htmlspecialchars($row[0]);
-		echo "<a href=\"view_table.php?tablename=$u_tablename\">$h_tablename</a>  \n";
+		echo "<a href=\"view_table.php?tablename=$u_tablename\">$h_tablename</a>\n";
 		echo "<a href=\"?remove=$u_tablename\">(remove)</a>\n";
 	}
 	if (pg_num_rows($result) == 0) {
@@ -138,7 +138,7 @@ if (checkAuthorization(5, 'inject messages')) {
 		$h_msgtoinject = 'X&apos;' . htmlspecialchars($_GET['msgtoinject']) . '&apos;';
 		$proto_id = pg_escape_literal($_GET['proto_id']);
 		$imm_SRC = pgescapebytea($_GET['imm_SRC']);
-		pg_free_result(pgquery("CALL send_inject(FALSE, $msgtoinject, $proto_id, $imm_SRC, "
+		pg_free_result(pgquery("CALL send_inject(FALSE, $s_msgtoinject, $proto_id, $imm_SRC, "
 				. pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF']) . ', '
 				. pgescapebool($_GET['broadcast']) . ', '
 				. pgescapebool($_GET['override_implicit_rules']) . ');'));
@@ -169,7 +169,7 @@ if (checkAuthorization(5, 'inject messages')) {
 }
 if (checkAuthorization(6, 'send queries to database')) {
 	if (!empty($_GET['query'])) {
-		$h_query = 'X&apos;' . htmlspecialchars($_GET['query']) . '&apos;';
+		$h_query = '&apos;' . htmlspecialchars($_GET['query']) . '&apos;';
 		if (!$_SESSION['is_root']) {
 			$flock = fopen('/tmp/flock', 'c');
 			if (!$flock) {
@@ -228,7 +228,7 @@ if (checkAuthorization(6, 'send queries to database')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write query as a string, e.g., SELECT a FROM b;.<br/>
+	Write query as a string, e.g., SELECT a FROM b;.<br/><br/>
 <?php
 }
 if (checkAuthorization(11, 'manually execute timed rules')) {
@@ -240,7 +240,7 @@ if (checkAuthorization(11, 'manually execute timed rules')) {
 				AND NOT is_administrator;");
 		if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
 				&& pg_fetch_row($result) || $_SESSION['is_root']) {
-			pg_free_result(pgquery("CALL manually_execute_timed_rule($s_username, $id;"));
+			pg_free_result(pgquery("CALL manually_execute_timed_rule($s_username, $id);"));
 		}
 		pg_free_result($result);
 		echo "For username $h_username timed rule $id manually executed.\n";
@@ -265,7 +265,7 @@ if (checkAuthorization(11, 'manually execute timed rules')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write username and rule as a string and aan integer, e.g., root and 11.<br/>
+	Write username and rule as a string and aan integer, e.g., root and 11.<br/><br/>
 <?php
 }
 if (checkAuthorization(7, 'view rules')) {

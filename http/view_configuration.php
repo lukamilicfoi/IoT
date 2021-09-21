@@ -65,7 +65,7 @@ if (checkAuthorization(8, 'view configuration')) {
 					</td>
 					<td>
 <?php
-						echo "<input form=\"update_$username\" type=\checkbox\"
+						echo "<input form=\"update_$username\" type=\"checkbox\"
 								name=\"forward_messages\"",
 								$row[1] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
