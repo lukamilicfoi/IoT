@@ -40,7 +40,7 @@ if (checkAuthorization(7, 'view rules')) {
 						? pg_escape_literal($_GET['query_command_2']) : 'NULL') . ', '
 						. (!empty($_GET['proto_id'])
 						? '(SELECT proto FROM proto_name WHERE name = '
-						. pg_escape_literal({$_GET['proto_id'])) : 'NULL') . ', '
+						. pg_escape_literal($_GET['proto_id']) : 'NULL') . ', '
 						. (!empty($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL')
 						. ', ' . pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF'])
 						. ', ' . pgescapebool($_GET['broadcast']) . ', '
@@ -85,7 +85,7 @@ if (checkAuthorization(7, 'view rules')) {
 						. (!empty($_GET['activate']) ? intval($_GET['activate']) : 'NULL') . ', '
 						. (!empty($_GET['deactivate']) ? intval($_GET['deactivate']) : 'NULL')
 						. ', ' . pgescapebool($_GET['is_active'])
-						. ") WHERE user = $s_key1 AND id = $key2;"));
+						. ") WHERE username = $s_key1 AND id = $key2;"));
 				echo "For username $h_key1 rule $key2 updated.<br/>\n";
 			}
 			pg_free_result($result);
@@ -138,7 +138,7 @@ if (checkAuthorization(7, 'view rules')) {
 				rules.imm_addr, rules.CCF, rules.ACF, rules.broadcast,
 				rules.override_implicit_rules, rules.activate, rules.deactivate, rules.is_active,
 				rules.last_run FROM rules INNER JOIN proto_name ON rules.proto_id = proto_name.proto
-				WHERE rules.username = $_SESSION['s_username']} ORDER BY rules.id ASC;");
+				WHERE rules.username = {$_SESSION['s_username']} ORDER BY rules.id ASC;");
 		echo "Viewing table &quot;rules&quot; for username $h2username.<br/>\n";
 	}
 ?>
@@ -514,7 +514,7 @@ if (checkAuthorization(7, 'view rules')) {
 						<form action="" method="GET">
 <?php
 							echo "<input type=\"hidden\" name=\"key1\" value=\"$username\"/>\n";
-							echo "<input type=\"hidden\" name=\"key2\" value=\"{$row[1]}"\"/>\n";
+							echo "<input type=\"hidden\" name=\"key2\" value=\"{$row[1]}\"/>\n";
 ?>
 							<input type="submit" name="delete" value="DELETE"/>
 						</form>

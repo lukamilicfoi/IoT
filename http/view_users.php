@@ -25,7 +25,7 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 	for ($i = 0; $i < 11; $i++) {
 		$query .= ", {$fields[$i]}";
 	}
-	$query .= ") VALUES($s_username']}, '" . password_hash($_POST['password'], PASSWORD_DEFAULT) .
+	$query .= ") VALUES($s_username, '"  . password_hash($_POST['password'], PASSWORD_DEFAULT) .
 			'\'';
 	for ($i = 0; $i < 11; $i++) {
 		$query .= ', ' . pgescapebool($_POST[$fields[$i]]);
@@ -55,7 +55,7 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		$query = substr($query, 0, -2) . ") = (" . (!empty($_POST['password'])
 				? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\', ' : '');
 		for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 11; $i++) {
-			$query .= ', ' . pgescapebool($_POST[$fields[$i]]);
+			$query .= pgescapebool($_POST[$fields[$i]]) . ', ';
 		}
 		pg_free_result(pgquery(substr($query, 0, -2) . ") WHERE username = $s_username;"));
 		echo "User $h_username updated.<br/>\n";

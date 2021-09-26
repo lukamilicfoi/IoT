@@ -54,7 +54,7 @@ if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
 	$s1tablename = pg_escape_literal($_GET['tablename']);
 	$s2tablename = pg_escape_identifier($_GET['tablename']);
 	$h1tablename = htmlspecialchars($_GET['tablename']);
-	$h2tablename = "&quot;$html_tablename1&quot;";
+	$h2tablename = "&quot;$h1tablename&quot;";
 	$u_tablename = urlencode($_GET['tablename']);
 	$result1 = pgquery("SELECT username FROM table_user WHERE tablename = $s1tablename;");
 	$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1tablename
@@ -80,7 +80,7 @@ if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
 			}
 		} else if (!empty($_GET['t'])) {
 			if (isset($_GET['insert'])) {
-				$t = 'TIMESTAMP &apos;' . htmlspecialchars($_GET['t']) . '&apos;';
+				$t = htmlspecialchars($_GET['t']);
 				$result = pgquery("SELECT * FROM $s2tablename WHERE FALSE;");
 				$query = "INSERT INTO $s2tablename(";
 				for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
@@ -96,7 +96,7 @@ if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
 				pg_free_result($result);
 			} else if (!empty($_GET['key']) && isset($_GET['update'])) {
 				$s_key = 'TIMESTAMP ' . pg_escape_literal($_GET['key']);
-				$h_key = 'TIMESTAMP &apos;' . htmlspecialchars($_GET['key']) . '&apos;';
+				$h_key = htmlspecialchars($_GET['key']);
 				$result = pgquery("SELECT * FROM $s2tablename WHERE FALSE;");
 				$query = "UPDATE $s2tablename SET (";
 				for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
@@ -112,6 +112,9 @@ if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
 				pg_free_result($result);
 			}
 		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
+			$s_key = 'TIMESTAMP ' . pg_escape_literal($_GET['key']);
+			$h_key = htmlspecialchars($_GET['key']);
+			$u_key = urlencode($_GET['key']);
 			if (isset($_GET['confirm'])) {
 				$result = pgquery("DELETE FROM $s2tablename WHERE t = $s_key;");
 				echo "Row $h_key deleted.<br/>\n";

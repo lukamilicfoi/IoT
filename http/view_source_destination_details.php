@@ -8,7 +8,7 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['SRC']) && !empty($_G
 	$u_SRC = urlencode($_GET['SRC']);
 	$s_DST = pgescapebytea($_GET['DST']);
 	$h1DST = htmlspecialchars($_GET['DST']);
-	$h2DST = "X&apos;$h2DST&apos;";
+	$h2DST = "X&apos;$h1DST&apos;";
 	$u_DST = urlencode($_GET['DST']);
 	$result1 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1SRC;");
 	$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1SRC
@@ -32,7 +32,7 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['SRC']) && !empty($_G
 			}
 		} else if (!empty($_GET['ID']) && !empty($_GET['TWR'])) {
 			$id = intval($_GET['ID']);
-			$TWR = 'TIMESTAMP ' . pg_escape_string($_GET['TWR']) . '\'';
+			$TWR = 'TIMESTAMP \'' . pg_escape_string($_GET['TWR']) . '\'';
 			if (isset($_GET['insert'])) {
 				pg_free_result(pgquery("INSERT INTO ID_TWR(SRC, DST, ID, TWR)
 						VALUES($s2SRC, $s_DST, $id, $TWR);"));
@@ -120,8 +120,9 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['SRC']) && !empty($_G
 								echo "<input type=\"hidden\" name=\"DST\" value=\"$h1DST\"/>\n";
 								echo "<input type=\"hidden\" name=\"key\" value=\"{$row[0]}\"/>\n";
 ?>
-								<input type="submit" name="update" value="Update this mapping
-										for this SRC and this DST\"/><br/>
+								<input type="submit" name="update"
+										value="Update this mapping for this SRC and this DST\"/>
+										<br/>
 								<input type="reset" value="reset"/>
 <?php
 							echo "</form>\n";
@@ -130,7 +131,7 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['SRC']) && !empty($_G
 <?php
 								echo "<input type=\"hidden\" name=\"SRC\" value=\"{$h1SRC}\"/>\n";
 								echo "<input type=\"hidden\" name=\"DST\" value=\"{$h1DST}\"/>\n";
-								echo "<input type=\"hidden\" name=\"key\" value=\"{$row[0]}/>\n";
+								echo "<input type=\"hidden\" name=\"key\" value=\"{$row[0]}\"/>\n";
 ?>
 								<input type="submit" name="delete"
 										value="Delete this mapping for this SRC and this DST"/>
