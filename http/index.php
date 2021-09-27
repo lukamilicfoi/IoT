@@ -265,7 +265,7 @@ if (checkAuthorization(11, 'manually execute timed rules')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write username and rule as a string and aan integer, e.g., root and 11.<br/><br/>
+	Write username and rule as a string and an integer, e.g., root and 11.<br/><br/>
 <?php
 }
 if (checkAuthorization(7, 'view rules')) {

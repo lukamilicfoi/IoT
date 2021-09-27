@@ -277,7 +277,7 @@ if (checkAuthorization(7, 'view rules')) {
 					<input form="insert" type="checkbox" name="is_active"/>
 				</td>
 				<td>
-					<input form="insert" type="text" name="last_run" value="CURRENT_TIMESTAMP(0)"
+					<input form="insert" type="text" name="last_run" value="TIMESTAMP(0)"
 						   disabled="disabled"/>
 				</td>
 				<td>
