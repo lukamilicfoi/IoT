@@ -130,7 +130,8 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['SRC']) && !empty($_G
 								echo "<input type=\"hidden\" name=\"key\" value=\"$str\"/>\n";
 ?>
 								<input type="submit" name="update"
-										value="Update this mapping for this SRC and this proto/><br/>
+										value="Update this mapping for this SRC and this proto/>
+										<br/>
 								<input type="reset" value="reset"/>
 <?php
 							echo "</form>\n";

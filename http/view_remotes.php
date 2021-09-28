@@ -95,7 +95,7 @@ if (checkAuthorization(10, 'view remotes')) {
 			} else {
 				echo "View remote (public, {$_SESSION['h2username']}&apos;s shown):\n";
 			}
-			for ($row = pg_fetch_row($result); $row;      $row = pg_fetch_row($result)) {
+			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 				$str = substr($row[0], 2);
 				echo "<a href=\"view_remote_details.php?addr=$str\">$str</a>\n";
 				echo "<a href=\"?remove=$str\">(remove)</a>\n";
