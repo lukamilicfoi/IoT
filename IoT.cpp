@@ -3103,34 +3103,34 @@ void load_store2_load() {
 
 	PQclear(execcheckreturn("TRUNCATE TABLE addr_oID CASCADE"));
 	for (auto a_r : addr_remote) {
-		oss.str("INSERT INTO addr_oID(addr, out_ID) VALUES(E\'\\\\x");
+		oss.str("INSERT INTO addr_oID(addr, out_ID) VALUES(\'\\x");
 		addr = BYTE8_to_c17charp(a_r.first);
 		oss << addr << "\', " << static_cast<int>(a_r.second->out_ID) << ')';
 		PQclear(execcheckreturn(oss.str()));
 		for (auto D_I_T : a_r.second->DST_ID_TWR) {
-			oss.str("INSERT INTO SRC_DST(SRC, DST) VALUES(E\'\\\\x");
-			oss << addr << "\', E\'\\\\x" << BYTE8_to_c17charp(D_I_T.first) << "\')";
+			oss.str("INSERT INTO SRC_DST(SRC, DST) VALUES(\'\\x");
+			oss << addr << "\', \'\\x" << BYTE8_to_c17charp(D_I_T.first) << "\')";
 			PQclear(execcheckreturn(oss.str()));
 			if (!D_I_T.second->empty()) {
-				oss.str("INSERT INTO ID_TWR(SRC, DST, ID, TWR) VALUES(E\'\\\\x");
+				oss.str("INSERT INTO ID_TWR(SRC, DST, ID, TWR) VALUES(\'\\x");
 				for (auto I_T : *D_I_T.second) {
 					oss << addr << "\', " << static_cast<int>(I_T.first) << ", TIMESTAMP \'"
-							<< I_T.second << "\'), (E\'\\\\x";
+							<< I_T.second << "\'), (\'\\x";
 				}
 				oss.seekp(-8, oss.end) << '\0';
 				PQclear(execcheckreturn(oss.str()));
 			}
 		}
 		for (auto p_i_T : a_r.second->proto_iSRC_TWR) {
-			oss.str("INSERT INTO SRC_proto(SRC, proto) VALUES(E\'\\\\x");
+			oss.str("INSERT INTO SRC_proto(SRC, proto) VALUES(\'\\x");
 			oss << addr << "\', \'" << p_i_T.first->get_my_id() << "\')";
 			PQclear(execcheckreturn(oss.str()));
 			if (!p_i_T.second->empty()) {
-				oss.str("INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR) VALUES(E\'\\\\x");
+				oss.str("INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR) VALUES(\'\\x");
 				for (auto i_T : *p_i_T.second) {
-					oss << addr << "\', \'" << p_i_T.first->get_my_id() << "\', E\'\\\\x"
+					oss << addr << "\', \'" << p_i_T.first->get_my_id() << "\', \'\\x"
 							<< BYTE8_to_c17charp(i_T.first) << "\', TIMESTAMP \'" << i_T.second
-							<< "\'), (E\'\\\\x";
+							<< "\'), (\'\\x";
 				}
 				oss.seekp(-8, oss.end) << '\0';
 				PQclear(execcheckreturn(oss.str()));
@@ -3164,14 +3164,14 @@ void load_store2_store() {
 	for (j = PQntuples(res); i < j; i++) {
 		addr = PQgetvalue(res, i, 0) + 2;
 		iter_a_r = addr_remote.insert(make_pair(c17charp_to_BYTE8(addr), new remote)).first;
-		res2 = execcheckreturn("SELECT DST FROM SRC_DST WHERE SRC = E\'\\\\x"s + addr
+		res2 = execcheckreturn("SELECT DST FROM SRC_DST WHERE SRC = \'\\x"s + addr
 				+ "\' ORDER BY DST ASC");
 		for (k = 0, l = PQntuples(res2); k < l; k++) {
 			temp = PQgetvalue(res2, k, 0) + 2;
 			iter_D_I_T = iter_a_r->second->DST_ID_TWR.insert(make_pair(c17charp_to_BYTE8(
 					temp), new map<BYTE, my_time_point>)).first;
-			res3 = execcheckreturn("SELECT ID, TWR FROM ID_TWR WHERE SRC = E\'\\\\x"s + addr
-					+ "\' AND DST = E\'\\\\x" + temp + "\' ORDER BY ID ASC");
+			res3 = execcheckreturn("SELECT ID, TWR FROM ID_TWR WHERE SRC = \'\\x"s + addr
+					+ "\' AND DST = \'\\x" + temp + "\' ORDER BY ID ASC");
 			for (m = 0, n = PQntuples(res3); m < n; m++) {
 				iss.str(PQgetvalue(res3, m, 0));
 				iss >> ID;
@@ -3188,13 +3188,13 @@ void load_store2_store() {
 		iss >> id;
 		iter_a_r->second->out_ID = id;
 		iss.clear();
-		res2 = execcheckreturn("SELECT proto FROM SRC_proto WHERE SRC = E\'\\\\x"s + addr
+		res2 = execcheckreturn("SELECT proto FROM SRC_proto WHERE SRC = \'\\x"s + addr
 				+ "\' ORDER BY proto ASC");
 		for (k = 0, l = PQntuples(res2); k < l; k++) {
 			temp = PQgetvalue(res2, k, 0);
 			iter_p_i_T = iter_a_r->second->proto_iSRC_TWR.insert(make_pair(find_protocol_by_id(
 					temp), new map<BYTE8, my_time_point>)).first;
-			res3 = execcheckreturn("SELECT imm_SRC, TWR FROM iSRC_TWR WHERE SRC = E\'\\\\x"s
+			res3 = execcheckreturn("SELECT imm_SRC, TWR FROM iSRC_TWR WHERE SRC = \'\\x"s
 					+ addr + "\' AND proto = \'" + temp + "\' ORDER BY imm_SRC ASC");
 			for (m = 0, n = PQntuples(res3); m < n; m++) {
 				iss.str(PQgetvalue(res3, m, 1));
@@ -3937,18 +3937,18 @@ void apply_rule_beginning(PGresult *res_rules, int &current_id, int i, const cha
 void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
 	ostringstream oss("INSERT INTO formatted_message_for_send_receive("
 			"HD, ID, LEN, DST, SRC, PL, CRC, ENCRYPTED, SIGNED, BROADCAST, OVERRIDE, proto, "
-			"imm_addr, CCF, ACF) VALUES(E\'\\\\x", oss.out | oss.ate);
+			"imm_addr, CCF, ACF) VALUES(\'\\x", oss.out | oss.ate);
 
-	oss << HEX_NOSHOWB(static_cast<int>(fmsg.HD.get_as_byte()), 2) << "\', E\'\\\\x"
-			<< HEX_NOSHOWB(static_cast<int>(fmsg.ID), 2) << "\', E\'\\\\x"
-			<< HEX_NOSHOWB(fmsg.LEN, 4) << "\', E\'\\\\x" << BYTE8_to_c17charp(fmsg.DST)
-			<< "\', E\'\\\\x" << BYTE8_to_c17charp(fmsg.SRC) << "\', E\'\\\\x";
+	oss << HEX_NOSHOWB(static_cast<int>(fmsg.HD.get_as_byte()), 2) << "\', \'\\x"
+			<< HEX_NOSHOWB(static_cast<int>(fmsg.ID), 2) << "\', \'\\x"
+			<< HEX_NOSHOWB(fmsg.LEN, 4) << "\', \'\\x" << BYTE8_to_c17charp(fmsg.DST)
+			<< "\', \'\\x" << BYTE8_to_c17charp(fmsg.SRC) << "\', \'\\x";
 	encode_bytes_to_stream(oss, fmsg.PL, fmsg.LEN);
-	oss << "\', E\'\\\\x" << HEX_NOSHOWB(fmsg.CRC, 8) << "\', "
+	oss << "\', \'\\x" << HEX_NOSHOWB(fmsg.CRC, 8) << "\', "
 			<< BOOLALPHA_UPPERCASE(fmsg.is_encrypted()) << ", "
 			<< BOOLALPHA_UPPERCASE(fmsg.is_signed()) << ", " << BOOLALPHA_UPPERCASE(rmsg.broadcast)
 			<< ", " << BOOLALPHA_UPPERCASE(rmsg.override_implicit_rules) << ", \'"
-			<< rmsg.proto->get_my_id() << "\', E\'\\\\x" << BYTE8_to_c17charp(rmsg.imm_addr)
+			<< rmsg.proto->get_my_id() << "\', \'\\x" << BYTE8_to_c17charp(rmsg.imm_addr)
 			<< "\', " << BOOLALPHA_UPPERCASE(rmsg.CCF) << ", " << BOOLALPHA_UPPERCASE(rmsg.ACF)
 			<< ')';
 	PQclear(execcheckreturn(oss.str()));
@@ -4552,7 +4552,7 @@ void convert_select(string &query, string remote_FROM) {
 		}
 		if (query.back() == 'X') {
 			query.pop_back();
-			query += "E\'\\\\x" + iter_split_str.substr(1);
+			query += "\'\\x" + iter_split_str.substr(1);
 		} else {
 			query += iter_split_str;
 		}
@@ -5322,7 +5322,7 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 					break;
 				case 'X'://add binary data field
 					DEFAULT_CHECK_BODY(BYTEA);
-					temp += "E\'\\\\x" + second.substr(1);
+					temp += "\'\\x" + second.substr(1);
 					break;
 				case 'U'://add unicode data field
 					if (iter_begin->str().empty()) {
