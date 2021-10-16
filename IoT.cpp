@@ -91,7 +91,7 @@ extern "C" {
 using namespace std;
 
 /* commands needed for creating private key:
-openssl genrsa -out privateKey.pem 4096 */
+openssl genrsa -out privateKey.pem 2048 */
 
 /* compile with "-lpq -lbluetooth -lrt -lpthread -lcrypto -lssl -lsignal-protocol-c" */
 
@@ -2682,7 +2682,7 @@ void initialize_vars() {
 
 	cipherctx = EVP_CIPHER_CTX_new();
 	mdctx = EVP_MD_CTX_new();
-	ciphertype = EVP_aes_256_cbc();
+	ciphertype = EVP_aes_192_cbc();
 	mdtype = EVP_sha256();
 	blocksizetimes2minus1 = (EVP_CIPHER_block_size(ciphertype) << 1) - 1;
 	ivlength = EVP_CIPHER_iv_length(ciphertype);
