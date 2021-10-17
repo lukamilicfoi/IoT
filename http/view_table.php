@@ -95,7 +95,7 @@ if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
 				echo "Row $t inserted.<br/>\n";
 				pg_free_result($result);
 			} else if (!empty($_GET['key']) && isset($_GET['update'])) {
-				$s_key = 'TIMESTAMP \'' . pg_escape_string(substr($_GET['key'], 11, -1);
+				$s_key = 'TIMESTAMP \'' . pg_escape_string(substr($_GET['key'], 11, -1));
 				$h_key = htmlspecialchars($_GET['key']);
 				$result = pgquery("SELECT * FROM $s2tablename WHERE FALSE;");
 				$query = "UPDATE $s2tablename SET (";

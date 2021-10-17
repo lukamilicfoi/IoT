@@ -68,7 +68,7 @@ if (checkAuthorization(10, 'view remotes')) {
 			$result = pgquery('SELECT addr_oID.addr FROM addr_oID LEFT OUTER JOIN table_user
 					ON \'t\' || encode(addr_oID.addr, \'hex\') = table_user.tablename
 					LEFT OUTER JOIN users ON table_user.username = users.username
-					ORDER BY users.is_administrator DESC, addr_oID.addr ASC;');
+					ORDER BY addr_oID.addr ASC;');
 		} else if ($_SESSION['is_administrator']) {
 			$result = pgquery("SELECT addr_oID.addr FROM addr_oID LEFT OUTER JOIN table_user
 					ON 't' || encode(addr_oID.addr, 'hex') = table_user.tablename
