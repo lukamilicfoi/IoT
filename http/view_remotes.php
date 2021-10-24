@@ -87,7 +87,7 @@ if (checkAuthorization(10, 'view remotes')) {
 <?php
 			if ($_SESSION['is_root']) {
 ?>
-				View remote, administrators&apos; first:
+				View remote:
 <?php
 			} else if ($_SESSION['is_administrator']) {
 				echo "View remote (public, {$_SESSION['h2username']}&apos;s, non-administrators'

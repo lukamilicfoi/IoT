@@ -112,7 +112,7 @@ if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
 				pg_free_result($result);
 			}
 		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
-			$s_key = 'TIMESTAMP \'' . pg_escape_string(substr($_GET['key'], 11, -1);
+			$s_key = 'TIMESTAMP \'' . pg_escape_string(substr($_GET['key'], 11, -1));
 			$h_key = htmlspecialchars($_GET['key']);
 			$u_key = urlencode($_GET['key']);
 			if (isset($_GET['confirm'])) {
