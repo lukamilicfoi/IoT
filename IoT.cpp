@@ -2909,7 +2909,7 @@ extern "C" Datum send_inject(PG_FUNCTION_ARGS) {
 	bytea *message = PG_GETARG_BYTEA_PP(1), *imm_addr = PG_GETARG_BYTEA_PP(3);
 	text *proto_id_sql = PG_GETARG_TEXT_PP(2);
 	int message_length = VARSIZE_ANY_EXHDR(message), proto_id_len = VARSIZE_ANY_EXHDR(proto_id_sql),
-			fd = open("/tmp/flock_cpp", O_WRONLY | O_CREAT);
+			fd = open("/tmp/flock_cpp", O_WRONLY | O_CREAT, 0777);
 	send_inject_struct *sis = new(message_length) send_inject_struct(message_length);
 	mqd_t prlimit_pid_mq = mq_open("/prlimit_pid", O_WRONLY), prlimit_ack_mq
 			= mq_open("/prlimit_ack", O_RDWR), send_inject_mq = mq_open("/send_inject", O_WRONLY);
