@@ -3742,7 +3742,7 @@ raw_message *receive_raw_message() {
 		} else {
 			sis = new(message_length) send_inject_struct(message_length);
 			if (mq_receive(send_inject_mq, reinterpret_cast<char *>(sis),
-					sizeof(send_inject_struct) - 1 + message_length, nullptr) < 0) {
+					sizeof(send_inject_struct) - 1 + msg_MAX, nullptr) < 0) {
 				throw system_exception("cannot receive from send_inject_mq");
 			} else {
 				send_inject2(*sis);
