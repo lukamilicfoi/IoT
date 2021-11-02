@@ -845,12 +845,12 @@ EVP_PKEY *get_public_key(BYTE8 addr);
 void serialize_digital_envelope(const BYTE *ciphertext, int ciphertext_len,
 		const BYTE *encrypted_key, int encrypted_key_len, const BYTE *iv, BYTE *dst, int &dst_len);
 
-void deserialize_digital_envelope(const BYTE *src, int src_len, const BYTE *&ciphertext,
-		int &ciphertext_len, const BYTE *&encrypted_key, int &encrypted_key_len, const BYTE *&iv);
+void deserialize_digital_envelope(const BYTE *src, int src_len, BYTE *&ciphertext,
+		int &ciphertext_len, BYTE *&encrypted_key, int &encrypted_key_len, BYTE *&iv);
 
 void serialize_digital_signature(const BYTE *signature, int signature_len, BYTE *dst, int &dst_len);
 
-void deserialize_digital_signature(const BYTE *src, int src_len, const BYTE *&signature,
+void deserialize_digital_signature(const BYTE *src, int src_len, BYTE *&signature,
 		int &signature_len);
 
 void seal_digital_envelope(EVP_PKEY *receivers_public_key, const BYTE *plaintext,
@@ -932,7 +932,7 @@ void formatted_message::encrypt() {
 
 void formatted_message::decrypt() {
 	EVP_PKEY *receivers_private_key = get_private_key(SRC);
-	const BYTE *ciphertext, *encrypted_key, *iv;
+	BYTE *ciphertext, *encrypted_key, *iv;
 	int ciphertext_len, encrypted_key_len, len;
 
 	deserialize_digital_envelope(PL, LEN, ciphertext, ciphertext_len, encrypted_key,
@@ -940,6 +940,9 @@ void formatted_message::decrypt() {
 	open_digital_envelope(receivers_private_key, ciphertext, ciphertext_len, encrypted_key,
 			encrypted_key_len, iv, PL, len);
 	LEN = len;
+	delete[] ciphertext;
+	delete[] encrypted_key;
+	delete[] iv;
 	EVP_PKEY_free(receivers_private_key);
 }
 
@@ -962,7 +965,7 @@ send_inject_struct::send_inject_struct(int message_length) : CCF(), ACF(), send(
 
 void formatted_message::verify() {
 	EVP_PKEY *senders_public_key = get_public_key(DST);
-	const BYTE *signature;
+	BYTE *signature;
 	int signature_len, len;
 	regex re(RE_STRING);
 	string str(reinterpret_cast<char *>(PL), LEN);
@@ -980,6 +983,7 @@ void formatted_message::verify() {
 	deserialize_digital_signature(PL + len, LEN - len, signature, signature_len);
 	verify_digital_signature(senders_public_key, PL, len, signature, signature_len);
 	LEN = len;
+	delete[] signature;
 	EVP_PKEY_free(senders_public_key);
 }
 
@@ -1029,8 +1033,8 @@ void serialize_digital_envelope(const BYTE *ciphertext, int ciphertext_len,
 	memcpy(dst + ciphertext_len + encrypted_key_len + 5, iv, ivlength);
 }
 
-void deserialize_digital_envelope(const BYTE *src, int src_len, const BYTE *&ciphertext,
-		int &ciphertext_len, const BYTE *&encrypted_key, int &encrypted_key_len, const BYTE *&iv) {
+void deserialize_digital_envelope(const BYTE *src, int src_len, BYTE *&ciphertext,
+		int &ciphertext_len, BYTE *&encrypted_key, int &encrypted_key_len, BYTE *&iv) {
 	THR(*src != '@', message_exception("envelope malformed"));
 	THR(3 < src_len, message_exception("3 < src_len"));
 	if (little_endian) {
@@ -1045,9 +1049,12 @@ void deserialize_digital_envelope(const BYTE *src, int src_len, const BYTE *&cip
 	}
 	THR(encrypted_key_len + ciphertext_len + ivlength + 5 < src_len,
 			message_exception("encrypted_key_len + ciphertext_len + iv_length + 5 < src_len"));
-	ciphertext = src + 3;
-	encrypted_key = ciphertext + ciphertext_len + 2;
-	iv = encrypted_key + encrypted_key_len;
+	ciphertext = new BYTE[ciphertext_len];
+	memcpy(ciphertext, src + 3, ciphertext_len);
+	encrypted_key = new BYTE[encrypted_key_len];
+	memcpy(encrypted_key, ciphertext + ciphertext_len + 2, encrypted_key_len);
+	iv = new BYTE[ivlength];
+	memcpy(iv, encrypted_key + encrypted_key_len, ivlength);
 }
 
 void serialize_digital_signature(const BYTE *signature, int signature_len, BYTE *dst,
@@ -1060,11 +1067,12 @@ void serialize_digital_signature(const BYTE *signature, int signature_len, BYTE 
 	memcpy(dst + 1, signature, signature_len);
 }
 
-void deserialize_digital_signature(const BYTE *src, int src_len, const BYTE *&signature,
+void deserialize_digital_signature(const BYTE *src, int src_len, BYTE *&signature,
 		int &signature_len) {
 	THR(*src != '#', message_exception("signature malformed"));
 	signature_len = src_len - 1;
-	signature = src + 1;
+	signature = new BYTE[signature_len];
+	memcpy(signature, src + 1, signature_len);
 }
 
 void seal_digital_envelope(EVP_PKEY *receivers_public_key, const BYTE *plaintext,
