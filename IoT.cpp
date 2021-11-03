@@ -1048,7 +1048,7 @@ void deserialize_digital_envelope(const BYTE *src, int src_len, BYTE *&ciphertex
 				src + ciphertext_len + 3, 2);
 	}
 	THR(encrypted_key_len + ciphertext_len + ivlength + 5 < src_len,
-			message_exception("encrypted_key_len + ciphertext_len + iv_length + 5 < src_len"));
+			message_exception("encrypted_key_len + ciphertext_len + ivlength + 5 < src_len"));
 	ciphertext = new BYTE[ciphertext_len];
 	memcpy(ciphertext, src + 3, ciphertext_len);
 	encrypted_key = new BYTE[encrypted_key_len];
@@ -1090,7 +1090,7 @@ void seal_digital_envelope(EVP_PKEY *receivers_public_key, const BYTE *plaintext
 			message_exception("cannot sealupdate"));
 	ciphertext_len = len;
 	THR(EVP_SealFinal(cipherctx, ciphertext + len, &len) == 0,
-			message_exception("cannot sealfinish"));
+			message_exception("cannot sealfinal"));
 	ciphertext_len += len;
 }
 
@@ -2683,6 +2683,7 @@ void initialize_vars() {
 	update_permissions_mq = mq_open("/update_permissions",
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(update_permissions_mq < 0, system_exception("cannot open update_permissions_mq"));
+	ma.mq_msgsize = sizeof(manually_execute_timed_rule_struct);
 	manually_execute_timed_rule_mq = mq_open("/manually_execute_timed_rule",
 			O_RDWR | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(manually_execute_timed_rule_mq < 0,
@@ -2892,6 +2893,8 @@ extern "C" Datum manually_execute_timed_rule(PG_FUNCTION_ARGS) {
 	THR(mq_send(manually_execute_timed_rule_mq, reinterpret_cast<char *>(&metrs),
 			sizeof(manually_execute_timed_rule_struct), 0) < 0,
 			system_exception("cannot send to manually_execute_timed_rule_mq"));
+	THR(mq_close(manually_execute_timed_rule_mq) < 0,
+			system_exception("cannot close manually_execute_timed_rule_mq"));
 	PG_RETURN_VOID();
 }
 
@@ -4082,7 +4085,7 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 				*PQgetvalue(res_rules, i, offset + 9) == 't',
 				*PQgetvalue(res_rules, i, offset + 10) == 't',
 				*PQgetvalue(res_rules, i, offset + 11) == 't', true);
-	} else if (*value <= '4') {
+	} else if (*value <= '3') {
 		send_inject_from_rule(PQgetvalue(res_message, 0, 0),
 				PQgetvalue(res_rules, i, offset + 6), PQgetvalue(res_rules, i, offset + 7) + 2,
 				*PQgetvalue(res_rules, i, offset + 8) == 't',
@@ -4163,8 +4166,8 @@ ostream &operator<<(ostream &os, const raw_message &rmsg) noexcept {
 void manually_execute_timed_rule2(const manually_execute_timed_rule_struct &metrs) {
 	ostringstream oss("SELECT username, id, query_command_nothing, query_command_1, "
 			"send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, "
-			"broadcast, override_implicit_rules, activate, deactivate, is_active, FROM rules "
-			"WHERE id = ");
+			"broadcast, override_implicit_rules, activate, deactivate, is_active FROM rules "
+			"WHERE id = ", oss.out | oss.ate);
 	PGresult *res_rules;
 	string select, current_username(metrs.username);
 	int i, j = 1;
@@ -4173,6 +4176,7 @@ void manually_execute_timed_rule2(const manually_execute_timed_rule_struct &metr
 	select = oss.str();
 	res_rules = execcheckreturn(select);
 	apply_rule_beginning(res_rules, i, 0, "timed", current_username);
+	i = 0;
 	apply_rule_end(res_rules, metrs.id, i, j, 0, select, current_username);
 	PQclear(res_rules);
 }
