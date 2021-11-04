@@ -811,6 +811,10 @@ int blocksizetimes2minus1;
 
 int ivlength;
 
+int encrypted_key_max_length;
+
+int formatted_message_max_augment;
+
 #ifdef SIGNAL
 signal_context *global_context;
 
@@ -889,7 +893,7 @@ void test_unlock(void *) {
 #endif
 
 void *formatted_message::operator new(size_t sz, int size) {
-	return ::operator new(sz + size - 1);
+	return ::operator new(sz + size - 1 + formatted_message_max_augment);
 }
 
 formatted_message::formatted_message(const formatted_message &fmsg) {
@@ -1081,7 +1085,7 @@ void seal_digital_envelope(EVP_PKEY *receivers_public_key, const BYTE *plaintext
 	int len;
 
 	THR(EVP_CIPHER_CTX_reset(cipherctx) == 0, system_exception("cannot reset cipherctx"));
-	encrypted_key = new BYTE[EVP_PKEY_size(receivers_public_key)];
+	encrypted_key = new BYTE[encrypted_key_max_length];
 	iv = new BYTE[ivlength];
 	THR(EVP_SealInit(cipherctx, ciphertype, &encrypted_key, &encrypted_key_len, iv,
 			&receivers_public_key, 1) == 0, message_exception("cannot sealinit"));
@@ -2634,6 +2638,7 @@ void initialize_vars() {
 	mq_attr ma = { 0, 4, sizeof(raw_message *) };
 	BYTE test[2] = { 1 };
 	random_device rd;
+	EVP_PKEY *local_public_key;
 
 	THR(getrlimit(RLIMIT_MSGQUEUE, &rl) < 0, system_exception("cannot getrlimit"));
 	LOG_CPP("got RLIMIT_MSGQUEUE, rlim_cur = " << rl.rlim_cur << ", rlim_max = " << rl.rlim_max
@@ -2719,6 +2724,11 @@ void initialize_vars() {
 	dre.seed(rd());
 	determine_local_addr();
 	local_FROM = local_FROM + BYTE8_to_c17charp(local_addr) + ' ';
+	local_public_key = get_public_key(local_addr);
+	encrypted_key_max_length = EVP_PKEY_size(local_public_key);
+	formatted_message_max_augment = 6 + (encrypted_key_max_length << 1) + blocksizetimes2minus1
+			+ ivlength;
+	EVP_PKEY_free(local_public_key);
 }
 
 void destroy_vars() {
