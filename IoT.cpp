@@ -4324,10 +4324,8 @@ BYTE4 givecrc32c(const BYTE *msg, BYTE2 len) noexcept {
 }
 
 ostream &operator<<(ostream &os, const formatted_message &fmsg) noexcept {
-	os << "formatted message of HD " << fmsg.HD
-			<< ", ID " << HEX(static_cast<int>(fmsg.ID), 2)
-			<< " and LEN " << fmsg.LEN
-			<< " for DST " << BYTE8_to_c17charp(fmsg.DST)
+	os << "formatted message of HD " << fmsg.HD << ", ID " << HEX(static_cast<int>(fmsg.ID), 2)
+			<< " and LEN " << fmsg.LEN << " for DST " << BYTE8_to_c17charp(fmsg.DST)
 			<< " from SRC " << BYTE8_to_c17charp(fmsg.SRC) << " with payload \"";
 	print_message_c(os, fmsg.PL, fmsg.LEN);
 	return os << "\" and CRC " << HEX(fmsg.CRC, 8) << " (encrypted = "
