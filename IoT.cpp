@@ -251,7 +251,7 @@ struct formatted_message {
 static_assert(offsetof(formatted_message, DST) == 8, "offsetof(formatted_message, DST) != 8");
 
 bool formatted_message::is_encrypted() const noexcept {
-	return LEN > 0 && PL[0] == '@';
+	return LEN > 1 && PL[0] == '@';
 }
 
 void *memcpy_endian(void *dst, const void *src, size_t len) noexcept;
