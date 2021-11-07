@@ -4334,11 +4334,9 @@ ostream &operator<<(ostream &os, const formatted_message &fmsg) noexcept {
 }
 
 ostream &operator<<(ostream &os, const header &HD) noexcept {
-	return os << HEX(static_cast<int>(HD.get_as_byte()), 2) << " ("
-			<< (HD.I ? 'I' : 'i') << (HD.L ? 'L' : 'l')
-			<< (HD.D ? 'D' : 'd') << (HD.S ? 'S' : 's')
-			<< (HD.R ? 'R' : 'r') << (HD.K ? 'K' : 'k')
-			<< (HD.C ? 'C' : 'c') << (HD.A ? 'A' : 'a') << ')';
+	return os << HEX(static_cast<int>(HD.get_as_byte()), 2) << " (" << (HD.I ? 'I' : 'i')
+			<< (HD.L ? 'L' : 'l') << (HD.D ? 'D' : 'd') << (HD.S ? 'S' : 's') << (HD.R ? 'R' : 'r')
+			<< (HD.K ? 'K' : 'k') << (HD.C ? 'C' : 'c') << (HD.A ? 'A' : 'a') << ')';
 }
 
 void convert_select(string &query, string remote_FROM) {
