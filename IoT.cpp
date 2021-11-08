@@ -2346,12 +2346,14 @@ int main(int argc, char *argv[]) {
 
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS users(username TEXT, "
 			"password TEXT NOT NULL, is_administrator BOOLEAN NOT NULL, "
-			"can_view_tables BOOLEAN NOT NULL, can_send_messages BOOLEAN NOT NULL, "
-			"can_inject_messages BOOLEAN NOT NULL, can_send_queries BOOLEAN NOT NULL, "
-			"can_view_rules BOOLEAN NOT NULL, can_view_configuration BOOLEAN NOT NULL, "
-			"can_view_permissions BOOLEAN NOT NULL, can_view_remotes BOOLEAN NOT NULL, "
-			"can_execute_rules BOOLEAN NOT NULL, can_actually_login BOOLEAN NOT NULL, "
-			"PRIMARY KEY(username))"));
+			"can_view_tables BOOLEAN NOT NULL, can_edit_tables BOOLEAN NOT NULL, "
+			"can_send_messages BOOLEAN NOT NULL, can_inject_messages BOOLEAN NOT NULL, "
+			"can_send_queries BOOLEAN NOT NULL, can_view_rules BOOLEAN NOT NULL, "
+			"can_edit_rules BOOLEAN NOT NULL, can_view_configuration BOOLEAN NOT NULL, "
+			"can_edit_configuration BOOLEAN NOT NULL, can_view_permissions BOOLEAN NOT NULL, "
+			"can_edit_permissions BOOLEAN NOT NULL, can_view_remotes BOOLEAN NOT NULL, "
+			"can_edit_remotes BOOLEAN NOT NULL, can_execute_rules BOOLEAN NOT NULL, "
+			"can_actually_login BOOLEAN NOT NULL, PRIMARY KEY(username))"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS rules(username TEXT, id INTEGER, "
 			"send_receive_seconds SMALLINT NOT NULL, filter TEXT, "
 			"drop_modify_nothing SMALLINT NOT NULL, modification TEXT, "
