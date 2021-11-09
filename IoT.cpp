@@ -2518,9 +2518,9 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("INSERT INTO tables SELECT relname FROM pg_class "
 			"EXCEPT SELECT relname FROM pg_class"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_user(tablename NAME, username TEXT, "
-			"PRIMARY KEY(tablename), FOREIGN KEY(tablename) REFERENCES tables(tablename) "
-			"ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY(username) REFERENCES users(username) "
-			"ON UPDATE CASCADE ON DELETE CASCADE)"));
+			"is_read_only BOOLEAN NOT NULL, PRIMARY KEY(tablename), FOREIGN KEY(tablename) "
+			"REFERENCES tables(tablename) ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN "
+			"KEY(username) REFERENCES users(username) ON UPDATE CASCADE ON DELETE CASCADE)"));
 	PQclear(execcheckreturn("CREATE PROCEDURE ext(addr_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'ext\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE send_inject(send BOOLEAN, message BYTEA, "
