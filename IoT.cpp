@@ -414,7 +414,7 @@ map<string, configuration *> username_configuration;
 
 my_time_point beginning;
 
-map<string, string *> table_user;
+multimap<string, string *> table_user;
 
 PGconn *conn;
 
