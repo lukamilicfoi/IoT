@@ -414,7 +414,7 @@ map<string, configuration *> username_configuration;
 
 my_time_point beginning;
 
-multimap<string, string *> table_user;
+multimap<string, pair<string, bool>> table_user_isreadonly;
 
 PGconn *conn;
 
@@ -625,7 +625,7 @@ protocol *find_protocol_by_id(const char *id);
 
 protocol *find_protocol_by_name(const char *name);
 
-bool check_permissions(const char *tablename, BYTE8 address);
+bool check_permissions(string tablename, BYTE8 address, bool isreadonly);
 
 class protocol {
 
@@ -2518,9 +2518,10 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("INSERT INTO tables SELECT relname FROM pg_class "
 			"EXCEPT SELECT relname FROM pg_class"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_user(tablename NAME, username TEXT, "
-			"is_read_only BOOLEAN NOT NULL, PRIMARY KEY(tablename), FOREIGN KEY(tablename) "
-			"REFERENCES tables(tablename) ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN "
-			"KEY(username) REFERENCES users(username) ON UPDATE CASCADE ON DELETE CASCADE)"));
+			"is_read_only BOOLEAN NOT NULL, PRIMARY KEY(tablename, username), "
+			"FOREIGN KEY(tablename) REFERENCES tables(tablename) "
+			"ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY(username) REFERENCES users(username) "
+			"ON UPDATE CASCADE ON DELETE CASCADE)"));
 	PQclear(execcheckreturn("CREATE PROCEDURE ext(addr_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'ext\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE send_inject(send BOOLEAN, message BYTEA, "
@@ -2742,9 +2743,6 @@ void destroy_vars() {
 			delete p_i_T.second;
 		}
 		delete a_r.second;
-	}
-	for (auto t_u : table_user) {
-		delete t_u.second;
 	}
 	for (auto u_c : username_configuration) {
 		delete u_c.second;
@@ -3293,13 +3291,13 @@ void refresh_next_timed_rule_time2(const refresh_next_timed_rule_time_struct &rn
 }
 
 void update_permissions2() {
-	PGresult *res = execcheckreturn("TABLE table_user ORDER BY tablename DESC");
+	PGresult *res = execcheckreturn("TABLE table_user ORDER BY tablename DESC, username DESC");
 	int i = PQntuples(res);
 
-	table_user.clear();
+	table_user_isreadonly.clear();
 	while (--i >= 0) {
-		table_user.insert(make_pair(PQgetvalue(res, i, 0), PQgetisnull(res, i, 1)
-				? nullptr : new string(PQgetvalue(res, i, 1))));
+		table_user_isreadonly.insert(make_pair(PQgetvalue(res, i, 0),
+				make_pair(PQgetvalue(res, i, 1), PQgetvalue(res, i, 2) == 't')));
 	}
 	PQclear(res);
 }
@@ -3481,10 +3479,13 @@ ostream &operator<<(ostream &os, const my_time_point &point) noexcept {
 }
 
 void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg) {
-	auto t_u = table_user.find("t"s + BYTE8_to_c17charp(fmsg.SRC));
+	auto t_u_i = table_user_isreadonly.find("t"s + BYTE8_to_c17charp(fmsg.SRC));
 
-	if (username_configuration[t_u != table_user.cend() && t_u->second != nullptr
-			? *t_u->second : "root"]->trust_everyone) {
+	while (t_u_i != table_user_isreadonly.cend() && t_u_i->second.second) {
+		t_u_i++;
+	}
+	if (username_configuration[t_u_i != table_user_isreadonly.cend()
+			? t_u_i->second : "root"]->trust_everyone) {
 		LOG_CPP("trusting everyone for sending" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding rules for sending" << endl);
@@ -3530,10 +3531,13 @@ void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 }
 
 void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg) {
-	auto t_u = table_user.find("t"s + BYTE8_to_c17charp(fmsg.DST));
+	auto t_u_i = table_user_isreadonly.find("t"s + BYTE8_to_c17charp(fmsg.DST));
 
-	if (username_configuration[t_u != table_user.cend() && t_u->second != nullptr
-			? *t_u->second : "root"]->trust_everyone) {
+	while (t_u_i != table_user_isreadonly.cend() && t_u_i->second.second) {
+		t_u_i++;
+	}
+	if (username_configuration[t_u_i != table_user_isreadonly.cend()
+			? t_u_i->second : "root"]->trust_everyone) {
 		LOG_CPP("trusting everyone for receiving" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding checks for receiving" << endl);
