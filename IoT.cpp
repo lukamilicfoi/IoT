@@ -3485,7 +3485,7 @@ void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg) {
 		t_u_i++;
 	}
 	if (username_configuration[t_u_i != table_user_isreadonly.cend()
-			? t_u_i->second : "root"]->trust_everyone) {
+			? t_u_i->second.first : "root"]->trust_everyone) {
 		LOG_CPP("trusting everyone for sending" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding rules for sending" << endl);
@@ -3537,7 +3537,7 @@ void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg) {
 		t_u_i++;
 	}
 	if (username_configuration[t_u_i != table_user_isreadonly.cend()
-			? t_u_i->second : "root"]->trust_everyone) {
+			? t_u_i->second.first : "root"]->trust_everyone) {
 		LOG_CPP("trusting everyone for receiving" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding checks for receiving" << endl);
