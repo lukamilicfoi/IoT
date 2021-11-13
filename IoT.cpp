@@ -3555,7 +3555,7 @@ formatted_message *receive_formatted_message() {
 	unique_ptr<formatted_message> fmsg;
 	my_time_point now;
 	multimap<protocol *, BYTE8>::const_iterator iter_p_a;
-	map<string, string *>::const_iterator iter_t_u;
+	multimap<string, pair<string, bool>>::const_iterator iter_t_u_i;
 	configuration *c;
 
 	do {
@@ -3569,9 +3569,12 @@ formatted_message *receive_formatted_message() {
 				r = new remote;
 				r->out_ID = uid(dre);
 			}
-			iter_t_u = table_user.find("t"s + BYTE8_to_c17charp(fmsg->DST));
-			c = username_configuration[iter_t_u != table_user.cend() && iter_t_u->second != nullptr
-					? *iter_t_u->second : "root"];
+			iter_t_u_i = table_user_isreadonly.find("t"s + BYTE8_to_c17charp(fmsg->DST));
+			while (iter_t_u_i != table_user_isreadonly.cend() && iter_t_u_i->second.second) {
+				iter_t_u_i++;
+			}
+			c = username_configuration[iter_t_u_i != table_user_isreadonly.cend()
+					? iter_t_u_i->second : "root"];
 			if (c->use_internet_switch_algorithm) {
 				map<BYTE8, my_time_point> *&iT = r->proto_iSRC_TWR[rmsg->proto];
 				if (iT == nullptr) {
@@ -3852,8 +3855,8 @@ raw_message *receive_raw_message() {
 }
 #endif /* OFFLINE */
 
-bool check_permissions(const char *tablename, BYTE8 address) {
-	map<string, string *>::const_iterator iter1 = table_user.find(tablename),
+bool check_permissions(string tablename, BYTE8 address, bool isreadonly) {
+	multimap<string, pair<string, bool>>::const_iterator iter1 = table_user.find(tablename),
 			iter2 = table_user.find("t"s + BYTE8_to_c17charp(address));
 //todo simplify
 	if (iter1 != table_user.cend() && iter1->second != nullptr) {
