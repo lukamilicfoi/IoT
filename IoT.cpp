@@ -3478,14 +3478,22 @@ ostream &operator<<(ostream &os, const my_time_point &point) noexcept {
 	return os << put_time(localtime(&t), "%Y-%m-%d %H:%M:%S");
 }
 
-void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg) {
-	auto t_u_i = table_user_isreadonly.find("t"s + BYTE8_to_c17charp(fmsg.SRC));
-
-	while (t_u_i != table_user_isreadonly.cend() && t_u_i->second.second) {
-		t_u_i++;
+string find_owner(string tablename) {
+	for (auto t_u_i = table_user_isreadonly.find(tablename);
+			t_u_i != table_user_isreadonly.cend() && t_u_i->first == tablename; t_u_i++) {
+		if (t_u_i->second.second) {
+			return t_u_i->second.first;
+		}
 	}
-	if (username_configuration[t_u_i != table_user_isreadonly.cend()
-			? t_u_i->second.first : "root"]->trust_everyone) {
+	return is_address_table(tablename) ? "root" : "public";
+}
+
+bool is_address_table(string tablename) {
+	return tablename.front() == 't' && tablename.length() == 17 && tablename != "table_constraints";
+}
+
+void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg) {
+	if (username_configuration[find_owner(address_to_table(fmsg.DST))]->trust_everyone) {
 		LOG_CPP("trusting everyone for sending" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding rules for sending" << endl);
@@ -3530,14 +3538,22 @@ void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 	send_formatted_message(fmsg.release());
 }
 
-void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg) {
-	auto t_u_i = table_user_isreadonly.find("t"s + BYTE8_to_c17charp(fmsg.DST));
-
-	while (t_u_i != table_user_isreadonly.cend() && t_u_i->second.second) {
-		t_u_i++;
+bool is_reader(string tablename, string username) {//used only once
+	for (auto t_u_i = table_user_isreadonly.find(tablename);
+			t_u_i != table_user_isreadonly.cend() && t_u_i->first == tablename; t_u_i++) {
+		if (t_u_i->second.first == username) {
+			return true;
+		}
 	}
-	if (username_configuration[t_u_i != table_user_isreadonly.cend()
-			? t_u_i->second.first : "root"]->trust_everyone) {
+	return is_address_table(tablename);
+}
+
+string address_to_table(BYTE8 address) {
+	return "t"s + BYTE8_to_c17charp(address);
+}
+
+void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg) {
+	if (username_configuration[find_owner(address_to_table(fmsg.SRC))]->trust_everyone) {
 		LOG_CPP("trusting everyone for receiving" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding checks for receiving" << endl);
@@ -3856,21 +3872,13 @@ raw_message *receive_raw_message() {
 #endif /* OFFLINE */
 
 bool check_permissions(string tablename, BYTE8 address, bool isreadonly) {
-	multimap<string, pair<string, bool>>::const_iterator iter1 = table_user.find(tablename),
-			iter2 = table_user.find("t"s + BYTE8_to_c17charp(address));
-//todo simplify
-	if (iter1 != table_user.cend() && iter1->second != nullptr) {
-		if (iter2 != table_user.cend() && iter2->second != nullptr) {
-			if (*iter1->second == *iter2->second) {
-				return true;
-			}
-			return false;
-		}
-		return false;
-	}
-	return true;
+	string tablename_owner = find_owner(tablename),
+			address_owner = find_owner(address_to_table(address));
+
+	return tablename_owner == "public" || tablename_owner == address_owner
+			|| (isreadonly && is_reader(tablename, address_owner));
 }
-//todo take regular tables into consideration
+
 void encode_bytes_to_stream(ostream &stream, const BYTE *bytes, size_t len) {
 	int i = -1;
 
@@ -3985,9 +3993,7 @@ void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
 }
 
 formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool send) {
-	auto t_u = table_user.find("t"s + BYTE8_to_c17charp(send ? fmsg->SRC : fmsg->DST));
-	string current_username(t_u != table_user.cend() && t_u->second != nullptr
-			? *t_u->second : "root"), select((send
+	string current_username(find_owner(address_to_table(send ? fmsg->DST : fmsg->SRC))), select((send
 			? "SELECT username, id, send_receive_seconds, filter, drop_modify_nothing, "
 			"modification, query_command_nothing, query_command_1, "
 			"send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF, ACF, "
@@ -4690,7 +4696,7 @@ void sel(string query, BYTE8 address) {
 	THR(!clean_select(query), error_exception("error in SELECT"));
 	for (sti iter_begin(query.begin(), query.end(), re, 1), iter_end; iter_begin != iter_end;
 			iter_begin++) {
-		THR(!check_permissions(iter_begin->str().c_str(), address),
+		THR(!check_permissions(iter_begin->str(), address, true),
 				error_exception("unauthorized"));
 	}
 	PQclear(formatsendreturn(execcheckreturn(query), address));
