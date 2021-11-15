@@ -4824,11 +4824,16 @@ void send_formatted_message(formatted_message *fmsg) {
 	istringstream iss;
 	chrono::system_clock::rep dt;
 	unique_ptr<formatted_message> copy, dummy_f(fmsg);
-	map<string, string *>::const_iterator iter_table_user
-			= table_user.find("t"s + BYTE8_to_c17charp(fmsg->SRC));
-	configuration *c = username_configuration[iter_table_user != table_user.cend()
-			&& iter_table_user->second != nullptr ? *iter_table_user->second : "root"];
+	multimap<string, pair<string, bool>>::const_iterator iter_table_user_isreadonly
+			= table_user_isreadonly.find("t"s + BYTE8_to_c17charp(fmsg->SRC));
+	configuration *c;
 
+	while (iter_table_user_isreadonly != table_user_isreadonly.cend()
+			&& iter_table_user_isreadonly->second.second) {
+		iter_table_user_isreadonly++;
+	}
+	c = username_configuration[iter_table_user_isreadonly != table_user_isreadonly.cend()
+			? iter_table_user_isreadonly->second : "root"];
 	THR(iter_DST_destination == addr_remote.end(), message_exception("DST does not exist"));
 	for (iter_proto_iDST_TWR = iter_DST_destination->second->proto_iSRC_TWR.begin();
 			iter_proto_iDST_TWR != iter_DST_destination->second->proto_iSRC_TWR.end();
