@@ -554,11 +554,19 @@ ostream &operator<<(ostream &os, const protocol &proto) noexcept;
 
 void *memcpy_reverse(void *dst, const void *src, size_t size) noexcept;
 
+string find_owner(string tablename);
+
+bool is_address_table(string tablename);
+
 void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg);
 
 BYTE4 givecrc32c(const BYTE *msg, BYTE2 len) noexcept;
 
 ostream &operator<<(ostream &os, const formatted_message &fmsg) noexcept;
+
+bool is_reader(string tablename, string username);
+
+string address_to_table(BYTE8 address);
 
 void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg);
 
@@ -3297,7 +3305,7 @@ void update_permissions2() {
 	table_user_isreadonly.clear();
 	while (--i >= 0) {
 		table_user_isreadonly.insert(make_pair(PQgetvalue(res, i, 0),
-				make_pair(PQgetvalue(res, i, 1), PQgetvalue(res, i, 2) == 't')));
+				make_pair(PQgetvalue(res, i, 1), *PQgetvalue(res, i, 2) == 't')));
 	}
 	PQclear(res);
 }
@@ -3538,7 +3546,7 @@ void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 	send_formatted_message(fmsg.release());
 }
 
-bool is_reader(string tablename, string username) {//used only once
+bool is_reader(string tablename, string username) {
 	for (auto t_u_i = table_user_isreadonly.find(tablename);
 			t_u_i != table_user_isreadonly.cend() && t_u_i->first == tablename; t_u_i++) {
 		if (t_u_i->second.first == username) {
@@ -3571,7 +3579,6 @@ formatted_message *receive_formatted_message() {
 	unique_ptr<formatted_message> fmsg;
 	my_time_point now;
 	multimap<protocol *, BYTE8>::const_iterator iter_p_a;
-	multimap<string, pair<string, bool>>::const_iterator iter_t_u_i;
 	configuration *c;
 
 	do {
@@ -3585,12 +3592,7 @@ formatted_message *receive_formatted_message() {
 				r = new remote;
 				r->out_ID = uid(dre);
 			}
-			iter_t_u_i = table_user_isreadonly.find("t"s + BYTE8_to_c17charp(fmsg->DST));
-			while (iter_t_u_i != table_user_isreadonly.cend() && iter_t_u_i->second.second) {
-				iter_t_u_i++;
-			}
-			c = username_configuration[iter_t_u_i != table_user_isreadonly.cend()
-					? iter_t_u_i->second : "root"];
+			c = username_configuration[find_owner(address_to_table(fmsg->DST))];
 			if (c->use_internet_switch_algorithm) {
 				map<BYTE8, my_time_point> *&iT = r->proto_iSRC_TWR[rmsg->proto];
 				if (iT == nullptr) {
@@ -4824,16 +4826,8 @@ void send_formatted_message(formatted_message *fmsg) {
 	istringstream iss;
 	chrono::system_clock::rep dt;
 	unique_ptr<formatted_message> copy, dummy_f(fmsg);
-	multimap<string, pair<string, bool>>::const_iterator iter_table_user_isreadonly
-			= table_user_isreadonly.find("t"s + BYTE8_to_c17charp(fmsg->SRC));
-	configuration *c;
+	configuration *c = username_configuration[find_owner(address_to_table(fmsg->SRC))];
 
-	while (iter_table_user_isreadonly != table_user_isreadonly.cend()
-			&& iter_table_user_isreadonly->second.second) {
-		iter_table_user_isreadonly++;
-	}
-	c = username_configuration[iter_table_user_isreadonly != table_user_isreadonly.cend()
-			? iter_table_user_isreadonly->second : "root"];
 	THR(iter_DST_destination == addr_remote.end(), message_exception("DST does not exist"));
 	for (iter_proto_iDST_TWR = iter_DST_destination->second->proto_iSRC_TWR.begin();
 			iter_proto_iDST_TWR != iter_DST_destination->second->proto_iSRC_TWR.end();
