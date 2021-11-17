@@ -4421,7 +4421,7 @@ void convert_select(string &query, string remote_FROM) {
 			re_unique("\\bUNIQUE\\b", regex_constants::nosubs | regex_constants::icase),
 			re_corresp("\\bCORRESPONDING\\b", regex_constants::nosubs | regex_constants::icase),
 			re_match("\\bMATCH\\b", regex_constants::nosubs | regex_constants::icase),
-			re_ties("\\bTIES\\b", regex_constants::nosubs | regex_constants::icase),
+			re_percent("\\bPERCENT\\b", regex_constants::nosubs | regex_constants::icase),
 			re_when("\\bWHEN\\b", regex_constants::nosubs | regex_constants::icase),
 			re_then("\\bTHEN\\b|,|\\(|\\)", regex_constants::nosubs | regex_constants::icase);
 	const int m[2] = { -1, 0 };
@@ -4456,7 +4456,7 @@ void convert_select(string &query, string remote_FROM) {
 		THR(regex_search(iter_split_str, re_unique), unsupported_exception("F291 not supported"));
 		THR(regex_search(iter_split_str, re_corresp), unsupported_exception("F301 not supported"));
 		THR(regex_search(iter_split_str, re_match), unsupported_exception("F741 not supported"));
-		THR(regex_search(iter_split_str, re_ties), unsupported_exception("F867 not supported"));
+		THR(regex_search(iter_split_str, re_percent), unsupported_exception("F866 not supported"));
 
 		/* checking for potential F263 */
 		iter_search_from = iter_split_str.begin();
@@ -4600,7 +4600,7 @@ void convert_select(string &query, string remote_FROM) {
 	//F841: LIKE_REGEX predicate
 	//F846: Octet support in regular expression operators
 	//F847: Nonconstant regular expressions
-	//F867: FETCH FIRST clause: WITH TIES option
+	//F866: FETCH FIRST clause: PERCENT option
 }
 
 void print_message_cpp(ostream &os, string msg) noexcept {
