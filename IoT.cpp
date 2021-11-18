@@ -806,7 +806,7 @@ struct opensock {
 #define TLS_BACKLOG 10
 
 static_assert(sizeof(in_addr) == sizeof(BYTE4), "sizeof(in_addr) != sizeof(BYTE4)");
-
+//todo sql injection
 EVP_CIPHER_CTX *cipherctx;
 
 EVP_MD_CTX *mdctx;
@@ -4123,8 +4123,8 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	}
 	PQclear(res_message);
 	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
-	value = PQgetvalue(res_rules, i, offset + 12);
-	if (*value != '\0') {
+	if (!PQgetisnull(res_rules, i, offset + 12)) {
+		value = PQgetvalue(res_rules, i, offset + 12);
 		LOG_CPP("activating rule " << value << endl);
 		PQclear(execcheckreturn("UPDATE rules SET is_active = TRUE WHERE id = "s + value
 				+ " AND username = \'" + current_username + '\''));
