@@ -998,7 +998,7 @@ void formatted_message::verify() {
 	delete[] signature;
 	EVP_PKEY_free(senders_public_key);
 }
-
+//todo message specifications
 EVP_PKEY *get_private_key(BYTE8 addr) {
 	FILE *file = fopen(("privateKeys/"s + BYTE8_to_c17charp(addr) + ".pem").c_str(), "rb");
 	EVP_PKEY *retval;
@@ -4135,8 +4135,8 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 			reset = true;
 		}
 	}
-	value = PQgetvalue(res_rules, i, offset + 13);
-	if (*value != '\0') {
+	if (!PQgetisnull(res_rules, i, offset + 13)) {
+		value = PQgetvalue(res_rules, i, offset + 13);
 		LOG_CPP("deactivating rule " << value << endl);
 		PQclear(execcheckreturn("UPDATE rules SET is_active = FALSE WHERE id = "s + value
 				+ " AND username = \'" + current_username + '\''));
