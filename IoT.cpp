@@ -797,7 +797,7 @@ struct opensock {
 	SSL *ssl;
 };
 
-#define TCP_PORT 60000
+#define TCP_PORT 000
 
 #define TLS_PORT 60001
 
