@@ -797,9 +797,9 @@ struct opensock {
 	SSL *ssl;
 };
 
-#define TCP_PORT 000
+#define TCP_PORT 44000
 
-#define TLS_PORT 60001
+#define TLS_PORT 44001
 
 #define TCP_BACKLOG 10
 
@@ -1927,9 +1927,9 @@ void tcp::stop() {
 
 #define MAX_DEVICE_INDEX 10
 
-#define UDP_PORT 60000
+#define UDP_PORT 44000
 
-#define DTLS_PORT 60001
+#define DTLS_PORT 44001
 
 #define PRLIMIT 16777216
 
