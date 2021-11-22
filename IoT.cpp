@@ -554,7 +554,7 @@ ostream &operator<<(ostream &os, const protocol &proto) noexcept;
 
 void *memcpy_reverse(void *dst, const void *src, size_t size) noexcept;
 
-string find_owner(string tablename);
+string find_owner(string tablename) noexcept;
 
 bool is_address_table(string tablename);
 
@@ -564,7 +564,7 @@ BYTE4 givecrc32c(const BYTE *msg, BYTE2 len) noexcept;
 
 ostream &operator<<(ostream &os, const formatted_message &fmsg) noexcept;
 
-bool is_reader(string tablename, string username);
+bool is_reader(string tablename, string username) noexcept;
 
 string address_to_table(BYTE8 address);
 
@@ -619,7 +619,7 @@ int find_next_lower_device(int sock, ifreq &ifr, int &i);
 
 int find_next_lower_bluetooth(int sock, hci_dev_info &hdi, int &i);
 
-void sig_ign(int sig);
+void sig_ign(int sig) noexcept;
 
 extern "C" const char *SSL_error_string(int e, char *buf);
 
@@ -2785,7 +2785,7 @@ void destroy_vars() {
 #endif
 }
 
-void sig_ign(int sig) {
+void sig_ign(int sig) noexcept {
 	LOG_CPP("handling signal " << strsignal(sig) << " for thread " << this_thread::get_id()
 			<< endl);
 }
@@ -3486,7 +3486,7 @@ ostream &operator<<(ostream &os, const my_time_point &point) noexcept {
 	return os << put_time(localtime(&t), "%Y-%m-%d %H:%M:%S");
 }
 
-string find_owner(string tablename) {
+string find_owner(string tablename) noexcept {
 	for (auto t_u_i = table_user_isreadonly.find(tablename);
 			t_u_i != table_user_isreadonly.cend() && t_u_i->first == tablename; t_u_i++) {
 		if (t_u_i->second.second) {
@@ -3546,7 +3546,7 @@ void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 	send_formatted_message(fmsg.release());
 }
 
-bool is_reader(string tablename, string username) {
+bool is_reader(string tablename, string username) noexcept {
 	for (auto t_u_i = table_user_isreadonly.find(tablename);
 			t_u_i != table_user_isreadonly.cend() && t_u_i->first == tablename; t_u_i++) {
 		if (t_u_i->second.first == username) {
