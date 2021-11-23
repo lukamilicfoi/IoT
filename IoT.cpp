@@ -556,7 +556,7 @@ void *memcpy_reverse(void *dst, const void *src, size_t size) noexcept;
 
 string find_owner(string tablename) noexcept;
 
-bool is_address_table(string tablename);
+bool is_address_table(string tablename) noexcept;
 
 void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg);
 
@@ -566,7 +566,7 @@ ostream &operator<<(ostream &os, const formatted_message &fmsg) noexcept;
 
 bool is_reader(string tablename, string username) noexcept;
 
-string address_to_table(BYTE8 address);
+string address_to_table(BYTE8 address) noexcept;
 
 void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg);
 
@@ -633,7 +633,7 @@ protocol *find_protocol_by_id(const char *id);
 
 protocol *find_protocol_by_name(const char *name);
 
-bool check_permissions(string tablename, BYTE8 address, bool isreadonly);
+bool check_permissions(string tablename, BYTE8 address, bool isreadonly) noexcept;
 
 class protocol {
 
@@ -3496,7 +3496,7 @@ string find_owner(string tablename) noexcept {
 	return is_address_table(tablename) ? "root" : "public";
 }
 
-bool is_address_table(string tablename) {
+bool is_address_table(string tablename) noexcept {
 	return tablename.front() == 't' && tablename.length() == 17 && tablename != "table_constraints";
 }
 
@@ -3556,7 +3556,7 @@ bool is_reader(string tablename, string username) noexcept {
 	return is_address_table(tablename);
 }
 
-string address_to_table(BYTE8 address) {
+string address_to_table(BYTE8 address) noexcept {
 	return "t"s + BYTE8_to_c17charp(address);
 }
 
@@ -3873,7 +3873,7 @@ raw_message *receive_raw_message() {
 }
 #endif /* OFFLINE */
 
-bool check_permissions(string tablename, BYTE8 address, bool isreadonly) {
+bool check_permissions(string tablename, BYTE8 address, bool isreadonly) noexcept {
 	string tablename_owner = find_owner(tablename),
 			address_owner = find_owner(address_to_table(address));
 
