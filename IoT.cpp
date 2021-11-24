@@ -299,8 +299,7 @@ struct raw_message {
 	~raw_message();
 };
 
-raw_message::raw_message(BYTE *msg) : imm_addr(), TML(), TWR(), proto(), CCF(),
-		ACF(), msg(msg), broadcast(), override_implicit_rules() { }
+raw_message::raw_message(BYTE *msg) : imm_addr(), TML(), TWR(), proto(), CCF(), ACF(), msg(msg), broadcast(), override_implicit_rules() { }
 
 raw_message::~raw_message() {
 	delete[] msg;
@@ -4683,6 +4682,14 @@ void unsub(string _id, BYTE8 address) {
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS function_" + addr_id + " CASCADE"));
 }
 
+/*
+ * SELECT can be shortened by:
+ * - leaving out FROM literal
+ * - leaving out entire FROM
+ * - removing -- and /*
+ * - removing spaces and semicolon
+ * - SQL encoding
+ */
 void sel(string query, BYTE8 address) {
 	regex re("(?:FROM|JOIN) +([a-z0-9]+)", regex_constants::icase);//must ignore case for security
 
