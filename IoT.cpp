@@ -299,7 +299,8 @@ struct raw_message {
 	~raw_message();
 };
 
-raw_message::raw_message(BYTE *msg) : imm_addr(), TML(), TWR(), proto(), CCF(), ACF(), msg(msg), broadcast(), override_implicit_rules() { }
+raw_message::raw_message(BYTE *msg) : imm_addr(), TML(), TWR(), proto(), CCF(), ACF(), msg(msg),
+		broadcast(), override_implicit_rules() { }
 
 raw_message::~raw_message() {
 	delete[] msg;
@@ -4901,6 +4902,12 @@ void send_raw_message(raw_message *rmsg) {
 }
 #endif /* OFFLINE */
 
+/*
+ * DATA can be shortened by:
+ * - leaving out header parts
+ * - leaving out header completely
+ * - SQL encoding
+ */
 void ins(string data, BYTE8 address) {
 	string addr(BYTE8_to_c17charp(address));
 	const char *type;
