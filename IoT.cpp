@@ -207,8 +207,7 @@ struct header {
 static_assert(sizeof(header) == sizeof(BYTE), "sizeof(header) != sizeof(BYTE)");
 
 const BYTE header::lookup_table[16] = {
-		0b0000, 0b1000, 0b0100, 0b1100,
-		0b0010, 0b1010, 0b0110, 0b1110,
+		0b0000, 0b1000, 0b0100, 0b1100, 0b0010, 0b1010, 0b0110, 0b1110,
 		0b0001, 0b1001, 0b0101, 0b1101,
 		0b0011, 0b1011, 0b0111, 0b1111
 };
@@ -4625,6 +4624,9 @@ void format_select(string &query) {
 	LOG_CPP(";\" to \"" << query << ";\"" << endl);
 }
 
+/*
+ * SELECT_SUBSCRIBE can be shortened the same way SELECT can be
+ */
 void sub(string query, string _id, BYTE8 address) {
 	string addr_id(BYTE8_to_c17charp(address) + _id);
 	regex re("(?:FROM|JOIN) +([a-z0-9]+)");//deliberately not ignoring case
