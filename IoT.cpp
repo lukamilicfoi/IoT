@@ -208,8 +208,7 @@ static_assert(sizeof(header) == sizeof(BYTE), "sizeof(header) != sizeof(BYTE)");
 
 const BYTE header::lookup_table[16] = {
 		0b0000, 0b1000, 0b0100, 0b1100, 0b0010, 0b1010, 0b0110, 0b1110,
-		0b0001, 0b1001, 0b0101, 0b1101,
-		0b0011, 0b1011, 0b0111, 0b1111
+		0b0001, 0b1001, 0b0101, 0b1101, 0b0011, 0b1011, 0b0111, 0b1111
 };
 
 BYTE header::reverse_byte(BYTE B) noexcept {
@@ -4667,6 +4666,9 @@ void sub(string query, string _id, BYTE8 address) {
 	}
 }
 
+/*
+ * UNSUBSCRIBE_ALL can be shortened the same way UNSUBSCRIBE can be
+ */
 void unsub(string _id, BYTE8 address) {
 	string addr_id(BYTE8_to_c17charp(address) + _id);
 
