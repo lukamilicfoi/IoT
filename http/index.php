@@ -167,7 +167,7 @@ if (checkAuthorization(5, 'inject messages')) {
 			write protocol as a string, e.g., tcp.<br/><br/>
 <?php
 }
-if (checkAuthorization(6, 'send queries to database')) {
+if (checkAuthorization(7, 'send queries to database')) {
 	if (!empty($_GET['query'])) {
 		$h_query = '&apos;' . htmlspecialchars($_GET['query']) . '&apos;';
 		if (!$_SESSION['is_root']) {
@@ -231,7 +231,7 @@ if (checkAuthorization(6, 'send queries to database')) {
 	Write query as a string, e.g., SELECT a FROM b;.<br/><br/>
 <?php
 }
-if (checkAuthorization(11, 'manually execute timed rules')) {
+if (checkAuthorization(16, 'manually execute timed rules')) {
 	if (!empty($_GET['username']) && !empty($_GET['id'])) {
 		$s_username = pg_escape_literal($_GET['username']);
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']);
@@ -268,25 +268,27 @@ if (checkAuthorization(11, 'manually execute timed rules')) {
 	Write username and rule as a string and an integer, e.g., root and 11.<br/><br/>
 <?php
 }
-if (checkAuthorization(7, 'view rules')) {
+if (checkAuthorization(8, 'view rules')) {
 ?>
 	<a href="view_rules.php">View rules</a><br/>
 <?php
 }
 ?>
+<a href="view_certificates_and_private_keys.php">View certificates and private keys</a><br/>
 <a href="view_users.php">View users</a><br/>
+<a href="view_adapters_and_underlying_protocols.php">View adapters and underlying protocols</a><br/>
 <?php
-if (checkAuthorization(8, 'view configuration')) {
+if (checkAuthorization(10, 'view configuration')) {
 ?>
 	<a href="view_configuration.php">View configuration</a><br/>
 <?php
 }
-if (checkAuthorization(9, 'view permissions')) {
+if (checkAuthorization(12, 'view permissions')) {
 ?>
 	<a href="view_permissions.php">View permissions</a><br/>
 <?php
 }
-if (checkAuthorization(10, 'view remotes')) {
+if (checkAuthorization(14, 'view remotes')) {
 ?>
 	<a href="view_remotes.php">View remotes</a><br/>
 <?php

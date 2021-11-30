@@ -97,43 +97,54 @@ if (checkAuthorization(9, 'view permissions')) {
 			<tr>
 				<th>Tablename</th>
 				<th>Username</th>
-				<th>Actions</th>
+				<th>Is read only?</th>
+<?php
+				if ($can_edit_permissions) {
+?>
+					<th>Actions</th>
+<?php
+				}
+?>
 			</tr>
-			<tr>
-				<td>
-					<input form="insert" type="text" name="tablename"/>
-				</td>
-				<td>
 <?php
-					if ($_SESSION['is_administrator']) {
+			if ($can_edit_permissions) {
 ?>
-						<input form="insert" type="text" name="username"/>
+				<tr>
+					<td>
+						<input form="insert" type="text" name="tablename"/>
+					</td>
+					<td>
 <?php
-					} else {
-						echo "<input type=\"text\" value=\"{$_SESSION['h1username']}\"
-								disabled=\"disabled\"/>\n";
-						echo "<input form=\"insert\" type=\"hidden\" name=\"username\"
-								value=\"{$_SESSION['h1username']}\"/>\n";
-					}
+						if ($_SESSION['is_administrator']) {
 ?>
-				</td>
-				<td>
-					<form id="insert" action="" method="GET">
-						<input type="submit" name="insert" value="INSERT"/><br/>
-						<input type="reset" value="reset"/>
-					</form>
+							<input form="insert" type="text" name="username"/>
 <?php
-					if ($_SESSION['is_root']) {
+						} else {
+							echo "<input type=\"text\" value=\"{$_SESSION['h1username']}\"
+									disabled=\"disabled\"/>\n";
+							echo "<input form=\"insert\" type=\"hidden\" name=\"username\"
+									value=\"{$_SESSION['h1username']}\"/>\n";
+						}
 ?>
-						<form action="" method="GET">
-							<input type="submit" name="truncate" value="TRUNCATE"/>
+					</td>
+					<td>
+						<form id="insert" action="" method="GET">
+							<input type="submit" name="insert" value="INSERT"/><br/>
+							<input type="reset" value="reset"/>
 						</form>
 <?php
-					}
+						if ($_SESSION['is_root']) {
 ?>
-				</td>
-			</tr>
+							<form action="" method="GET">
+								<input type="submit" name="truncate" value="TRUNCATE"/>
+							</form>
 <?php
+						}
+?>
+					</td>
+				</tr>
+<?php
+			}
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 ?>
 				<tr>
@@ -159,25 +170,31 @@ if (checkAuthorization(9, 'view permissions')) {
 						}
 ?>
 					</td>
-					<td>
 <?php
-						echo "<form id=$form action=\"\" method=\"GET\">\n";
-							echo "<input type=\"hidden\" name=\"key1\" value=\"$tablename\"/>\n";
-							echo "<input type=\"hidden\" name=\"key2\" value=\"$username\"/>\n";
+					if ($can_edit_permissions) {
 ?>
-							<input type="submit" name="update" value="UPDATE"/>
-							<input type="reset" value="reset"/>
+						<td>
 <?php
-						echo "</form>\n";
+							echo "<form id=$form action=\"\" method=\"GET\">\n";
+								echo "<input type=\"hidden\" name=\"key1\" value=\"$tablename\"/>\n";
+								echo "<input type=\"hidden\" name=\"key2\" value=\"$username\"/>\n";
 ?>
-						<form action="" method="GET">
+								<input type="submit" name="update" value="UPDATE"/>
+								<input type="reset" value="reset"/>
 <?php
-							echo "<input type=\"hidden\" name=\"key1\" value=\"$tablename\"/>\n";
-							echo "<input type=\"hidden\" name=\"key2\" value=\"$username\"/>\n";
+							echo "</form>\n";
 ?>
-							<input type="submit" name="delete" value="DELETE"/>
-						</form>
-					</td>
+							<form action="" method="GET">
+<?php
+								echo "<input type=\"hidden\" name=\"key1\" value=\"$tablename\"/>\n";
+								echo "<input type=\"hidden\" name=\"key2\" value=\"$username\"/>\n";
+?>
+								<input type="submit" name="delete" value="DELETE"/>
+							</form>
+						</td>
+<?php
+					}
+?>
 				</tr>
 <?php
 			}
