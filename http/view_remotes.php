@@ -1,66 +1,72 @@
 <?php
 require_once 'common.php';
-if (checkAuthorization(10, 'view remotes')) {
+if (checkAuthorization(14, 'view remotes')) {
 	if (isset($_GET['load'])) {
 		pg_free_result(pgquery('CALL load_store(TRUE);'));
 		$_SESSION['loaded'] = true;
 ?>
 		Loaded remotes from running program.<br/>
 <?php
-	} else if (isset($_GET['store'])) {
-		pg_free_result(pgquery('CALL load_store(FALSE);'));
-		unset($_SESSION['loaded']);
+	}
+	$can_edit_remotes = checkAuthorization(15, 'edit remotes');
+	if ($can_edit_remotes) {
+		if (isset($_GET['store'])) {
+			pg_free_result(pgquery('CALL load_store(FALSE);'));
+			unset($_SESSION['loaded']);
 ?>
-		Stored remotes to running program.<br/>
+			Stored remotes to running program.<br/>
 <?php
-	} else if (!empty($_GET['add'])) {
-		$s1add = pgescapename($_GET['add']);
-		$s2add = pgescapebytea($_GET['add']);
-		$h_add = 'X&apos;' . htmlspecialchars($_GET['add']) . '&apos;';
-		$result1 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1add;");
-		$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1add
-				AND username = {$_SESSION['s_username']};");
-		$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users
-				ON table_user.username = users.username
-				WHERE NOT users.is_administrator AND table_user.tablename = $s1add;");
-		if (!pg_fetch_row($result1) || pg_fetch_row($result2) || $_SESSION['is_administrator']
-				&& pg_fetch_row($result3) || $_SESSION['is_root']) {
-			pg_free_result(pgquery("INSERT INTO addr_oID(addr, out_ID) VALUES($s2add, "
-					. rand(0, 255) . ');'));
-			echo "Remote $h_add added.\n";
-		}
-		pg_free_result($result1);
-		pg_free_result($result2);
-		pg_free_result($result3);
-	} else if (!empty($_GET['remove'])) {
-		$s1remove = pgescapename($_GET['remove']);
-		$s2remove = pgescapebytea($_GET['remove']);
-		$h_remove = 'X&apos;' . htmlspecialchars($_GET['remove']) . '&apos;';
-		$u_remove = urlencode($_GET['remove']);
-		if (isset($_GET['confirm'])) {
-			$result1 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1remove;");
-			$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1remove
-					AND username = {$_SESSION['s_username']};");
+		} else if (!empty($_GET['add'])) {
+			$s1add = pgescapename($_GET['add']);
+			$s2add = pgescapebytea($_GET['add']);
+			$h_add = 'X&apos;' . htmlspecialchars($_GET['add']) . '&apos;';
+			$result1 = pgquery("SELECT TRUE FROM table_user
+					WHERE tablename = $s1add AND NOT is_read_only;");
+			$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1add
+				AND username = {$_SESSION['s_username']} AND NOT is_read_only;");
 			$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users
 					ON table_user.username = users.username WHERE NOT users.is_administrator
-					AND table_user.tablename = $s1remove;");
+					AND table_user.tablename = $s1add AND NOT is_read_only;");
 			if (!pg_fetch_row($result1) || pg_fetch_row($result2) || $_SESSION['is_administrator']
 					&& pg_fetch_row($result3) || $_SESSION['is_root']) {
-				pg_free_result(pgquery("DELETE FROM addr_oID WHERE addr = $s2remove;"));
-				echo "Remote $h_remove removed.\n";
+				pg_free_result(pgquery("INSERT INTO addr_oID(addr, out_ID) VALUES($s2add, "
+						. rand(0, 255) . ');'));
+				echo "Remote $h_add added.\n";
 			}
 			pg_free_result($result1);
 			pg_free_result($result2);
 			pg_free_result($result3);
-		} else {
+		} else if (!empty($_GET['remove'])) {
+			$s1remove = pgescapename($_GET['remove']);
+			$s2remove = pgescapebytea($_GET['remove']);
+			$h_remove = 'X&apos;' . htmlspecialchars($_GET['remove']) . '&apos;';
+			$u_remove = urlencode($_GET['remove']);
+			if (isset($_GET['confirm'])) {
+				$result1 = pgquery("SELECT TRUE FROM table_user
+						WHERE tablename = $s1remove AND NOT is_read_only;");
+				$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1remove
+						AND username = {$_SESSION['s_username']} AND NOT is_read_only;");
+				$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users
+						ON table_user.username = users.username WHERE NOT users.is_administrator
+						AND table_user.tablename = $s1remove AND NOT is_read_only;");
+				if (!pg_fetch_row($result1) || pg_fetch_row($result2) || $_SESSION['is_administrator']
+						&& pg_fetch_row($result3) || $_SESSION['is_root']) {
+					pg_free_result(pgquery("DELETE FROM addr_oID WHERE addr = $s2remove;"));
+					echo "Remote $h_remove removed.\n";
+				}
+				pg_free_result($result1);
+				pg_free_result($result2);
+				pg_free_result($result3);
+			} else {
 ?>
-			Are you sure?
+				Are you sure?
 <?php
-			echo "<a href=\"?remove=$u_remove&amp;confirm\">Yes</a>\n";
+				echo "<a href=\"?remove=$u_remove&amp;confirm\">Yes</a>\n";
 ?>
-			<a href="?">No</a>
+				<a href="?">No</a>
 <?php
-			exit(0);
+				exit(0);
+			}
 		}
 	}
 	if (isset($_SESSION['loaded'])) {

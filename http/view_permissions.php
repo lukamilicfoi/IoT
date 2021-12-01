@@ -1,75 +1,80 @@
 <?php
 require_once 'common.php';
-if (checkAuthorization(9, 'view permissions')) {
-	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
-		if (isset($_GET['confirm'])) {
-			pg_free_result(pgquery('TRUNCATE TABLE table_user;'));
-			echo "Table &quot;table_user&quot; truncated.<br/>\n";
-		} else {
-?>
-			Are you sure?
-			<a href="?truncate&amp;confirm">Yes</a>
-			<a href="">No</a>
-<?php
-			exit(0);
-		}
-	} else if (!empty($_GET['tablename']) && !empty($_GET['username'])) {
-		$s_tablename = pg_escape_literal($_GET['tablename']);
-		$h_tablename = '&apos;' . htmlspecialchars($_GET['tablename']) . '&apos;';
-		$s_username = pg_escape_literal($_GET['username']);
-		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
-		if (isset($_GET['insert'])) {
-			$result = pgquery("SELECT TRUE FROM users WHERE username = $s_username
-					AND NOT is_administrator;");
-			if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
-						&& pg_fetch_row($result) || $_SESSION['is_root']) {
-				pg_free_result(pgquery("INSERT INTO table_user(tablename, username)
-						VALUES($s_tablename, $s_username);"));
-				echo "Row ($h_tablename, $h_username) inserted.<br/>\n";
-			}
-		} else if (!empty($_GET['key1']) && !empty($_GET['key2']) && isset($_GET['update'])) {
-			$s_key1 = pg_escape_literal($_GET['key1']);
-			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
-			$s_key2 = pg_escape_literal($_GET['key2']);
-			$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
-			$result = pgquery("SELECT TRUE FROM users WHERE (username = $s_key2
-					OR username = $s_username) AND is_administrator;");
-			if ($_GET['key2'] == $_SESSION['username'] && $_GET['key2'] == $_GET['username']
-						|| $_SESSION['is_administrator'] && !pg_fetch_row($result)
-						|| $_SESSION['is_root']) {
-				pg_free_result(pgquery("UPDATE table_user SET (tablename, username)
-						= ($s_tablename, $s_username) WHERE tablename = $s_key1
-						AND username = $s_key2;"));
-				echo "Row ($h_key1, $h_key2) updated.<br/>\n";
-			}
-		}
-		pg_free_result($result);
-	} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
-		$s_key1 = pg_escape_literal($_GET['key1']);
-		$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
-		$u_key1 = urlencode($_GET['key1']);
-		$s_key2 = pg_escape_literal($_GET['key2']);
-		$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
-		$u_key2 = urlencode($_GET['key2']);
-		$result = pgquery("SELECT TRUE FROM users WHERE username = $s_key2 AND is_administrator;");
-		if (($_GET['key2'] == $_SESSION['username'] || $_SESSION['is_administrator']
-			 		&& !pg_fetch_row($result) || $_SESSION['is_root']) && isset($_GET['delete'])) {
+if (checkAuthorization(10, 'view permissions')) {
+	$can_edit_permissions = checkAuthorization(11, 'edit permissions');
+	if ($can_edit_permissions) {
+		if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM table_user WHERE tablename = $s_key1
-						AND username = $s_key2;"));
-				echo "Row ($h_key1, $h_key2) deleted.<br/>\n";
+				pg_free_result(pgquery('TRUNCATE TABLE table_user;'));
+				echo "Table &quot;table_user&quot; truncated.<br/>\n";
 			} else {
 ?>
 				Are you sure?
-<?php
-				echo "<a href=\"?key1=$u_key1&amp;key2=$u_key2&amp;delete&amp;confirm\">Yes</a>\n";
-?>
+				<a href="?truncate&amp;confirm">Yes</a>
 				<a href="">No</a>
 <?php
 				exit(0);
 			}
+		} else if (!empty($_GET['tablename']) && !empty($_GET['username'])) {
+			$s_tablename = pg_escape_literal($_GET['tablename']);
+			$h_tablename = '&apos;' . htmlspecialchars($_GET['tablename']) . '&apos;';
+			$s_username = pg_escape_literal($_GET['username']);
+			$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
+			$is_read_only = pgescapebool($_GET['is_read_only']);
+			if (isset($_GET['insert'])) {
+				$result = pgquery("SELECT TRUE FROM users WHERE username = $s_username
+						AND NOT is_administrator;");
+				if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
+							&& pg_fetch_row($result) || $_SESSION['is_root']) {
+					pg_free_result(pgquery("INSERT INTO table_user(tablename, username,
+							is_read_only) VALUES($s_tablename, $s_username, $is_read_only);"));
+					echo "Row ($h_tablename, $h_username, $is_read_only) inserted.<br/>\n";
+				}
+			} else if (!empty($_GET['key1']) && !empty($_GET['key2']) && isset($_GET['update'])) {
+				$s_key1 = pg_escape_literal($_GET['key1']);
+				$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
+				$s_key2 = pg_escape_literal($_GET['key2']);
+				$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
+				$result = pgquery("SELECT TRUE FROM users WHERE (username = $s_key2
+						OR username = $s_username) AND is_administrator;");
+				if ($_GET['key2'] == $_SESSION['username'] && $_GET['key2'] == $_GET['username']
+							|| $_SESSION['is_administrator'] && !pg_fetch_row($result)
+							|| $_SESSION['is_root']) {
+					pg_free_result(pgquery("UPDATE table_user SET (tablename, username,
+							is_read_only) = ($s_tablename, $s_username, $is_read_only)
+							WHERE tablename = $s_key1 AND username = $s_key2;"));
+					echo "Row ($h_key1, $h_key2, $is_read_only) updated.<br/>\n";
+				}
+			}
+			pg_free_result($result);
+		} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
+			$s_key1 = pg_escape_literal($_GET['key1']);
+			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
+			$u_key1 = urlencode($_GET['key1']);
+			$s_key2 = pg_escape_literal($_GET['key2']);
+			$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
+			$u_key2 = urlencode($_GET['key2']);
+			$result = pgquery("SELECT TRUE FROM users
+					WHERE username = $s_key2 AND is_administrator;");
+			if (($_GET['key2'] == $_SESSION['username'] || $_SESSION['is_administrator']
+					&& !pg_fetch_row($result) || $_SESSION['is_root']) && isset($_GET['delete'])) {
+				if (isset($_GET['confirm'])) {
+					pg_free_result(pgquery("DELETE FROM table_user WHERE tablename = $s_key1
+							AND username = $s_key2;"));
+					echo "Row ($h_key1, $h_key2) deleted.<br/>\n";
+				} else {
+?>
+					Are you sure?
+<?php
+					echo "<a href=\"?key1=$u_key1&amp;key2=$u_key2&amp;delete&amp;confirm\">Yes</a>\n";
+?>
+					<a href="">No</a>
+<?php
+					exit(0);
+				}
+			}
+			pg_free_result($result);
 		}
-		pg_free_result($result);
 	}
 	if ($_SESSION['is_root']) {
 		$result = pgquery('SELECT table_user.* FROM table_user LEFT OUTER JOIN users

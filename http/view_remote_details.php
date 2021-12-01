@@ -1,69 +1,78 @@
 <?php
 require_once 'common.php';
-if (checkAuthorization(10, 'view remotes') && !empty($_GET['addr'])) {
+if (checkAuthorization(14, 'view remotes') && !empty($_GET['addr'])) {
 	$s1addr = pgescapename($_GET['addr']);
 	$s2addr = pgescapebytea($_GET['addr']);
 	$h1addr = htmlspecialchars($_GET['addr']);
 	$h2addr = "X&apos;$h1addr&apos;";
 	$u_addr = urlencode($_GET['addr']);
-	$result1 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1addr;");
-	$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1addr
+	$result1 = pgquery("SELECT is_read_only FROM table_user WHERE tablename = $s1addr;");
+	$result2 = pgquery("SELECT is_read_only FROM table_user WHERE tablename = $s1addr
 			AND username = {$_SESSION['s_username']};");
-	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users ON table_user.username
+	$result3 = pgquery("SELECT is_read_only FROM table_user INNER JOIN users ON table_user.username
 			= users.username WHERE table_user.tablename = $s1addr AND NOT users.is_administrator;");
-	if ($_SESSION['is_root'] || !pg_fetch_row($result1) || pg_fetch_row($result2)
-				|| $_SESSION['is_administrator'] && pg_fetch_row($result3)) {
-		if (!empty($_GET['out_ID'])) {
-			$out_ID = intval($_GET['out_ID']);
-			pg_free_result(pgquery("UPDATE addr_oID SET out_ID = $out_ID WHERE addr = $s2addr;"));
-			echo "out_ID changed for DST $h2addr.<br/>\n";
-		} else if (isset($_GET['randomize'])) {
-			pg_free_result(pgquery('UPDATE addr_oID SET out_ID = ' . rand(0, 255)
-					. " WHERE addr = $s2addr;"));
-			echo "out_ID randomized for DST $h2addr.<br/>\n";
-		} else if (!empty($_GET['add_proto'])) {
-			$s_add_proto = pg_escape_literal($_GET['add_proto']);
-			$h_add_proto = '&apos;' . htmlspecialchars($_GET['add_proto']) . '&apos;';
-			pg_free_result(pgquery("INSERT INTO SRC_proto(SRC, proto) VALUES($s2addr,
-					(SELECT proto FROM proto_name WHERE name = $s_add_proto));"));
-			echo "proto $h_add_proto added for SRC $h2addr.<br/>\n";
-		} else if (!empty($_GET['add_DST'])) {
-			$s_add_DST = pgescapebytea($_GET['add_DST']);
-			$h_add_DST = 'X&apos;' . htmlspecialchars($_GET['add_DST']) . '&apos;';
-			pg_free_result(pgquery("INSERT INTO SRC_DST(SRC, DST) VALUES($s2addr, $s_add_DST);"));
-			echo "DST $h_add_DST added for SRC $h2addr.<br/>\n";
-		} else if (!empty($_GET['remove_proto'])) {
-			$s_remove_proto = pg_escape_literal($_GET['remove_proto']);
-			$h_remove_proto = '&apos;' . htmlspecialchars($_GET['remove_proto']) . '&apos;';
-			$u_remove_proto = urlencode($_GET['remove_proto']);
-			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM SRC_proto WHERE SRC = $s2addr
-						AND proto = (SELECT proto FROM proto_name WHERE name = $s_remove_proto);"));
-				echo "proto $h_remove_proto removed for SRC $h2addr.<br/>\n";
-			} else {
+	$row1 = pg_fetch_row($result1);
+	$row2 = pg_fetch_row($result2);
+	$row3 = pg_fetch_row($result3);
+	if ($_SESSION['is_root'] || !$row1 || $row2 || $_SESSION['is_administrator'] && $row3) {
+		$can_edit_remotes = checkAuthorization(15, 'edit remotes');
+		if ($can_edit_remotes && ($_SESSION['is_root'] || $row1[0] == 'f' || $row2[0] == 't'
+				|| $_SESSION['is_administrator'] && $row3[0] == 't')) {
+			if (!empty($_GET['out_ID'])) {
+				$out_ID = intval($_GET['out_ID']);
+				pg_free_result(pgquery("UPDATE addr_oID SET out_ID = $out_ID
+						WHERE addr = $s2addr;"));
+				echo "out_ID changed for DST $h2addr.<br/>\n";
+			} else if (isset($_GET['randomize'])) {
+				pg_free_result(pgquery('UPDATE addr_oID SET out_ID = ' . rand(0, 255)
+						. " WHERE addr = $s2addr;"));
+				echo "out_ID randomized for DST $h2addr.<br/>\n";
+			} else if (!empty($_GET['add_proto'])) {
+				$s_add_proto = pg_escape_literal($_GET['add_proto']);
+				$h_add_proto = '&apos;' . htmlspecialchars($_GET['add_proto']) . '&apos;';
+				pg_free_result(pgquery("INSERT INTO SRC_proto(SRC, proto) VALUES($s2addr,
+						(SELECT proto FROM proto_name WHERE name = $s_add_proto));"));
+				echo "proto $h_add_proto added for SRC $h2addr.<br/>\n";
+			} else if (!empty($_GET['add_DST'])) {
+				$s_add_DST = pgescapebytea($_GET['add_DST']);
+				$h_add_DST = 'X&apos;' . htmlspecialchars($_GET['add_DST']) . '&apos;';
+				pg_free_result(pgquery("INSERT INTO SRC_DST(SRC, DST)
+						VALUES($s2addr, $s_add_DST);"));
+				echo "DST $h_add_DST added for SRC $h2addr.<br/>\n";
+			} else if (!empty($_GET['remove_proto'])) {
+				$s_remove_proto = pg_escape_literal($_GET['remove_proto']);
+				$h_remove_proto = '&apos;' . htmlspecialchars($_GET['remove_proto']) . '&apos;';
+				$u_remove_proto = urlencode($_GET['remove_proto']);
+				if (isset($_GET['confirm'])) {
+					pg_free_result(pgquery("DELETE FROM SRC_proto WHERE SRC = $s2addr AND proto
+							= (SELECT proto FROM proto_name WHERE name = $s_remove_proto);"));
+					echo "proto $h_remove_proto removed for SRC $h2addr.<br/>\n";
+				} else {
 ?>
-				Are you sure?
+					Are you sure?
 <?php
-				echo "<a href=\"?addr=$u_addr&amp;remove_proto=$u_remove_proto&amp;confirm\">",
-						"Yes</a>\n";
-				echo "<a href=\"?addr=$u_addr\">No</a>\n";
-				exit(0);
-			}
-		} else if (!empty($_GET['remove_DST'])) {
-			$s_remove_DST = pgescapebytea($_GET['remove_DST']);
-			$h_remove_DST = 'X&apos;' . htmlspecialchars($_GET['remove_DST']) . '&apos;';
-			$u_remove_DST = urlencode($_GET['remove_DST']);
-			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM SRC_DST WHERE SRC = $s2addr
-						AND DST = $s_remove_DST;"));
-				echo "DST $h_remove_DST removed for SRC $h2addr.<br/>\n";
-			} else {
+					echo "<a href=\"?addr=$u_addr&amp;remove_proto=$u_remove_proto&amp;confirm\">",
+							"Yes</a>\n";
+					echo "<a href=\"?addr=$u_addr\">No</a>\n";
+					exit(0);
+				}
+			} else if (!empty($_GET['remove_DST'])) {
+				$s_remove_DST = pgescapebytea($_GET['remove_DST']);
+				$h_remove_DST = 'X&apos;' . htmlspecialchars($_GET['remove_DST']) . '&apos;';
+				$u_remove_DST = urlencode($_GET['remove_DST']);
+				if (isset($_GET['confirm'])) {
+					pg_free_result(pgquery("DELETE FROM SRC_DST WHERE SRC = $s2addr
+							AND DST = $s_remove_DST;"));
+					echo "DST $h_remove_DST removed for SRC $h2addr.<br/>\n";
+				} else {
 ?>
-				Are you sure?
+					Are you sure?
 <?php
-				echo "<a href=\"?addr=$u_addr&amp;remove_DST=$u_remove_DST&amp;confirm\">Yes</a>\n";
-				echo "<a href=\"?addr=$u_addr\">No</a>\n";
-				exit(0);
+					echo '<a href="',
+							"?addr=$u_addr&amp;remove_DST=$u_remove_DST&amp;confirm\">Yes</a>\n";
+					echo "<a href=\"?addr=$u_addr\">No</a>\n";
+					exit(0);
+				}
 			}
 		}
 ?>
