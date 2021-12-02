@@ -1,6 +1,6 @@
 <?php
 require_once 'common.php';
-if (checkAuthorization(10, 'view remotes') && !empty($_GET['SRC']) && !empty($_GET['DST'])) {
+if (checkAuthorization(14, 'view remotes') && !empty($_GET['SRC']) && !empty($_GET['DST'])) {
 	$s1SRC = pgescapename($_GET['SRC']);
 	$s2SRC = pgescapebytea($_GET['SRC']);
 	$h1SRC = htmlspecialchars($_GET['SRC']);
@@ -10,53 +10,61 @@ if (checkAuthorization(10, 'view remotes') && !empty($_GET['SRC']) && !empty($_G
 	$h1DST = htmlspecialchars($_GET['DST']);
 	$h2DST = "X&apos;$h1DST&apos;";
 	$u_DST = urlencode($_GET['DST']);
-	$result1 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1SRC;");
-	$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1SRC
+	$result1 = pgquery("SELECT is_read_only FROM table_user WHERE tablename = $s1SRC;");
+	$result2 = pgquery("SELECT is_read_only FROM table_user WHERE tablename = $s1SRC
 			AND username = {$_SESSION['s_username']};");
-	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users
+	$result3 = pgquery("SELECT is_read_only FROM table_user INNER JOIN users
 			ON table_user.username = users.username WHERE table_user.tablename = $s1SRC
 			AND NOT users.is_administrator;");
-	if (!pg_fetch_row($result1) || pg_fetch_row($result2) || pg_fetch_row($result3)
-			&& $_SESSION['is_administrator'] || $_SESSION['is_root']) {
-		if (isset($_GET['truncate'])) {
-			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST;"));
-				echo "Table &quot;ID_TWR&quot; truncated for SRC $h2SRC and DST $h2DST.<br/>\n";
-			} else {
+	$row1 = pg_fetch_row($result1);
+	$row2 = pg_fetch_row($result2);
+	$row3 = pg_fetch_row($result3);
+	if (!$row1 || $row2 || $row3 && $_SESSION['is_administrator'] || $_SESSION['is_root']) {
+		$can_edit_remotes = checkAuthorization(15, 'edit remotes');
+		if ($can_edit_remotes && ($row1[0] == 'f' || $row2[0] == 't'
+				|| $row3[0] == 't' && $_SESSION['is_administrator'] || $_SESSION['is_root']) {
+			if (isset($_GET['truncate'])) {
+				if (isset($_GET['confirm'])) {
+					pg_free_result(pgquery("DELETE FROM ID_TWR
+							WHERE SRC = $s2SRC AND DST = $s_DST;"));
+					echo "Table &quot;ID_TWR&quot; truncated for SRC $h2SRC and DST $h2DST.<br/>\n";
+				} else {
 ?>
-				Are you sure?
+					Are you sure?
 <?php
-				echo "<a href=\"?SRC=$u_SRC&amp;DST=$u_DST&amp;truncate&amp;confirm\">Yes</a>\n";
-				echo "<a href=\"?SRC=$u_SRC&amp;DST=$u_DST\">No</a>\n";
-				exit(0);
-			}
-		} else if (!empty($_GET['ID']) && !empty($_GET['TWR'])) {
-			$id = intval($_GET['ID']);
-			$TWR = 'TIMESTAMP \'' . pg_escape_string($_GET['TWR']) . '\'';
-			if (isset($_GET['insert'])) {
-				pg_free_result(pgquery("INSERT INTO ID_TWR(SRC, DST, ID, TWR)
-						VALUES($s2SRC, $s_DST, $id, $TWR);"));
-				echo "Mapping $id for SRC $h2SRC and DST $h2DST inserted.<br/>\n";
-			} else if (!empty($_GET['key']) && isset($_GET['update'])) {
+					echo '<a href="',
+							"?SRC=$u_SRC&amp;DST=$u_DST&amp;truncate&amp;confirm\">Yes</a>\n";
+					echo "<a href=\"?SRC=$u_SRC&amp;DST=$u_DST\">No</a>\n";
+					exit(0);
+				}
+			} else if (!empty($_GET['ID']) && !empty($_GET['TWR'])) {
+				$id = intval($_GET['ID']);
+				$TWR = 'TIMESTAMP \'' . pg_escape_string($_GET['TWR']) . '\'';
+				if (isset($_GET['insert'])) {
+					pg_free_result(pgquery("INSERT INTO ID_TWR(SRC, DST, ID, TWR)
+							VALUES($s2SRC, $s_DST, $id, $TWR);"));
+					echo "Mapping $id for SRC $h2SRC and DST $h2DST inserted.<br/>\n";
+				} else if (!empty($_GET['key']) && isset($_GET['update'])) {
+					$key = intval($_GET['key']);
+					pg_free_result(pgquery("UPDATE ID_TWR SET(ID, TWR) = ($id, $TWR)
+							WHERE SRC = $s2SRC AND DST = $s_DST AND ID = $key;"));
+					echo "Mapping $key for SRC $h2SRC and DST $h2DST updated.<br/>\n";
+				}
+			} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
 				$key = intval($_GET['key']);
-				pg_free_result(pgquery("UPDATE ID_TWR SET(ID, TWR) = ($id, $TWR)
-						WHERE SRC = $s2SRC AND DST = $s_DST AND ID = $key;"));
-				echo "Mapping $key for SRC $h2SRC and DST $h2DST updated.<br/>\n";
-			}
-		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
-			$key = intval($_GET['key']);
-			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST
-						AND ID = $key;"));
-				echo "Mapping $key for SRC $h2SRC and DST $h2DST deleted.<br/>\n";
-			} else {
+				if (isset($_GET['confirm'])) {
+					pg_free_result(pgquery("DELETE FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST
+							AND ID = $key;"));
+					echo "Mapping $key for SRC $h2SRC and DST $h2DST deleted.<br/>\n";
+				} else {
 ?>
-				Are you sure?
+					Are you sure?
 <?php
-				echo '<a href="?SRC=',
-						"$u_SRC&amp;DST=$u_DST&amp;key=$key&amp;delete&amp;confirm\">Yes</a>\n";
-				echo "<a href=\"?SRC=$u_SRC&amp;DST=$u_DST\">No</a>\n";
-				exit(0);
+					echo '<a href="?SRC=',
+							"$u_SRC&amp;DST=$u_DST&amp;key=$key&amp;delete&amp;confirm\">Yes</a>\n";
+					echo "<a href=\"?SRC=$u_SRC&amp;DST=$u_DST\">No</a>\n";
+					exit(0);
+				}
 			}
 		}
 		$result = pgquery("SELECT ID, TWR FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST

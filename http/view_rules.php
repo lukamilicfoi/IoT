@@ -1,120 +1,126 @@
 <?php
 require_once 'common.php';
-if (checkAuthorization(7, 'view rules')) {
-	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
-		if (isset($_GET['confirm'])) {
-			$result = pgquery('TRUNCATE TABLE rules CASCADE;');
-			echo "Table &quot;rules&quot; truncated.<br/>\n";
-			pg_free_result($result);
-		} else {
-?>
-			Are you sure?
-			<a href="?truncate&amp;confirm">Yes</a>
-			<a href="?">No</a>
-<?php
-			exit(0);
-		}
-	} else if (!empty($_GET['username']) && !empty($_GET['id'])) {
-		$s_username = pg_escape_literal($_GET['username']);
-		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
-		$id = intval($_GET['id']);
-		if (isset($_GET['insert'])) {
-			$result = pgquery("SELECT TRUE FROM users WHERE username = $s_username
-					AND NOT is_administrator;");
-			if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
-					&& pg_fetch_row($result) || $_SESSION['is_root']) {
-				pg_free_result(pgquery("INSERT INTO rules(username, id, send_receive_seconds,
-						filter, drop_modify_nothing, modification, query_command_nothing,
-						query_command_1, send_inject_query_command_nothing, query_command_2,
-						proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate,
-						deactivate, is_active) VALUES($s_username, $id, "
-						. intval($_GET['send_receive_seconds']) . ', '
-						. pg_escape_literal($_GET['filter']) . ', '
-						. intval($_GET['drop_modify_nothing']) . ', '
-						. (!empty($_GET['modification']) ? pg_escape_literal($_GET['modification'])
-						: 'NULL') . ', ' . intval($_GET['query_command_nothing']) . ', '
-						. (!empty($_GET['query_command_1'])
-						? pg_escape_literal($_GET['query_command_1']) : 'NULL') . ', '
-						. intval($_GET['send_inject_query_command_nothing']) . ', '
-						. (!empty($_GET['query_command_2'])
-						? pg_escape_literal($_GET['query_command_2']) : 'NULL') . ', '
-						. (!empty($_GET['proto_id'])
-						? '(SELECT proto FROM proto_name WHERE name = '
-						. pg_escape_literal($_GET['proto_id']) : 'NULL') . ', '
-						. (!empty($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL')
-						. ', ' . pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF'])
-						. ', ' . pgescapebool($_GET['broadcast']) . ', '
-						. pgescapebool($_GET['override_implicit_rules']) . ', '
-						. (!empty($_GET['activate']) ? intval($_GET['activate']) : 'NULL') . ', '
-						. (!empty($_GET['deactivate']) ? intval($_GET['deactivate']) : 'NULL')
-						. ', ' . pgescapebool($_GET['is_active']) . ');'));
-				echo "For username $h_username rule $id inserted.<br/>\n";
-			}
-			pg_free_result($result);
-		} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
-			$s_key1 = pg_escape_literal($_GET['key1']);
-			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
-			$key2 = intval($_GET['key2']);
-			$result = pgquery("SELECT TRUE FROM users WHERE (username = $s_key1
-					OR username = $s_username) AND is_administrator;");
-			if (($_GET['key1'] == $_SESSION['username'] && $_GET['key1'] == $_GET['username']
-					|| $_SESSION['is_administrator'] && !pg_fetch_row($result)
-				 	|| $_SESSION['is_root']) && isset($_GET['update'])) {
-				pg_free_result(pgquery("UPDATE rules SET (username, id, send_receive_seconds,
-						filter, drop_modify_nothing, modification, query_command_nothing,
-						query_command_1, send_inject_query_command_nothing, query_command_2,
-						proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate,
-						deactivate, is_active) = ($s_username, $id, "
-						. intval($_GET['send_receive_seconds']) . ', '
-						. pg_escape_literal($_GET['filter']) . ', '
-						. intval($_GET['drop_modify_nothing']) . ', '
-						. (!empty($_GET['modification']) ? pg_escape_literal($_GET['modification'])
-						: 'NULL') . ', ' . intval($_GET['query_command_nothing']) . ', '
-						. (!empty($_GET['query_command_1'])
-						? pg_escape_literal($_GET['query_command_1']) : 'NULL') . ', '
-						. intval($_GET['send_inject_query_command_nothing']) . ', '
-						. (!empty($_GET['query_command_2'])
-						? pg_escape_literal($_GET['query_command_2']) : 'NULL') . ', '
-						. (!empty($_GET['proto_id'])
-						? '(SELECT proto FROM proto_name WHERE name = '
-						. pg_escape_literal($_GET['proto_id']) : 'NULL') . ', '
-						. (!empty($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL')
-						. ', ' . pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF'])
-						. ', ' . pgescapebool($_GET['broadcast']) . ', '
-						. pgescapebool($_GET['override_implicit_rules']) . ', '
-						. (!empty($_GET['activate']) ? intval($_GET['activate']) : 'NULL') . ', '
-						. (!empty($_GET['deactivate']) ? intval($_GET['deactivate']) : 'NULL')
-						. ', ' . pgescapebool($_GET['is_active'])
-						. ") WHERE username = $s_key1 AND id = $key2;"));
-				echo "For username $h_key1 rule $key2 updated.<br/>\n";
-			}
-			pg_free_result($result);
-		}
-	} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
-		$s_key1 = pg_escape_literal($_GET['key1']);
-		$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
-		$u_key1 = urlencode($_GET['key1']);
-		$key2 = intval($_GET['key2']);
-		$result = pgquery("SELECT TRUE FROM users WHERE username = $s_key1
-				AND is_administrator;");
-		if (($_GET['key1'] == $_SESSION['username'] || $_SESSION['is_administrator']
-				&& !pg_fetch_row($result) || $_SESSION['is_root']) && isset($_GET['delete'])) {
+if (checkAuthorization(8, 'view rules')) {
+	$can_edit_rules = checkAuthorization(9, 'edit rules');
+	if ($can_edit_rules) {
+		if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM rules WHERE username = $s_key1
-						AND id = $key2;"));
-				echo "For username $h_key1 rule $key2 deleted.<br/>\n";
+				$result = pgquery('TRUNCATE TABLE rules CASCADE;');
+				echo "Table &quot;rules&quot; truncated.<br/>\n";
+				pg_free_result($result);
 			} else {
 ?>
 				Are you sure?
-<?php
-				echo "<a href=\"?key1=$u_key1&amp;key2=$key2&amp;delete&amp;confirm\">Yes</a>\n";
-?>
+				<a href="?truncate&amp;confirm">Yes</a>
 				<a href="?">No</a>
 <?php
 				exit(0);
 			}
+		} else if (!empty($_GET['username']) && !empty($_GET['id'])) {
+			$s_username = pg_escape_literal($_GET['username']);
+			$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
+			$id = intval($_GET['id']);
+			if (isset($_GET['insert'])) {
+				$result = pgquery("SELECT TRUE FROM users WHERE username = $s_username
+						AND NOT is_administrator;");
+				if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
+						&& pg_fetch_row($result) || $_SESSION['is_root']) {
+					pg_free_result(pgquery("INSERT INTO rules(username, id, send_receive_seconds,
+							filter, drop_modify_nothing, modification, query_command_nothing,
+							query_command_1, send_inject_query_command_nothing, query_command_2,
+							proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules,
+							activate, deactivate, is_active) VALUES($s_username, $id, "
+							. intval($_GET['send_receive_seconds']) . ', '
+							. pg_escape_literal($_GET['filter']) . ', '
+							. intval($_GET['drop_modify_nothing']) . ', '
+							. (!empty($_GET['modification'])
+							? pg_escape_literal($_GET['modification']) : 'NULL') . ', '
+							. intval($_GET['query_command_nothing']) . ', '
+							. (!empty($_GET['query_command_1'])
+							? pg_escape_literal($_GET['query_command_1']) : 'NULL') . ', '
+							. intval($_GET['send_inject_query_command_nothing']) . ', '
+							. (!empty($_GET['query_command_2'])
+							? pg_escape_literal($_GET['query_command_2']) : 'NULL') . ', '
+							. (!empty($_GET['proto_id'])
+							? '(SELECT proto FROM proto_name WHERE name = '
+							. pg_escape_literal($_GET['proto_id']) : 'NULL') . ', '
+							. (!empty($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr'])
+							: 'NULL') . ', ' . pgescapebool($_GET['CCF']) . ', '
+							. pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast'])
+							. ', ' . pgescapebool($_GET['override_implicit_rules']) . ', '
+							. (!empty($_GET['activate']) ? intval($_GET['activate']) : 'NULL')
+							. ', ' . (!empty($_GET['deactivate']) ? intval($_GET['deactivate'])
+							: 'NULL') . ', ' . pgescapebool($_GET['is_active']) . ');'));
+					echo "For username $h_username rule $id inserted.<br/>\n";
+				}
+				pg_free_result($result);
+			} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
+				$s_key1 = pg_escape_literal($_GET['key1']);
+				$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
+				$key2 = intval($_GET['key2']);
+				$result = pgquery("SELECT TRUE FROM users WHERE (username = $s_key1
+						OR username = $s_username) AND is_administrator;");
+				if (($_GET['key1'] == $_SESSION['username'] && $_GET['key1'] == $_GET['username']
+						|| $_SESSION['is_administrator'] && !pg_fetch_row($result)
+				 		|| $_SESSION['is_root']) && isset($_GET['update'])) {
+					pg_free_result(pgquery("UPDATE rules SET (username, id, send_receive_seconds,
+							filter, drop_modify_nothing, modification, query_command_nothing,
+							query_command_1, send_inject_query_command_nothing, query_command_2,
+							proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules,
+							activate, deactivate, is_active) = ($s_username, $id, "
+							. intval($_GET['send_receive_seconds']) . ', '
+							. pg_escape_literal($_GET['filter']) . ', '
+							. intval($_GET['drop_modify_nothing']) . ', '
+							. (!empty($_GET['modification'])
+							? pg_escape_literal($_GET['modification']) : 'NULL') . ', '
+							. intval($_GET['query_command_nothing']) . ', '
+							. (!empty($_GET['query_command_1'])
+							? pg_escape_literal($_GET['query_command_1']) : 'NULL') . ', '
+							. intval($_GET['send_inject_query_command_nothing']) . ', '
+							. (!empty($_GET['query_command_2'])
+							? pg_escape_literal($_GET['query_command_2']) : 'NULL') . ', '
+							. (!empty($_GET['proto_id'])
+							? '(SELECT proto FROM proto_name WHERE name = '
+							. pg_escape_literal($_GET['proto_id']) : 'NULL') . ', '
+							. (!empty($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr'])
+							: 'NULL') . ', ' . pgescapebool($_GET['CCF']) . ', '
+							. pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast'])
+							. ', ' . pgescapebool($_GET['override_implicit_rules']) . ', '
+							. (!empty($_GET['activate']) ? intval($_GET['activate']) : 'NULL')
+							. ', ' . (!empty($_GET['deactivate']) ? intval($_GET['deactivate'])
+							: 'NULL') . ', ' . pgescapebool($_GET['is_active'])
+							. ") WHERE username = $s_key1 AND id = $key2;"));
+					echo "For username $h_key1 rule $key2 updated.<br/>\n";
+				}
+				pg_free_result($result);
+			}
+		} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
+			$s_key1 = pg_escape_literal($_GET['key1']);
+			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
+			$u_key1 = urlencode($_GET['key1']);
+			$key2 = intval($_GET['key2']);
+			$result = pgquery("SELECT TRUE FROM users WHERE username = $s_key1
+					AND is_administrator;");
+			if (($_GET['key1'] == $_SESSION['username'] || $_SESSION['is_administrator']
+					&& !pg_fetch_row($result) || $_SESSION['is_root']) && isset($_GET['delete'])) {
+				if (isset($_GET['confirm'])) {
+					pg_free_result(pgquery("DELETE FROM rules WHERE username = $s_key1
+							AND id = $key2;"));
+					echo "For username $h_key1 rule $key2 deleted.<br/>\n";
+				} else {
+?>
+					Are you sure?
+<?php
+					echo '<a href="',
+							"?key1=$u_key1&amp;key2=$key2&amp;delete&amp;confirm\">Yes</a>\n";
+?>
+					<a href="?">No</a>
+<?php
+					exit(0);
+				}
+			}
+			pg_free_result($result);
 		}
-		pg_free_result($result);
 	}
 	if ($_SESSION['is_root']) {
 		$result = pgquery('SELECT rules.* FROM rules INNER JOIN users
