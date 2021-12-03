@@ -1,6 +1,7 @@
 <?php
 require_once 'common.php';
-if (checkAuthorization(3, 'view tables')) {
+$can_edit_tables = checkAuthorization(4, 'edit tables');
+if ($can_edit_tables) {
 	if (!empty($_GET['add'])) {
 		$s1add = pg_escape_identifier($_GET['add']);
 		$s2add = pg_escape_literal($_GET['add']);
@@ -14,14 +15,15 @@ if (checkAuthorization(3, 'view tables')) {
 		$s1remove = pg_escape_identifier($_GET['remove']);
 		$s2remove = pg_escape_literal($_GET['remove']);
 		$u_remove = urlencode($_GET['remove']);
-		$result1 = pgquery("SELECT username FROM table_user WHERE tablename = $s2remove;");
+		$result1 = pgquery("SELECT username FROM table_user
+				WHERE tablename = $s2remove AND NOT is_read_only;");
 		$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s2remove
-				AND username = {$_SESSION['s_username']};");
+				AND username = {$_SESSION['s_username']} AND NOT is_read_only;");
 		$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users
-				ON table_user.username = users.username
-				WHERE table_user.tablename = $s2remove AND NOT users.is_administrator;");
+				ON table_user.username = users.username WHERE table_user.tablename = $s2remove
+				AND NOT users.is_administrator AND NOT is_read_only;");
 		$row = pg_fetch_row($result1);
-		if (!$row || $row[0] === null || pg_fetch_row($result2) || pg_fetch_row($result3)
+		if (!$row || $row[0] == 'public' || pg_fetch_row($result2) || pg_fetch_row($result3)
 				&& $_SESSION['is_administrator'] || $_SESSION['is_root']) {
 			if (isset($_GET['confirm'])) {
 				pg_free_result(pgquery("DROP TABLE $s1remove;"));
@@ -41,6 +43,8 @@ if (checkAuthorization(3, 'view tables')) {
 		pg_free_result($result2);
 		pg_free_result($result3);
 	}
+}
+if (checkAuthorization(3, 'view tables')) {
 ?>
 	<form action="" method="GET">
 <?php
