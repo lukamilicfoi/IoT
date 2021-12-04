@@ -1,8 +1,8 @@
 <?php
 require_once 'common.php';
-if (checkAuthorization(8, 'view rules')) {
-	$can_edit_rules = checkAuthorization(9, 'edit rules');
-	if ($can_edit_rules) {
+$can_edit_rules = checkAuthorization(8, 'view rules')) {
+$can_edit_rules = checkAuthorization(9, 'edit rules');
+if ($can_edit_rules) {
 		if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 			if (isset($_GET['confirm'])) {
 				$result = pgquery('TRUNCATE TABLE rules CASCADE;');
@@ -122,6 +122,7 @@ if (checkAuthorization(8, 'view rules')) {
 			pg_free_result($result);
 		}
 	}
+if ($can_view_rules) {
 	if ($_SESSION['is_root']) {
 		$result = pgquery('SELECT rules.* FROM rules INNER JOIN users
 				ON rules.username = users.username ORDER BY users.is_administrator DESC,
@@ -171,9 +172,18 @@ if (checkAuthorization(8, 'view rules')) {
 				<th>Also deactivate rule number</th>
 				<th>Is active?</th>
 				<th>Last run on:</th>
-				<th>(actions)</th>
+<?php
+				if ($can_edit_rules) {
+?>
+					<th>(actions)</th>
+<?php
+				}
+?>
 			</tr>
-			<tr>
+<?php
+			if ($can_edit_rules) {
+?>
+				<tr>
 				<td nowrap="nowrap">
 <?php
 					if ($_SESSION['is_administrator']) {

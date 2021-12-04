@@ -1,23 +1,24 @@
 <?php
 require_once 'common.php';
-if (checkAuthorization(14, 'view remotes') && !empty($_GET['addr'])) {
+if (!empty($_GET['addr'])) {
 	$s1addr = pgescapename($_GET['addr']);
 	$s2addr = pgescapebytea($_GET['addr']);
 	$h1addr = htmlspecialchars($_GET['addr']);
 	$h2addr = "X&apos;$h1addr&apos;";
 	$u_addr = urlencode($_GET['addr']);
-	$result1 = pgquery("SELECT is_read_only FROM table_user WHERE tablename = $s1addr;");
-	$result2 = pgquery("SELECT is_read_only FROM table_user WHERE tablename = $s1addr
-			AND username = {$_SESSION['s_username']};");
-	$result3 = pgquery("SELECT is_read_only FROM table_user INNER JOIN users ON table_user.username
-			= users.username WHERE table_user.tablename = $s1addr AND NOT users.is_administrator;");
+	$result1 = pgquery("SELECT TRUE FROM table_user
+			WHERE tablename = $s1addr AND username = 'public' AND NOT is_read_only;");
+	$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1addr
+			AND username = {$_SESSION['s_username']}; AND NOT is_read_only");
+	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users
+			ON table_user.username = users.username WHERE table_user.tablename = $s1addr
+			AND NOT users.is_administrator AND NOT is_read_only;");
 	$row1 = pg_fetch_row($result1);
 	$row2 = pg_fetch_row($result2);
 	$row3 = pg_fetch_row($result3);
-	if ($_SESSION['is_root'] || !$row1 || $row2 || $_SESSION['is_administrator'] && $row3) {
+	if ($_SESSION['is_root'] || $row1 || $row2 || $_SESSION['is_administrator'] && $row3) {
 		$can_edit_remotes = checkAuthorization(15, 'edit remotes');
-		if ($can_edit_remotes && ($_SESSION['is_root'] || $row1[0] == 'f' || $row2[0] == 't'
-				|| $_SESSION['is_administrator'] && $row3[0] == 't')) {
+		if ($can_edit_remotes) {
 			if (!empty($_GET['out_ID'])) {
 				$out_ID = intval($_GET['out_ID']);
 				pg_free_result(pgquery("UPDATE addr_oID SET out_ID = $out_ID

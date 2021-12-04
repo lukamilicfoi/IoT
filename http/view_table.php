@@ -50,99 +50,81 @@ function standardToPostgresqlInput($data, $oid) {
 	}
 }
 
-if (checkAuthorization(3, 'view tables') && !empty($_GET['tablename'])) {
+if (!empty($_GET['tablename'])) {
+	$can_view_tables = ;
+	$can_edit_tables = ;
 	$s1tablename = pg_escape_literal($_GET['tablename']);
 	$s2tablename = pg_escape_identifier($_GET['tablename']);
 	$h1tablename = htmlspecialchars($_GET['tablename']);
 	$h2tablename = "&quot;$h1tablename&quot;";
 	$u_tablename = urlencode($_GET['tablename']);
-	$result1 = pgquery("SELECT username FROM table_user WHERE tablename = $s1tablename;");
-	$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1tablename
-			AND username = {$_SESSION['s_username']};");
-	$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users
-			ON table_user.username = users.username
-			WHERE table_user.tablename = $s1tablename AND NOT users.is_administrator;");
-	$row = pg_fetch_row($result1);
-	if (!$row || $row[0] === 'public' || pg_fetch_row($result2) || pg_fetch_row($result3)
-			&& $_SESSION['is_administrator'] || $_SESSION['is_root']) {
-		pg_free_result($result1);
-		pg_free_result($result2);
-		pg_free_result($result3);
-		$result1 = pgquery("SELECT usernaem FROM table_user
-				WHERE tablename = $s1tablename AND NOT is_readonly;");
-		$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s1tablename
-				AND username = {$_SESSION['s_username']} AND NOT is_read_only;");
-		$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users
-				ON table_user.username = users.username WHERE table_user.tablename = $s1tablename
-				AND NOT users.is_administrator AND NOT table_user.is_read_only;");
-		$can_edit_tables = checkAuthorization(4, 'edit tables');
-		$row = pg_fetch_row($result1);
-		if (!$row || $row[0] === 'public' || pg_fetch_row($result2) || pg_fetch_row($result3) {
-			if (isset($_GET['truncate'])) {
-				if (isset($_GET['confirm'])) {
-					$result = pgquery("TRUNCATE TABLE $s2tablename;");
-					echo "Table $h2tablename truncated.<br/>\n";
-					pg_free_result($result);
-				} else {
+	if ($can_edit_tables && can_edit_table($s1tablename)) {
+		if (isset($_GET['truncate'])) {
+			if (isset($_GET['confirm'])) {
+				$result = pgquery("TRUNCATE TABLE $s2tablename;");
+				echo "Table $h2tablename truncated.<br/>\n";
+				pg_free_result($result);
+			} else {
 ?>
-					Are you sure?
+				Are you sure?
 <?php
-					echo "<a href=\"?tablename=$u_tablename&amp;truncate&amp;confirm\">Yes</a>\n";
-					echo "<a href=\"?tablename=$u_tablename\">No</a>";
-					exit(0);
+				echo "<a href=\"?tablename=$u_tablename&amp;truncate&amp;confirm\">Yes</a>\n";
+				echo "<a href=\"?tablename=$u_tablename\">No</a>";
+				exit(0);
+			}
+		} else if (!empty($_GET['t'])) {
+			if (isset($_GET['insert'])) {
+				$t = htmlspecialchars($_GET['t']);
+				$result = pgquery("SELECT * FROM $s2tablename WHERE FALSE;");
+				$query = "INSERT INTO $s2tablename(";
+				for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
+					$query .= pg_field_name($result, $i) . ', ';
 				}
-			} else if (!empty($_GET['t'])) {
-				if (isset($_GET['insert'])) {
-					$t = htmlspecialchars($_GET['t']);
-					$result = pgquery("SELECT * FROM $s2tablename WHERE FALSE;");
-					$query = "INSERT INTO $s2tablename(";
-					for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
-						$query .= pg_field_name($result, $i) . ', ';
-					}
-					$query = substr($query, 0, -2) . ') VALUES(';
-					for ($i = 0; $i < $j; $i++) {
-						$query .= standardToPostgresqlInput($_GET[pg_field_name($result, $i)],
-								pg_field_type_oid($result, $i)) . ', ';
-					}
-					$result = pgquery(substr($query, 0, -2) . ');');
-					echo "Row $t inserted.<br/>\n";
-					pg_free_result($result);
-				} else if (!empty($_GET['key']) && isset($_GET['update'])) {
-					$s_key = 'TIMESTAMP \'' . pg_escape_string(substr($_GET['key'], 11, -1));
-					$h_key = htmlspecialchars($_GET['key']);
-					$result = pgquery("SELECT * FROM $s2tablename WHERE FALSE;");
-					$query = "UPDATE $s2tablename SET (";
-					for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
-						$query .= pg_field_name($result, $i) . ', ';
-					}
-					$query = substr($query, 0, -2) . ') = ROW (';
-					for ($i = 0; $i < $j; $i++) {
-						$query .= standardToPostgresqlInput($_GET[pg_field_name($result, $i)],
-								pg_field_type_oid($result, $i)) . ', ';
-					}
-					$result = pgquery(substr($query, 0, -2) . ") WHERE t = $s_key;");
-					echo "Row $h_key updated.<br/>\n";
-					pg_free_result($result);
+				$query = substr($query, 0, -2) . ') VALUES(';
+				for ($i = 0; $i < $j; $i++) {
+					$query .= standardToPostgresqlInput($_GET[pg_field_name($result, $i)],
+							pg_field_type_oid($result, $i)) . ', ';
 				}
-			} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
+				$result = pgquery(substr($query, 0, -2) . ');');
+				echo "Row $t inserted.<br/>\n";
+				pg_free_result($result);
+			} else if (!empty($_GET['key']) && isset($_GET['update'])) {
 				$s_key = 'TIMESTAMP \'' . pg_escape_string(substr($_GET['key'], 11, -1));
 				$h_key = htmlspecialchars($_GET['key']);
-				$u_key = urlencode($_GET['key']);
-				if (isset($_GET['confirm'])) {
-					$result = pgquery("DELETE FROM $s2tablename WHERE t = $s_key;");
-						echo "Row $h_key deleted.<br/>\n";
-						pg_free_result($result);
-				} else {
-?>
-					Are you sure?
-<?php
-					echo '<a href="?tablename=',
-							"$u_tablename&amp;key=$u_key&amp;delete&amp;confirm\">Yes</a>\n";
-					echo "<a href=\"?tablename=$u_tablename\">No</a>";
-					exit(0);
+				$result = pgquery("SELECT * FROM $s2tablename WHERE FALSE;");
+				$query = "UPDATE $s2tablename SET (";
+				for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
+					$query .= pg_field_name($result, $i) . ', ';
 				}
+				$query = substr($query, 0, -2) . ') = ROW (';
+				for ($i = 0; $i < $j; $i++) {
+					$query .= standardToPostgresqlInput($_GET[pg_field_name($result, $i)],
+							pg_field_type_oid($result, $i)) . ', ';
+				}
+				$result = pgquery(substr($query, 0, -2) . ") WHERE t = $s_key;");
+				echo "Row $h_key updated.<br/>\n";
+				pg_free_result($result);
+			}
+		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
+			$s_key = 'TIMESTAMP \'' . pg_escape_string(substr($_GET['key'], 11, -1));
+			$h_key = htmlspecialchars($_GET['key']);
+			$u_key = urlencode($_GET['key']);
+			if (isset($_GET['confirm'])) {
+				$result = pgquery("DELETE FROM $s2tablename WHERE t = $s_key;");
+					echo "Row $h_key deleted.<br/>\n";
+					pg_free_result($result);
+			} else {
+?>
+				Are you sure?
+<?php
+				echo '<a href="?tablename=',
+						"$u_tablename&amp;key=$u_key&amp;delete&amp;confirm\">Yes</a>\n";
+				echo "<a href=\"?tablename=$u_tablename\">No</a>";
+				exit(0);
 			}
 		}
+	}
+	if ($can_view_tables && can_edit_table($s1tablename)) {
 		$result = pgquery("TABLE $s2tablename ORDER BY t DESC;");
 		echo "Viewing table $h2tablename, newest first.\n";
 ?>

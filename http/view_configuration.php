@@ -1,24 +1,24 @@
 <?php
 require_once 'common.php';
-if (checkAuthorization(8, 'view configuration')) {
-	$result = pgquery("SELECT TRUE FROM users WHERE username = {$_SESSION['s_username']}
-			AND NOT is_administrator;");
-	if (isset($_GET['update']) && !empty($_GET['username'])
-				&& ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
-				&& pg_fetch_row($result) || $_SESSION['is_root'])) {
-		$s_username = pg_escape_literal($_GET['username']);
-		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
-		pg_free_result(pgquery('UPDATE configuration SET (forward_messages,
-				use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway)
-				= (' . pgescapebool($_GET['forward_messages']) . ', '
-				. pgescapebool($_GET['use_internet_switch_algorithm']) . ', '
-				. intval($_GET['nsecs_id']) . ', '. intval($_GET['nsecs_src']) . ', '
-				. pgescapebool($_GET['trust_everyone']) . ', '
-				. pgescapebytea($_GET['default_gateway']) . ") WHERE username = $s_username;"));
-		pg_free_result(pgquery('CALL config();'));
-		echo "Configuration updated for username $h_username.<br/>\n";
-	}
-	pg_free_result($result);
+$result = pgquery("SELECT TRUE FROM users WHERE username = {$_SESSION['s_username']}
+		AND NOT is_administrator;");
+if (checkAuthorization(11, 'edit configuration') && isset($_GET['update'])
+		&& !empty($_GET['username']) && ($_GET['username'] == $_SESSION['username']
+		|| $_SESSION['is_administrator'] && pg_fetch_row($result) || $_SESSION['is_root'])) {
+	$s_username = pg_escape_literal($_GET['username']);
+	$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
+	pg_free_result(pgquery('UPDATE configuration SET (forward_messages,
+			use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway)
+			= (' . pgescapebool($_GET['forward_messages']) . ', '
+			. pgescapebool($_GET['use_internet_switch_algorithm']) . ', '
+			. intval($_GET['nsecs_id']) . ', '. intval($_GET['nsecs_src']) . ', '
+			. pgescapebool($_GET['trust_everyone']) . ', ' . pgescapebytea($_GET['default_gateway'])
+			. ") WHERE username = $s_username;"));
+	pg_free_result(pgquery('CALL config();'));
+	echo "Configuration updated for username $h_username.<br/>\n";
+}
+pg_free_result($result);
+if (checkAuthorization(10, 'view configuration') {
 	if ($_SESSION['is_root']) {
 		$result = pgquery('SELECT configuration.* FROM configuration INNER JOIN users
 				ON configuration.username = users.username ORDER BY users.is_administrator DESC,

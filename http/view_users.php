@@ -17,53 +17,54 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 	}
 } else if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
 			|| $_SESSION['is_root']) && isset($_POST['insert']) && isset($_POST['username'])) {
-	$s_username = pg_escape_literal($_POST['username']);
-	$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
-	$query = 'INSERT INTO users(username, password';
-	$fields = array('is_administrator', 'can_view_tables', 'can_edit_tables', 'can_send_messages',
-			'can_inject_messages', 'can_send_queries', 'can_view_rules', 'can_edit_rules',
-			'can_view_configuration', 'can_edit_configuration', 'can_view_permissions',
-			'can_edit_permissions', 'can_view_remotes', 'can_edit_remotes', 'can_execute_rules',
-			'can_actually_login');
-	for ($i = 0; $i < 11; $i++) {
-		$query .= ", {$fields[$i]}";
-	}
-	$query .= ") VALUES($s_username, '"  . password_hash($_POST['password'], PASSWORD_DEFAULT) .
-			'\'';
-	for ($i = 0; $i < 11; $i++) {
-		$query .= ', ' . pgescapebool($_POST[$fields[$i]]);
-	}
-	pg_free_result(pgquery($query . ');'));
-	pg_free_result(pgquery("INSERT INTO configuration(username, forward_messages,
-			use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway)
-			SELECT $s_username, forward_messages, use_internet_switch_algorithm, nsecs_id,
-			nsecs_src, trust_everyone, default_gateway FROM configuration
-			WHERE username = 'root';"));
-	echo "User $h_username inserted.<br/>\n";
-} else if (isset($_POST['update1']) && isset($_POST['username'])) {
-	$s_username = pg_escape_literal($_POST['username']);
-	$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
-	$result = pgquery("SELECT TRUE FROM users WHERE username = $s_username
-			AND NOT is_administrator;");
-	if ($_SESSION['is_administrator'] && !isset($_POST['is_administrator']) && pg_fetch_row($result)
-			|| $_SESSION['is_root']) {
-		$query = 'UPDATE users SET (' . (!empty($_POST['password']) ? 'password, ' : '');
+		$s_username = pg_escape_literal($_POST['username']);
+		$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
+		$query = 'INSERT INTO users(username, password';
 		$fields = array('is_administrator', 'can_view_tables', 'can_edit_tables',
-				'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules',
-				'can_edit_rules', 'can_view_configuration', 'can_edit_configuration',
-				'can_view_permissions', 'can_edit_permissions', 'can_view_remotes',
-				'can_edit_remotes', 'can_execute_rules', 'can_actually_login');
-		for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 11; $i++) {
-			$query .= "{$fields[$i]}, ";
+			'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules',
+			'can_edit_rules', 'can_view_configuration', 'can_edit_configuration',
+			'can_view_permissions', 'can_edit_permissions', 'can_view_remotes', 'can_edit_remotes', 'can_execute_rules',
+			'can_actually_login');
+		for ($i = 0; $i < 11; $i++) {
+			$query .= ", {$fields[$i]}";
 		}
-		$query = substr($query, 0, -2) . ") = (" . (!empty($_POST['password'])
+		$query .= ") VALUES($s_username, '"  . password_hash($_POST['password'], PASSWORD_DEFAULT) .
+			'\'';
+		for ($i = 0; $i < 11; $i++) {
+			$query .= ', ' . pgescapebool($_POST[$fields[$i]]);
+		}
+		pg_free_result(pgquery($query . ');'));
+		pg_free_result(pgquery("INSERT INTO configuration(username, forward_messages,
+				use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway)
+				SELECT $s_username, forward_messages, use_internet_switch_algorithm, nsecs_id,
+				nsecs_src, trust_everyone, default_gateway FROM configuration
+				WHERE username = 'root';"));
+		echo "User $h_username inserted.<br/>\n";
+} else if (isset($_POST['update1']) && isset($_POST['username'])) {
+		$s_username = pg_escape_literal($_POST['username']);
+		$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
+		$result = pgquery("SELECT TRUE FROM users WHERE username = $s_username
+				AND NOT is_administrator;");
+		if ($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
+				&& pg_fetch_row($result)
+				|| $_SESSION['is_root']) {
+			$query = 'UPDATE users SET (' . (!empty($_POST['password']) ? 'password, ' : '');
+			$fields = array('is_administrator', 'can_view_tables', 'can_edit_tables',
+					'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules',
+					'can_edit_rules', 'can_view_configuration', 'can_edit_configuration',
+					'can_view_permissions', 'can_edit_permissions', 'can_view_remotes',
+				'can_edit_remotes', 'can_execute_rules', 'can_actually_login');
+			for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 11; $i++) {
+			$query .= "{$fields[$i]}, ";
+		s}
+			$query = substr($query, 0, -2) . ") = (" . (!empty($_POST['password'])
 				? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\', ' : '');
-		for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 11; $i++) {
+			for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 11; $i++) {
 			$query .= pgescapebool($_POST[$fields[$i]]) . ', ';
 		}
-		pg_free_result(pgquery(substr($query, 0, -2) . ") WHERE username = $s_username;"));
+			pg_free_result(pgquery(substr($query, 0, -2) . ") WHERE username = $s_username;"));
 		echo "User $h_username updated.<br/>\n";
-	}
+		}
 	pg_free_result($result);
 } else if (isset($_GET['delete']) && isset($_GET['key'])) {
 	$s_key = pg_escape_literal($_GET['key']);
