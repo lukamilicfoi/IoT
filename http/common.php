@@ -47,6 +47,15 @@ function pgescapebool(&$boolvar) {
 	return $boolvar !== null ? 'TRUE' : 'FALSE';
 }
 
+function can_view_table($s_tablename) {
+	return pg_num_rows(pgquery("SELECT TRUE FROM table_user INNER JOIN users
+			ON table_user.username = users.username WHERE table_user.username = $s_tablename
+			AND (table_user.username = 'public' OR table_user.username = {$_SESSION['s_username']}
+			OR NOT users.is_administator AND NOT table_user.is_read_only AND "
+			. pgescapebool($_SESSION['is_administrator']) . ' OR '
+			. pgescapebool($_SESSION['is_root']) . ');')) != 0;
+}
+
 function pgquery($string) {
 	$result = pg_query($string);
 	if ($result) {
@@ -57,6 +66,15 @@ function pgquery($string) {
 
 function pgescapebytea($byteavar) {
 	return '\'\\x' . pg_escape_string($byteavar) . '\'';
+}
+
+function can_edit_table($s_tablename) {
+	return pg_num_rows(pgquery("SELECT TRUE FROM table_user INNER JOIN users
+			ON table_user.username = users.username WHERE table_user.tablename = $s_tablename
+			AND (table_user.username = 'public' OR table_user.username = {$_SESSION['s_username']}
+			OR NOT users.is_administrator AND " . pgescapebool($_SESSION['is_administrator'])
+			. ' OR ' . pgescapebool($_SESSION['is_root']) . ') AND NOT table_user.is_read_only;'))
+			!= 0;
 }
 
 function checkAuthorization($index, $text) {

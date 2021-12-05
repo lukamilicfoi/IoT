@@ -1,6 +1,7 @@
 <?php
 require_once 'common.php';
 $can_view_remotes = checkAuthorization(14, 'view remotes');
+$can_edit_remotes = checkAuthorization(15, 'edit remotes');
 if ($can_view_remotes && isset($_GET['load'])) {
 	pg_free_result(pgquery('CALL load_store(TRUE);'));
 	$_SESSION['loaded'] = true;
@@ -8,7 +9,6 @@ if ($can_view_remotes && isset($_GET['load'])) {
 	Loaded remotes from running program.<br/>
 <?php
 }
-$can_edit_remotes = checkAuthorization(15, 'edit remotes');
 if ($can_edit_remotes) {
 	if (isset($_GET['store'])) {
 		pg_free_result(pgquery('CALL load_store(FALSE);'));
@@ -45,24 +45,26 @@ if ($can_edit_remotes) {
 <?php
 			exit(0);
 		}
+	}
+}
 if ($can_view_tables) {
 	if (isset($_SESSION['loaded'])) {
 		if ($_SESSION['is_root']) {
-			$result = pgquery('SELECT addr_oID.addr FROM addr_oID LEFT OUTER JOIN table_user
+			$result = pgquery('SELECT addr_oID.addr FROM addr_oID INNER JOIN table_user
 					ON \'t\' || encode(addr_oID.addr, \'hex\') = table_user.tablename
 					LEFT OUTER JOIN users ON table_user.username = users.username
 					ORDER BY addr_oID.addr ASC;');
 		} else if ($_SESSION['is_administrator']) {
-			$result = pgquery("SELECT addr_oID.addr FROM addr_oID LEFT OUTER JOIN table_user
+			$result = pgquery("SELECT addr_oID.addr FROM addr_oID INNER JOIN table_user
 					ON 't' || encode(addr_oID.addr, 'hex') = table_user.tablename
 					LEFT OUTER JOIN users ON table_user.username = users.username
-					WHERE users.username IS NULL OR users.username = {$_SESSION['s_username']}
+					WHERE users.username = 'public' OR users.username = {$_SESSION['s_username']}
 					OR NOT users.is_administrator ORDER BY addr_oID.addr ASC;");
 		} else {
 			$result = pgquery("SELECT addr_oID.addr FROM addr_oID LEFT OUTER JOIN table_user
 					ON 't' || encode(addr_oID.addr, 'hex') = table_user.tablename
 					LEFT OUTER JOIN users ON table_user.username = users.username
-					WHERE users.username IS NULL OR users.username = {$_SESSION['s_username']}
+					WHERE users.username = 'public' OR users.username = {$_SESSION['s_username']}
 					ORDER BY addr_oID.addr ASC;");
 		}
 ?>
@@ -96,7 +98,6 @@ if ($can_view_tables) {
 		<a href="?load">Reload all remotes from running program</a><br/>
 		<a href="?store">Store all remotes to running program</a><br/>
 <?php
-		pg_free_result($result);
 	} else {
 ?>
 		<a href="?load">Load all remotes from running program</a><br/>

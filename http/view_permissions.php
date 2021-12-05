@@ -1,5 +1,6 @@
 <?php
 require_once 'common.php';
+$can_view_permissions = checkAuthorization(10, 'view permissions');
 $can_edit_permissions = checkAuthorization(11, 'edit permissions');
 if ($can_edit_permissions) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
@@ -21,31 +22,28 @@ if ($can_edit_permissions) {
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 		$is_read_only = pgescapebool($_GET['is_read_only']);
 		if (isset($_GET['insert'])) {
-			$result = pgquery("SELECT TRUE FROM users WHERE username = $s_username
-					AND NOT is_administrator;");
 			if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
-						&& pg_fetch_row($result) || $_SESSION['is_root']) {
-				pg_free_result(pgquery("INSERT INTO table_user(tablename, username, is_read_only)
-						VALUES($s_tablename, $s_username, $is_read_only);"));
-					echo "Row ($h_tablename, $h_username) inserted.<br/>\n";
+					&& pg_num_rows("SELECT TRUE FROM users WHERE username = $s_username
+					AND NOT is_administrator")) != 0 || $_SESSION['is_root']) {
+				pgquery("INSERT INTO table_user(tablename, username, is_read_only)
+						VALUES($s_tablename, $s_username, $is_read_only);");
+				echo "Row ($h_tablename, $h_username) inserted.<br/>\n";
 			}
 		} else if (!empty($_GET['key1']) && !empty($_GET['key2']) && isset($_GET['update'])) {
 			$s_key1 = pg_escape_literal($_GET['key1']);
 			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 			$s_key2 = pg_escape_literal($_GET['key2']);
 			$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
-			$result = pgquery("SELECT TRUE FROM users WHERE (username = $s_key2
-					OR username = $s_username) AND is_administrator;");
 			if ($_GET['key2'] == $_SESSION['username'] && $_GET['key2'] == $_GET['username']
-					|| $_SESSION['is_administrator'] && !pg_fetch_row($result)
-					|| $_SESSION['is_root']) {
-				pg_free_result(pgquery("UPDATE table_user SET (tablename, username, is_read_only)
+					|| $_SESSION['is_administrator'] && pg_num_rows("SELECT TRUE FROM users
+					WHERE (username = $s_key2 OR username = $s_username) AND is_administrator;")
+					== 0 || $_SESSION['is_root']) {
+				pgquery("UPDATE table_user SET (tablename, username, is_read_only)
 						= ($s_tablename, $s_username, $is_read_only)
-						WHERE tablename = $s_key1 AND username = $s_key2;"));
+						WHERE tablename = $s_key1 AND username = $s_key2;");
 				echo "Row ($h_key1, $h_key2) updated.<br/>\n";
 			}
 		}
-		pg_free_result($result);
 	} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
 		$s_key1 = pg_escape_literal($_GET['key1']);
 		$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
@@ -53,9 +51,9 @@ if ($can_edit_permissions) {
 		$s_key2 = pg_escape_literal($_GET['key2']);
 		$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
 		$u_key2 = urlencode($_GET['key2']);
-		$result = pgquery("SELECT TRUE FROM users WHERE username = $s_key2 AND is_administrator;");
 		if (($_GET['key2'] == $_SESSION['username'] || $_SESSION['is_administrator']
-				&& !pg_fetch_row($result) || $_SESSION['is_root']) && isset($_GET['delete'])) {
+				&& pg_num_rows(pgquery("SELECT TRUE FROM users WHERE username = $s_key2
+				AND is_administrator;") != 0 || $_SESSION['is_root']) && isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
 				pg_free_result(pgquery("DELETE FROM table_user WHERE tablename = $s_key1
 						AND username = $s_key2;"));
@@ -71,29 +69,28 @@ if ($can_edit_permissions) {
 				exit(0);
 			}
 		}
-		pg_free_result($result);
 	}
 }
-if (checkAuthorization(10, 'view permissions') {
+if ($can_edit_permissions) {
 	if ($_SESSION['is_root']) {
-		$result = pgquery('SELECT table_user.* FROM table_user LEFT OUTER JOIN users
+		$result = pgquery('SELECT table_user.* FROM table_user INNER JOIN users
 				ON table_user.username = users.username ORDER BY users.is_administrator DESC,
 				table_user.username ASC, table_user.tablename ASC;');
 ?>
 		Viewing table &quot;table_user&quot;, administrators first.
 <?php
 	} else if ($_SESSION['is_administrator']) {
-		$result = pgquery("SELECT table_user.* FROM table_user LEFT OUTER JOIN users
-				ON table_user.username = users.username WHERE NOT users.is_administrator
-				OR table_user.username = {$_SESSION['s_username']}
-				ORDER BY users.is_administrator DESC, table_user.username ASC,
-				table_user.tablename ASC;");
-		echo "Viewing table &quot;table_user&quot; for username {$_SESSION['h2username']}
+		$result = pgquery("SELECT table_user.* FROM table_user INNER JOIN users
+				ON table_user.username = users.username WHERE table_user.users = 'public'
+				OR table_user.username = {$_SESSION['s_username']} OR NOT users.is_administrator
+				AND NOT table_user.is_read_only ORDER BY users.is_administrator DESC,
+				table_user.username ASC, table_user.tablename ASC;");
+		echo "Viewing table &quot;table_user&quot; for public, username {$_SESSION['h2username']}
 				and non-administrators.<br/>\n";
 	} else {
-		$result = pgquery("SELECT * FROM table_user WHERE user = {$_SESSION['s_username']}
-				ORDER BY tablename ASC;");
-		echo "Viewing table &quot;table_user&quot; for username {$_SESSION['h2username']}.<br/>\n";
+		$result = pgquery("SELECT * FROM table_user WHERE user = 'public'
+				OR user = {$_SESSION['s_username']} ORDER BY tablename ASC;");
+		echo "Viewing table &quot;table_user&quot; for public andusername {$_SESSION['h2username']}.<br/>\n";
 	}
 ?>
 	<table border="1">
@@ -180,7 +177,8 @@ if (checkAuthorization(10, 'view permissions') {
 						<td>
 <?php
 							echo "<form id=$form action=\"\" method=\"GET\">\n";
-								echo "<input type=\"hidden\" name=\"key1\" value=\"$tablename\"/>\n";
+								echo "<input type=\"hidden\" name=\"key1\"
+										value=\"$tablename\"/>\n";
 								echo "<input type=\"hidden\" name=\"key2\" value=\"$username\"/>\n";
 ?>
 								<input type="submit" name="update" value="UPDATE"/>
@@ -190,7 +188,8 @@ if (checkAuthorization(10, 'view permissions') {
 ?>
 							<form action="" method="GET">
 <?php
-								echo "<input type=\"hidden\" name=\"key1\" value=\"$tablename\"/>\n";
+								echo "<input type=\"hidden\" name=\"key1\"
+										value=\"$tablename\"/>\n";
 								echo "<input type=\"hidden\" name=\"key2\" value=\"$username\"/>\n";
 ?>
 								<input type="submit" name="delete" value="DELETE"/>

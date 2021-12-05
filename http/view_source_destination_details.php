@@ -12,7 +12,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 	$h1DST = htmlspecialchars($_GET['DST']);
 	$h2DST = "X&apos;$h1DST&apos;";
 	$u_DST = urlencode($_GET['DST']);
-	if ($can_edit_remotes && can_edit_table($s1SRC) {
+	if ($can_edit_remotes && can_edit_table($s1SRC)) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
 				pg_free_result(pgquery("DELETE FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST;"));
@@ -55,7 +55,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 			}
 		}
 	}
-	if ($can_view_remotes && can_view_table($s1SRC) {
+	if ($can_view_remotes && can_view_table($s1SRC)) {
 		$result = pgquery("SELECT ID, TWR FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST
 				ORDER BY ID ASC;");
 		echo "Viewing table &quot;ID_TWR&quot; for SRC $h2SRC and DST $h2DST.\n";
@@ -65,7 +65,13 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 				<tr>
 					<th>identifier</th>
 					<th>time when received</th>
-					<th>Actions</th>
+<?php
+					if ($can_edit_remotes && can_edit_table($s1SRC)) {
+?>
+						<th>Actions</th>
+<?php
+					}
+?>
 				</tr>
 				<tr>
 					<td>
@@ -143,10 +149,6 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 		Write the second column as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
 <?php
 		echo "<a href=\"view_remote_details.php?addr=$u_SRC\">Done</a>\n";
-		pg_free_result($result);
 	}
-	pg_free_result($result1);
-	pg_free_result($result2);
-	pg_free_result($result3);
 }
 ?>

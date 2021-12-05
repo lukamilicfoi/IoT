@@ -75,7 +75,13 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 				<tr>
 					<th>immediate source address</th>
 					<th>time when received</th>
-					<th>Actions</th>
+<?php
+					if ($can_edit_remotes && can_edit_table($s1SRC)) {
+?>
+						<th>Actions</th>
+<?php
+					}
+?>
 				</tr>
 				<tr>
 					<td>
@@ -156,10 +162,6 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 		Write the second column as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
 <?php
 		echo "<a href=\"view_remote_details.php?addr=$u_SRC\">Done</a>\n";
-		pg_free_result($result);
 	}
-	pg_free_result($result1);
-	pg_free_result($result2);
-	pg_free_result($result3);
 }
 ?>

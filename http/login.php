@@ -10,7 +10,9 @@ if (!empty($_POST['username']) && !empty($_POST['password'])) {
 	$row = pg_fetch_row($result);
 	if ($row && password_verify($_POST['password'], $row[0]) && $row[2] == 't') {
 		$_SESSION['is_root'] = $_POST['username'] == 'root';
+		$_SESSION['s_is_root'] = pgescapebool($_SESSION['is_root']);
 		$_SESSION['is_administrator'] = $row[1] == 't';
+		$_SESSION['s_is_administrator'] = pgescapebool($_SESSION['is_administrator']);
 		$_SESSION['username'] = $_POST['username'];
 	}
 	pg_free_result($result);

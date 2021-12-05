@@ -1,5 +1,6 @@
 <?php
 require_once 'common.php';
+$can_view_tables = checkAuthorization(3, 'view tables');
 $can_edit_tables = checkAuthorization(4, 'edit tables');
 if ($can_edit_tables) {
 	if (!empty($_GET['add'])) {
@@ -9,22 +10,13 @@ if ($can_edit_tables) {
 		pg_free_result(pgquery("INSERT INTO tables(tablename) VALUES($s2add);"));
 		if (substr($_GET['add'], 0, 1) != 't' || strlen($_GET['add']) != 17) {
 			pg_free_result(pgquery("INSERT INTO table_user(tablename, username)
-				VALUES($s2add, NULL);"));
+				VALUES($s2add, 'public');"));
 		}
 	} else if (!empty($_GET['remove'])) {
 		$s1remove = pg_escape_identifier($_GET['remove']);
 		$s2remove = pg_escape_literal($_GET['remove']);
 		$u_remove = urlencode($_GET['remove']);
-		$result1 = pgquery("SELECT username FROM table_user
-				WHERE tablename = $s2remove AND NOT is_read_only;");
-		$result2 = pgquery("SELECT TRUE FROM table_user WHERE tablename = $s2remove
-				AND username = {$_SESSION['s_username']} AND NOT is_read_only;");
-		$result3 = pgquery("SELECT TRUE FROM table_user INNER JOIN users
-				ON table_user.username = users.username WHERE table_user.tablename = $s2remove
-				AND NOT users.is_administrator AND NOT is_read_only;");
-		$row = pg_fetch_row($result1);
-		if (!$row || $row[0] == 'public' || pg_fetch_row($result2) || pg_fetch_row($result3)
-				&& $_SESSION['is_administrator'] || $_SESSION['is_root']) {
+		if (can_edit_table($s2remove)) {
 			if (isset($_GET['confirm'])) {
 				pg_free_result(pgquery("DROP TABLE $s1remove;"));
 				pg_free_result(pgquery("DELETE FROM tables WHERE tablename = $s2remove;"));
@@ -39,66 +31,51 @@ if ($can_edit_tables) {
 				exit(0);
 			}
 		}
-		pg_free_result($result1);
-		pg_free_result($result2);
-		pg_free_result($result3);
 	}
 }
-if (checkAuthorization(3, 'view tables')) {
+if ($can_view_tables) {
 ?>
 	<form action="" method="GET">
 <?php
 	if ($_SESSION['is_root']) {
-		$result = pgquery('(SELECT relname FROM pg_class WHERE relname LIKE \'t________________\'
-				AND relname <> \'table_constraints\' ORDER BY relname ASC) UNION ALL
-				(SELECT tablename FROM table_user WHERE tablename NOT LIKE \'t________________\'
-				OR tablename = \'table_constraints\' ORDER BY tablename ASC);');
+		$result = pgquery('SELECT relname FROM pg_class ORDER BY relname LIKE \'t________________\'
+				AND relname <> \'table_constraints\' DESC, relname ASC;');
 ?>
 		View table:
 <?php
 	} else if ($_SESSION['is_administrator']) {
-		$result = pgquery("(SELECT pg_class.relname FROM pg_class LEFT OUTER JOIN table_user
-				ON pg_class.relname = table_user.tablename LEFT OUTER JOIN users
-				ON table_user.username = users.username WHERE pg_class.relname
-				LIKE 't________________' AND pg_class.relname <> 'table_constraints'
-				AND (table_user.username IS NULL OR table_user.username
-				= {$_SESSION['s_username']} OR NOT users.is_administrator)
-				ORDER BY pg_class.relname ASC) UNION ALL (SELECT table_user.tablename
-				FROM table_user LEFT OUTER JOIN users ON table_user.username = users.username
-				WHERE (table_user.tablename NOT LIKE 't________________' OR table_user.tablename
-				= 'table_constraints') AND (table_user.username IS NULL OR table_user.username
-				= {$_SESSION['s_username']} OR NOT users.is_administrator)
-				ORDER BY table_user.tablename ASC);");
+		$result = pgquery("SELECT DISTINCT table_user.tablename FROM table_user INNER JOIN users
+				ON table_user.username = users.username WHERE table_user.username = 'public'
+				OR table_user.username = {$_SESSION['s_username']} OR NOT users.is_administrator
+				AND NOT table_user.is_read_only
+				ORDER BY table_user.tablename LIKE 't________________'
+				AND table_user.username <> 'table_contraints' DESC, table_user.tablename ASC;");
 		echo "View table (public, {$_SESSION['h1username']}&apos;s, non-administrators' shown):\n";
 	} else {
-		$result = pgquery("(SELECT pg_class.relname FROM pg_class LEFT OUTER JOIN table_user
-				ON pg_class.relname = table_user.tablename LEFT OUTER JOIN users
-				ON table_user.username = users.username WHERE pg_class.relname
-				LIKE 't________________' AND pg_class.relname <> 'table_constraints'
-				AND (table_user.username IS NULL OR table_user.username
-				= {$_SESSION['s_username']}) ORDER BY pg_class.relname ASC) UNION ALL
-				(SELECT tablename FROM table_user WHERE (tablename NOT LIKE 't________________'
-				OR tablename = 'table_constraints') AND (username IS NULL
-				OR username = {$_SESSION['s_username']}) ORDER BY tablename ASC);");
+		$result = pgquery("SELECT DISTINCT tablename FROM table_user WHERE username = 'public'
+				OR username = {$_SESSION['s_username']} ORDER BY tablename LIKE 't________________'
+				AND tablename <> 'table_constraints' DESC, tablename ASC;");
 		echo "View table (public, {$_SESSION['h1username']}&apos;s shown):\n";
 	}
 	for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 		$u_tablename = urlencode($row[0]);
 		$h_tablename = htmlspecialchars($row[0]);
+		$s_tablename = pg_escape_literal($row[0]);
 		echo "<a href=\"view_table.php?tablename=$u_tablename\">$h_tablename</a>\n";
-		echo "<a href=\"?remove=$u_tablename\">(remove)</a>\n";
+		if (can_edit_table($s_tablename)) {
+			echo "<a href=\"?remove=$u_tablename\">(remove)</a>\n";
+		}
 	}
 	if (pg_num_rows($result) == 0) {
 ?>
 		&lt;no tables&gt;
 <?php
 	}
-	pg_free_result($result);
 ?>
-		<input type="text" name="add"/>
-		<input type="submit" value="(add as public)"/>
-	</form>
-	<br/>
+	<input type="text" name="add"/>
+	<input type="submit" value="(add as public)"/>
+</form>
+<br/>
 <?php
 }
 if (checkAuthorization(4, 'send messages')) {
@@ -107,10 +84,10 @@ if (checkAuthorization(4, 'send messages')) {
 		$h_msgtosend = 'X&apos;' . htmlspecialchars($_GET['msgtosend']) . '&apos;';
 		$proto_id = pg_escape_literal($_GET['proto_id']);
 		$imm_DST = pgescapebytea($_GET['imm_DST']);
-		pg_free_result(pgquery("CALL send_inject(TRUE, $s_msgtosend, $proto_id, $imm_DST, "
+		pgquery("CALL send_inject(TRUE, $s_msgtosend, $proto_id, $imm_DST, "
 				. pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF']) . ', '
 				. pgescapebool($_GET['broadcast']) . ', '
-				. pgescapebool($_GET['override_implicit_rules']) . ');'));
+				. pgescapebool($_GET['override_implicit_rules']) . ');');
 		echo "Message $h_msgtosend sent.\n";
 	}
 ?>
@@ -142,10 +119,10 @@ if (checkAuthorization(5, 'inject messages')) {
 		$h_msgtoinject = 'X&apos;' . htmlspecialchars($_GET['msgtoinject']) . '&apos;';
 		$proto_id = pg_escape_literal($_GET['proto_id']);
 		$imm_SRC = pgescapebytea($_GET['imm_SRC']);
-		pg_free_result(pgquery("CALL send_inject(FALSE, $s_msgtoinject, $proto_id, $imm_SRC, "
+		pgquery("CALL send_inject(FALSE, $s_msgtoinject, $proto_id, $imm_SRC, "
 				. pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF']) . ', '
 				. pgescapebool($_GET['broadcast']) . ', '
-				. pgescapebool($_GET['override_implicit_rules']) . ');'));
+				. pgescapebool($_GET['override_implicit_rules']) . ');');
 		echo "Message $h_msgtoinject injected.\n";
 	}
 ?>
@@ -183,8 +160,8 @@ if (checkAuthorization(7, 'send queries to database')) {
 				exit('cannot flock');
 			}
 			pg_connect('host=localhost dbname=postgres user=postgres client_encoding=UTF8');
-			pg_free_result(pgquery("UPDATE current_username
-					SET current_username = {$_SESSION['s_username']};"));
+			pgquery("UPDATE current_username
+					SET current_username = {$_SESSION['s_username']};");
 			pg_close();
 			pg_connect('host=localhost dbname=postgres user=' . ($_SESSION['is_administrator']
 					? 'administrator' : 'local') . ' client_encoding=UTF8');
@@ -221,7 +198,6 @@ if (checkAuthorization(7, 'send queries to database')) {
 			</tbody>
 		</table>
 <?php
-		pg_free_result($result);
 	}
 ?>
 	<form action="" method="GET">
@@ -246,7 +222,6 @@ if (checkAuthorization(16, 'manually execute timed rules')) {
 				&& pg_fetch_row($result) || $_SESSION['is_root']) {
 			pg_free_result(pgquery("CALL manually_execute_timed_rule($s_username, $id);"));
 		}
-		pg_free_result($result);
 		echo "For username $h_username timed rule $id manually executed.\n";
 	}
 ?>
