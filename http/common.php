@@ -51,9 +51,28 @@ function can_view_table($s_tablename) {
 	return pg_num_rows(pgquery("SELECT TRUE FROM table_user INNER JOIN users
 			ON table_user.username = users.username WHERE table_user.username = $s_tablename
 			AND (table_user.username = 'public' OR table_user.username = {$_SESSION['s_username']}
-			OR NOT users.is_administator AND NOT table_user.is_read_only AND "
-			. pgescapebool($_SESSION['is_administrator']) . ' OR '
-			. pgescapebool($_SESSION['is_root']) . ');')) != 0;
+			OR NOT users.is_administator AND NOT table_user.is_read_only
+			AND {$_SESSION['s_is_administrator']} OR {$_SESSION['s_is_root']});")) != 0;
+}
+
+function postgresqlOutputToMyInput($data, $oid) {
+	if ($data === null) {
+		return '';
+	}
+	switch ($oid) {
+	case 1700://NUMERIC
+	case 1266://TIME WITH TIME ZONE
+	case 1186://INTERVAL
+	case 1184://TIMESTAMP WITH TIME ZONE
+	case 1114://TIMESTAMP WITHOUT TIME ZONE
+	case 1083://TIME WITHOUT TIME ZONE
+	case 1082://DATE
+	case 25://TEXT
+	case 16://BOOLEAN
+		return $data;
+	default://17//BYTEA
+		return substr($data, 2);
+	}
 }
 
 function pgquery($string) {
@@ -72,10 +91,30 @@ function can_edit_table($s_tablename) {
 	return pg_num_rows(pgquery("SELECT TRUE FROM table_user INNER JOIN users
 			ON table_user.username = users.username WHERE table_user.tablename = $s_tablename
 			AND (table_user.username = 'public' OR table_user.username = {$_SESSION['s_username']}
-			OR NOT users.is_administrator AND " . pgescapebool($_SESSION['is_administrator'])
-			. ' OR ' . pgescapebool($_SESSION['is_root']) . ') AND NOT table_user.is_read_only;'))
-			!= 0;
+			OR NOT users.is_administrator AND {$_SESSION['s_is_administrator']}
+			OR {$_SESSION['s_is_root']}) AND NOT table_user.is_read_only;")) != 0;
 }
+
+function myInputToPostgresqlInput($data, $oid) {
+	if ($data == '') {
+		return 'NULL';
+	}
+	switch ($oid) {
+	case 1700://NUMERIC
+		return $data;
+	case 1266://TIME WITH TIME ZONE
+	case 1186://INTERVAL
+	case 1184://TIMESTAMP WITH TIME ZONE
+	case 1114://TIMESTAMP WITHOUT TIME ZONE
+	case 1083://TIME WITHOUT TIME ZONE
+	case 1082://DATE
+	case 25://TEXT
+		return '\'' . $data . '\'';
+	case 16://BOOLEAN
+		return $data == 't' ? 'TRUE' : 'FALSE';
+	default://17//BYTEA
+		return '\'\\x' . $data . '\'';
+	}
 
 function checkAuthorization($index, $text) {
 	$result = pgquery("SELECT can_view_tables, can_edit_tables, can_send_messages,
@@ -85,10 +124,8 @@ function checkAuthorization($index, $text) {
 			WHERE username = {$_SESSION['s_username']}  ;");
 	if (pg_fetch_row($result)[$index - 3] == 'f') {
 		echo "&lt;You are not authorized to $text.&gt;<br/>\n";
-		pg_free_result($result);
 		return false;
 	}
-	pg_free_result($result);
 	return true;
 }
 
