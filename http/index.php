@@ -6,12 +6,9 @@ if ($can_edit_tables) {
 	if (!empty($_GET['add'])) {
 		$s1add = pg_escape_identifier($_GET['add']);
 		$s2add = pg_escape_literal($_GET['add']);
-		pg_free_result(pgquery("CREATE TABLE $s1add(t TIMESTAMP(4) WITHOUT TIME ZONE);"));
-		pg_free_result(pgquery("INSERT INTO tables(tablename) VALUES($s2add);"));
-		if (substr($_GET['add'], 0, 1) != 't' || strlen($_GET['add']) != 17) {
-			pg_free_result(pgquery("INSERT INTO table_user(tablename, username)
-				VALUES($s2add, 'public');"));
-		}
+		pgquery("CREATE TABLE $s1add(t TIMESTAMP(4) WITHOUT TIME ZONE);");
+		pgquery("INSERT INTO tables(tablename) VALUES($s2add);");
+		pgquery("INSERT INTO table_user(tablename, username) VALUES($s2add, 'public');");
 	} else if (!empty($_GET['remove'])) {
 		$s1remove = pg_escape_identifier($_GET['remove']);
 		$s2remove = pg_escape_literal($_GET['remove']);
@@ -34,12 +31,10 @@ if ($can_edit_tables) {
 	}
 }
 if ($can_view_tables) {
-?>
-	<form action="" method="GET">
-<?php
 	if ($_SESSION['is_root']) {
-		$result = pgquery('SELECT relname FROM pg_class ORDER BY relname LIKE \'t________________\'
-				AND relname <> \'table_constraints\' DESC, relname ASC;');
+		$result = pgquery('SELECT tablename FROM table_user
+				ORDER BY tablename LIKE \'t________________\'
+				AND tablename <> \'table_constraints\' DESC, tablename ASC;');
 ?>
 		View table:
 <?php
@@ -78,7 +73,7 @@ if ($can_view_tables) {
 <br/>
 <?php
 }
-if (checkAuthorization(4, 'send messages')) {
+if (checkAuthorization(5, 'send messages')) {
 	if (!empty($_GET['msgtosend']) && !empty($_GET['proto_id']) && !empty($_GET['imm_DST'])) {
 		$s_msgtosend = pgescapebytea($_GET['msgtosend']);
 		$h_msgtosend = 'X&apos;' . htmlspecialchars($_GET['msgtosend']) . '&apos;';
@@ -113,7 +108,7 @@ if (checkAuthorization(4, 'send messages')) {
 			write protocol as a string, e.g., tcp.<br/><br/>
 <?php
 }
-if (checkAuthorization(5, 'inject messages')) {
+if (checkAuthorization(6, 'inject messages')) {
 	if (!empty($_GET['msgtoinject']) && !empty($_GET['proto_id']) && !empty($_GET['imm_SRC'])) {
 		$s_msgtoinject = pgescapebytea($_GET['msgtoinject']);
 		$h_msgtoinject = 'X&apos;' . htmlspecialchars($_GET['msgtoinject']) . '&apos;';
@@ -216,11 +211,10 @@ if (checkAuthorization(16, 'manually execute timed rules')) {
 		$s_username = pg_escape_literal($_GET['username']);
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']);
 		$id = intval($_GET['id']);
-		$result = pgquery("SELECT TRUE FROM users WHERE username = $s_username
-				AND NOT is_administrator;");
 		if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
-				&& pg_fetch_row($result) || $_SESSION['is_root']) {
-			pg_free_result(pgquery("CALL manually_execute_timed_rule($s_username, $id);"));
+				&& pg_num_rows("SELECT TRUE FROM users WHERE username = $s_username
+				AND is_administrator;") == 0 || $_SESSION['is_root']) {
+			pgquery("CALL manually_execute_timed_rule($s_username, $id);");
 		}
 		echo "For username $h_username timed rule $id manually executed.\n";
 	}
