@@ -2,21 +2,22 @@
 require_once 'common.php';
 $can_view_configuration = checkAuthorization(10, 'view configuration');
 $can_edit_configuration = checkAuthorization(11, 'edit configuration');
-if ($can_edit_configuration && isset($_GET['update']) && !empty($_GET['username'])
-		&& ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
-		&& pg_num_rows(pgquery("SELECT TRUE FROM users WHERE username = $s_username
-		AND NOT is_administrator;")) != 0) || $_SESSION['is_root'])) {
+if ($can_edit_configuration && isset($_GET['update']) && !empty($_GET['username'])) {
 	$s_username = pg_escape_literal($_GET['username']);
 	$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
-	pgquery('UPDATE configuration SET (forward_messages,
-			use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway)
-			= (' . pgescapebool($_GET['forward_messages']) . ', '
-			. pgescapebool($_GET['use_internet_switch_algorithm']) . ', '
-			. intval($_GET['nsecs_id']) . ', '. intval($_GET['nsecs_src']) . ', '
-			. pgescapebool($_GET['trust_everyone']) . ', ' . pgescapebytea($_GET['default_gateway'])
-			. ") WHERE username = $s_username;");
-	pg_free_result(pgquery('CALL config();'));
-	echo "Configuration updated for username $h_username.<br/>\n";
+	if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
+			&& pg_num_rows(pgquery("SELECT TRUE FROM users WHERE username = $s_username
+			AND is_administrator;")) == 0) || $_SESSION['is_root']) {
+		pgquery('UPDATE configuration SET (forward_messages, use_internet_switch_algorithm,
+				nsecs_id, nsecs_src, trust_everyone, default_gateway) = ('
+				. pgescapebool($_GET['forward_messages']) . ', '
+				. pgescapebool($_GET['use_internet_switch_algorithm']) . ', '
+		   		. intval($_GET['nsecs_id']) . ', '. intval($_GET['nsecs_src']) . ', '
+		   		. pgescapebool($_GET['trust_everyone']) . ', '
+		   		. pgescapebytea($_GET['default_gateway']) . ") WHERE username = $s_username;");
+		pgquery('CALL config();');
+		echo "Configuration updated for username $h_username.<br/>\n";
+	}
 }
 if ($can_view_configuration) {
 	if ($_SESSION['is_root']) {

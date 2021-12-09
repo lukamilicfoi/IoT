@@ -5,9 +5,8 @@ if (!empty($_POST['username']) && !empty($_POST['password'])) {
 	$_SESSION['s_username'] = pg_escape_literal($_POST['username']);
 	$_SESSION['h1username'] = htmlspecialchars($_POST['username']);
 	$_SESSION['h2username'] = "&apos;{$_SESSION['h1username']}&apos;";
-	$result = pgquery("SELECT password, is_administrator, can_actually_login FROM users
-			WHERE username = {$_SESSION['s_username']};");
-	$row = pg_fetch_row($result);
+	$row = pg_fetch_row(pgquery("SELECT password, is_administrator, can_actually_login FROM users
+			WHERE username = {$_SESSION['s_username']};"));
 	if ($row && password_verify($_POST['password'], $row[0]) && $row[2] == 't') {
 		$_SESSION['is_root'] = $_POST['username'] == 'root';
 		$_SESSION['s_is_root'] = pgescapebool($_SESSION['is_root']);
@@ -15,7 +14,6 @@ if (!empty($_POST['username']) && !empty($_POST['password'])) {
 		$_SESSION['s_is_administrator'] = pgescapebool($_SESSION['is_administrator']);
 		$_SESSION['username'] = $_POST['username'];
 	}
-	pg_free_result($result);
 } else if (isset($_GET['logout'])) {
 	unset($_SESSION['username']);
 }

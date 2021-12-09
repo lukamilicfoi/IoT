@@ -20,49 +20,69 @@ if ($can_edit_permissions) {
 		$h_tablename = '&apos;' . htmlspecialchars($_GET['tablename']) . '&apos;';
 		$s_username = pg_escape_literal($_GET['username']);
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
-		$is_read_only = pgescapebool($_GET['is_read_only']);
+		$username_is_administrator = is_administrator($s_username);
+		$username_is_user = $_GET['username'] == $_SESSION['username'];
+		$is_read_only = isset($_GET['is_read_only']);
+		$s_is_readonly = pgescapebool($_GET['is_read_only']);
+		$tablename_owner = find_owner($s_tablename);
+		$tablename_owner_is_administrator = is_administrator($tablename_owner);
+		$tablename_owner_is_user = $tablename_owner == $_SESSION['username'];
 		if (isset($_GET['insert'])) {
-			if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
-					&& pg_num_rows("SELECT TRUE FROM users WHERE username = $s_username
-					AND NOT is_administrator")) != 0 || $_SESSION['is_root']) {
+			if ($is_read_only && ($username_is_user && $tablename_owner == 'public'
+					|| $_SESSION['is_administrator'] && ($username_is_user
+					|| !$username_is_administrator) && ($tablename_owner_is_user
+					|| !$tablename_owner_is_administrator) || $_SESSION['is_root'])) {
 				pgquery("INSERT INTO table_user(tablename, username, is_read_only)
-						VALUES($s_tablename, $s_username, $is_read_only);");
-				echo "Row ($h_tablename, $h_username) inserted.<br/>\n";
+						VALUES($s_tablename, $s_username, FALSE);");
+				echo "Row ($h_tablename, $h_username, FALSE) inserted.<br/>\n";
 			}
 		} else if (!empty($_GET['key1']) && !empty($_GET['key2']) && isset($_GET['update'])) {
 			$s_key1 = pg_escape_literal($_GET['key1']);
 			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
+			$key1_owner = find_owner($s_key1);
 			$s_key2 = pg_escape_literal($_GET['key2']);
 			$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
-			if ($_GET['key2'] == $_SESSION['username'] && $_GET['key2'] == $_GET['username']
-					|| $_SESSION['is_administrator'] && pg_num_rows("SELECT TRUE FROM users
-					WHERE (username = $s_key2 OR username = $s_username) AND is_administrator;")
-					== 0 || $_SESSION['is_root']) {
-				pgquery("UPDATE table_user SET (tablename, username, is_read_only)
-						= ($s_tablename, $s_username, $is_read_only)
+			$key2_is_administrator = is_administrator($s_key2);
+			$key2_is_user = $_GET['key2'] == $_SESSION['username'];
+			$key3 = isset($_GET['key3']);
+			if ($is_read_only == $key3 && ($key2_is_user && $username_is_user
+					&& $tablename_owner == 'public' && $key1_owner == 'public'
+					|| $_SESSION['is_administrator'] && ($key2_is_user
+					&& !$username_is_administrator || !$key2_is_administrator && $username_is_user
+					|| !$key2_is_administrator && !$username_is_administrator)
+					&& ($tablename_owner_is_user || !$tablename_owner_is_administrator)
+					&& ($key1_owner == $_SESSION['username'] || !is_administrator($key1_owner))
+					|| $_SESSION['is_root'])) {
+				pgquery("UPDATE table_user SET (tablename, username) = ($s_tablename, $s_username)
 						WHERE tablename = $s_key1 AND username = $s_key2;");
-				echo "Row ($h_key1, $h_key2) updated.<br/>\n";
+				echo "Row ($h_key1, $h_key2, $s_is_read_only)
+						updated to ($h_username, $h_tablename, $s_is_read_only).<br/>\n";
 			}
 		}
 	} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
 		$s_key1 = pg_escape_literal($_GET['key1']);
 		$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 		$u_key1 = urlencode($_GET['key1']);
+		$key1_owner = find_owner($s_key1);
 		$s_key2 = pg_escape_literal($_GET['key2']);
 		$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
 		$u_key2 = urlencode($_GET['key2']);
-		if (($_GET['key2'] == $_SESSION['username'] || $_SESSION['is_administrator']
-				&& pg_num_rows(pgquery("SELECT TRUE FROM users WHERE username = $s_key2
-				AND is_administrator;") != 0 || $_SESSION['is_root']) && isset($_GET['delete'])) {
+		$key2_is_user = $_GET['key2'] == $_SESSION['username'];
+		$key3 = isset($_GET['key3']);
+		if (!$key3 && (($key2_is_user && $key1_owner == 'public' || $_SESSION['is_administrator']
+				&& ($key2_is_user || !is_administrator($s_key2))
+				&& ($key1_owner == $_SESSION['username'] || !is_administrator($key1_owner))
+				|| $_SESSION['is_root']) && isset($_GET['delete']))) {
 			if (isset($_GET['confirm'])) {
 				pg_free_result(pgquery("DELETE FROM table_user WHERE tablename = $s_key1
 						AND username = $s_key2;"));
-				echo "Row ($h_key1, $h_key2) deleted.<br/>\n";
+				echo "Row ($h_key1, $h_key2, FALSE) deleted.<br/>\n";
 			} else {
 ?>
 				Are you sure?
 <?php
-				echo "<a href=\"?key1=$u_key1&amp;key2=$u_key2&amp;delete&amp;confirm\">Yes</a>\n";
+				echo "<a href=\"?key1=$u_key1&amp;key2=$u_key2&amp;key3=$s_key3",
+						"&amp;delete&amp;confirm\">Yes</a>\n";
 ?>
 				<a href="">No</a>
 <?php
@@ -73,24 +93,30 @@ if ($can_edit_permissions) {
 }
 if ($can_edit_permissions) {
 	if ($_SESSION['is_root']) {
-		$result = pgquery('SELECT table_user.* FROM table_user INNER JOIN users
-				ON table_user.username = users.username ORDER BY users.is_administrator DESC,
-				table_user.username ASC, table_user.tablename ASC;');
+		$result = pgquery('SELECT tablename AS t, username, is_read_only,
+				(SELECT username FROM table_user WHERE tablename = t AND NOT is_read_only) AS u,
+				(SELECT is_administrator FROM users WHERE username = u) FROM table_user
+				ORDER BY is_administrator DESC, u ASC, t ASC, is_read_only ASC, username ASC;');
 ?>
 		Viewing table &quot;table_user&quot;, administrators first.
 <?php
 	} else if ($_SESSION['is_administrator']) {
-		$result = pgquery("SELECT table_user.* FROM table_user INNER JOIN users
-				ON table_user.username = users.username WHERE table_user.users = 'public'
-				OR table_user.username = {$_SESSION['s_username']} OR NOT users.is_administrator
-				AND NOT table_user.is_read_only ORDER BY users.is_administrator DESC,
-				table_user.username ASC, table_user.tablename ASC;");
+		$result = pgquery("SELECT tablename AS t, username, is_read_only,
+				(SELECT username FROM table_user WHERE tablename = t AND NOT is_read_only) AS u,
+				(SELECT is_administrator FROM users WHERE username = u), EXISTS(SELECT TRUE
+				FROM table_user WHERE tablename = t AND username = 'public'
+				OR username = {$_SESSION['username']}) AS e FROM table_user
+				WHERE u = 'public' OR u = {$_SESSION['s_username']} OR NOT is_administrator OR e
+				ORDER BY is_administrator DESC, u ASC, t ASC, is_read_only ASC, username ASC;");
 		echo "Viewing table &quot;table_user&quot; for public, username {$_SESSION['h2username']}
 				and non-administrators.<br/>\n";
 	} else {
-		$result = pgquery("SELECT * FROM table_user WHERE user = 'public'
-				OR user = {$_SESSION['s_username']} ORDER BY tablename ASC;");
-		echo "Viewing table &quot;table_user&quot; for public andusername {$_SESSION['h2username']}.<br/>\n";
+		$result = pgquery("SELECT tablename AS t, username, is_read_only, EXISTS(SELECT TRUE
+				FROM table_user WHERE tablename = t AND username = 'public'
+				OR username = {$_SESSION['username']}) AS e FROM table_user
+				WHERE e ORDER BY t ASC, is_read_only ASC, username ASC;");
+		echo "Viewing table &quot;table_user&quot; for public
+				and username {$_SESSION['h2username']}.<br/>\n";
 	}
 ?>
 	<table border="1">
@@ -127,6 +153,7 @@ if ($can_edit_permissions) {
 									value=\"{$_SESSION['h1username']}\"/>\n";
 						}
 ?>
+						<input form="insert" type="checkbox" disabled="disabled"/>
 					</td>
 					<td>
 						<form id="insert" action="" method="GET">
@@ -207,6 +234,5 @@ if ($can_edit_permissions) {
 	Write tablename and username as a string, e.g., tabababababababab and root.<br/>
 	<a href="index.php">Done</a>
 <?php
-	pg_free_result($result);
 }
 ?>
