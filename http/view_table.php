@@ -1,50 +1,5 @@
 <?php
 require_once 'common.php';
-
-function postgresqlOutputToMyInput($data, $oid) {
-	if ($data === null) {
-		return 'NULL';
-	}
-	switch ($oid) {
-	case 1700://NUMERIC
-	case 1186://INTERVAL
-	case 1184://TIMESTAMP WITH TIME ZONE
-	case 1114://TIMESTAMP WITHOUT TIME ZONE
-	case 1266://TIME WITH TIME ZONE
-	case 1083://TIME WITHOUT TIME ZONE
-	case 1082://DATE
-	case 25://TEXT
-		return $data;
-	case 17://BYTEA
-		return substr($data, 2);
-	default://16//BOOLEAN
-		return $data == 't' ? 'TRUE' : 'FALSE';
-	}
-}
-
-function myInputToPostgresqlInput($data, $oid) {
-	if ($data == 'NULL') {
-		return 'NULL';
-	}
-	switch ($oid) {
-	case 1700://NUMERIC
-	case 1266://TIME WITH TIME ZONE
-		return 'TIME WITH TIME ZONE \'' . $data . '\'';
-	case 1184://TIMESTAMP WITH TIME ZONE
-		return 'TIMESTAMP WITH TIME ZONE \'' . $data . '\'';
-	case 1186://INTERVAL
-	case 1114://TIMESTAMP WITHOUT TIME ZONE
-	case 1083://TIME WITHOUT TIME ZONE
-	case 1082://DATE
-	case 25://TEXT
-		return '\'' . $data . '\'';
-	case 17://BYTEA
-		return '\'\\x' . $data . '\'';
-	default://16//BOOLEAN
-		return $data == 'UNKNOWN' ? 'NULL' : $data;
-	}
-}
-
 if (!empty($_GET['tablename'])) {
 	$s1tablename = pg_escape_literal($_GET['tablename']);
 	$s2tablename = pg_escape_identifier($_GET['tablename']);
@@ -56,9 +11,8 @@ if (!empty($_GET['tablename'])) {
 	if ($can_edit) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
-				$result = pgquery("TRUNCATE TABLE $s2tablename;");
+				pgquery("TRUNCATE TABLE $s2tablename;");
 				echo "Table $h2tablename truncated.<br/>\n";
-				pg_free_result($result);
 			} else {
 ?>
 				Are you sure?
@@ -103,7 +57,7 @@ if (!empty($_GET['tablename'])) {
 			$h_key = 'TIMESTAMP &apos;' . htmlspecialchars($_GET['key']) . '&apos;';
 			$u_key = urlencode($_GET['key']);
 			if (isset($_GET['confirm'])) {
-				$result = pgquery("DELETE FROM $s2tablename WHERE t = $s_key;");
+				pgquery("DELETE FROM $s2tablename WHERE t = $s_key;");
 				echo "Row $h_key deleted.<br/>\n";
 			} else {
 ?>
@@ -136,7 +90,7 @@ if (!empty($_GET['tablename'])) {
 ?>
 				</tr>
 <?php
-					if ($can_edit) {
+				if ($can_edit) {
 ?>
 					<tr>
 <?php
@@ -170,7 +124,7 @@ if (!empty($_GET['tablename'])) {
 						</td>
 					</tr>
 <?php
-					}
+				}
 				$t = pg_field_num($result, 't');
 				for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 ?>
@@ -195,7 +149,8 @@ if (!empty($_GET['tablename'])) {
 								echo "<form id=\"update{$row[$t]}\" action=\"\" method=\"GET\">\n";
 									echo '<input type="hidden" name="key" value="TIMESTAMP ',
 											pg_field_type_oid($result, $t) == 1184
-											? 'WITH TIME ZONE ' : '', "&apos;{$row[$t]}&apos;\"/>\n";
+											? 'WITH TIME ZONE ' : '',
+											"&apos;{$row[$t]}&apos;\"/>\n";
 									echo "<input type=\"hidden\" name=\"tablename\"
 											value=\"$h1tablename\"/>\n";
 ?>
@@ -208,7 +163,8 @@ if (!empty($_GET['tablename'])) {
 <?php
 									echo '<input type="hidden" name="key" value="TIMESTAMP ',
 											pg_field_type_oid($result, $t) == 1184
-											? 'WITH TIME ZONE ' : '', "&apos;{$row[$t]}&apos;\"/>\n";
+											? 'WITH TIME ZONE ' : '',
+											"&apos;{$row[$t]}&apos;\"/>\n";
 									echo "<input type=\"hidden\" name=\"tablename\"
 											value=\"$h1tablename\"/>\n";
 ?>

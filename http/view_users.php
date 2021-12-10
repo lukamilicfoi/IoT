@@ -24,14 +24,14 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		$fields = array('is_administrator', 'can_view_tables', 'can_edit_tables',
 			'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules',
 			'can_edit_rules', 'can_view_configuration', 'can_edit_configuration',
-			'can_view_permissions', 'can_edit_permissions', 'can_view_remotes', 'can_edit_remotes', 'can_execute_rules',
-			'can_actually_login');
-		for ($i = 0; $i < 11; $i++) {
+			'can_view_permissions', 'can_edit_permissions', 'can_view_remotes', 'can_edit_remotes',
+			'can_execute_rules', 'can_actually_login');
+		for ($i = 0; $i < 16; $i++) {
 			$query .= ", {$fields[$i]}";
 		}
-		$query .= ") VALUES($s_username, '"  . password_hash($_POST['password'], PASSWORD_DEFAULT) .
-			'\'';
-		for ($i = 0; $i < 11; $i++) {
+		$query .= ") VALUES($s_username, '" . password_hash($_POST['password'], PASSWORD_DEFAULT)
+				. '\'';
+		for ($i = 0; $i < 16; $i++) {
 			$query .= ', ' . pgescapebool($_POST[$fields[$i]]);
 		}
 		pgquery($query . ');');
@@ -45,31 +45,30 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		$s_username = pg_escape_literal($_POST['username']);
 		$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
 		if ($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
-				&& pg_num_rows(pgquery("SELECT TRUE FROM users WHERE username = {$_POST['username']}
-				AND NOT is_administrator;")) == 0 || $_SESSION['is_root']) {
+				&& !is_administrator($s_username) || $_SESSION['is_root']) {
 			$query = 'UPDATE users SET (' . (!empty($_POST['password']) ? 'password, ' : '');
 			$fields = array('is_administrator', 'can_view_tables', 'can_edit_tables',
-					'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules',
-					'can_edit_rules', 'can_view_configuration', 'can_edit_configuration',
-					'can_view_permissions', 'can_edit_permissions', 'can_view_remotes',
-				'can_edit_remotes', 'can_execute_rules', 'can_actually_login');
-			for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 11; $i++) {
+					'can_send_messages', 'can_inject_messages', 'can_send_queries',
+					'can_view_rules', 'can_edit_rules', 'can_view_configuration',
+					'can_edit_configuration', 'can_view_permissions', 'can_edit_permissions',
+					'can_view_remotes', 'can_edit_remotes', 'can_execute_rules',
+					'can_actually_login');
+			for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 16; $i++) {
 			$query .= "{$fields[$i]}, ";
 			$query = substr($query, 0, -2) . ") = (" . (!empty($_POST['password'])
 					? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\', ' : '');
-			for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 11; $i++) {
+			for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 16; $i++) {
 				$query .= pgescapebool($_POST[$fields[$i]]) . ', ';
 			}
 			pgquery(substr($query, 0, -2) . ") WHERE username = $s_username;");
 			echo "User $h_username updated.<br/>\n";
 		}
-		}s
+	}
 } else if (isset($_GET['delete']) && isset($_GET['key'])) {
 	$s_key = pg_escape_literal($_GET['key']);
 	$h_key = '&apos;' . htmlspecialchars($_GET['key']) . '&apos;';
 	$u_key = urlencode($_GET['key']);
-	if ($_SESSION['is_administrator'] && pg_num_rows(pgquery("SELECT TRUE FROM users
-			WHERE username = $s_key AND NOT is_administrator;")) == 0 || $_SESSION['is_root']) {
+	if ($_SESSION['is_administrator'] && !is_administrator($s_key) || $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
 			pgquery("DELETE FROM users WHERE username = $s_key;");
 			echo "User $h_key deleted.<br/>\n";
@@ -89,7 +88,7 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 			. "' WHERE username = {$_SESSION['s_username']};");
 	echo "Password updated - for username $h2username.<br/>\n";
 }
-$result1 = pgquery("SELECT username, TRUE, is_administrator, can_view_tables, can_send_messages,
+$result1 = pgquery("SELECT username, TRUE, is_administrator, can_view_tables,XXXXXX can_send_messages,
 		can_inject_messages, can_send_queries, can_view_rules, can_view_configuration,
 		can_view_permissions, can_view_remotes, can_execute_rules, can_actually_login FROM users
 		WHERE username = {$_SESSION['s_username']};");
@@ -100,7 +99,7 @@ if ($_SESSION['is_root']) {
 	Viewing table &quot;users&quot;, administrators first.
 <?php
 } else if ($_SESSION['is_administrator']) {
-	$result2 = pgquery("SELECT username, TRUE, is_administrator, can_view_tables,
+	$result2 = pgquery("SELECT username, TRUE, is_administrator, can_view_tables,XXXXXX
 			can_send_messages, can_inject_messages, can_send_queries, can_view_rules,
 			can_view_configuration, can_view_permissions, can_view_remotes, can_execute_rules,
 			can_actually_login FROM users WHERE NOT is_administrator
@@ -213,7 +212,7 @@ if ($_SESSION['is_root']) {
 				<input form="update2" type="password" name="password"/>
 			</td>
 <?php
-			for ($i = 2; $i < 13; $i++) {
+			for ($i = 2; $i < 18; $i++) {
 ?>
 				<td>
 <?php
@@ -250,7 +249,7 @@ if ($_SESSION['is_root']) {
 ?>
 					</td>
 <?php
-					for ($i = 2; $i < 13; $i++) {
+					for ($i = 2; $i < 18; $i++) {
 ?>
 						<td>
 <?php

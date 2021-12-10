@@ -1,8 +1,6 @@
 <?php
 require_once 'common.php';
 if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
-	$can_view_remotes = checkAuthorization(10, 'view remotes');
-	$can_edit_remotes = checkAuthorization(11; 'edit remotes');
 	$s1SRC = pgescapename($_GET['SRC']);
 	$s2SRC = pgescapebytea($_GET['SRC']);
 	$h1SRC = htmlspecialchars($_GET['SRC']);
@@ -12,10 +10,12 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 	$h1DST = htmlspecialchars($_GET['DST']);
 	$h2DST = "X&apos;$h1DST&apos;";
 	$u_DST = urlencode($_GET['DST']);
-	if ($can_edit_remotes && can_edit_table($s1SRC)) {
+	$can_view = checkAuthorization(14, 'view remotes') && can_view_table($s1SRC);
+	$can_edit = checkAuthorization(15, 'edit remotes') && can_edit_table($s1SRC);
+	if ($can_edit) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST;"));
+				pgquery("DELETE FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST;");
 				echo "Table &quot;ID_TWR&quot; truncated for SRC $h2SRC and DST $h2DST.<br/>\n";
 			} else {
 ?>
@@ -29,20 +29,18 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 			$id = intval($_GET['ID']);
 			$TWR = 'TIMESTAMP \'' . pg_escape_string($_GET['TWR']) . '\'';
 			if (isset($_GET['insert'])) {
-				pg_free_result(pgquery("INSERT INTO ID_TWR(SRC, DST, ID, TWR)
-							VALUES($s2SRC, $s_DST, $id, $TWR);"));
+				pgquery("INSERT INTO ID_TWR(SRC, DST, ID, TWR) VALUES($s2SRC, $s_DST, $id, $TWR);");
 				echo "Mapping $id for SRC $h2SRC and DST $h2DST inserted.<br/>\n";
 			} else if (!empty($_GET['key']) && isset($_GET['update'])) {
 				$key = intval($_GET['key']);
-				pg_free_result(pgquery("UPDATE ID_TWR SET(ID, TWR) = ($id, $TWR)
-						WHERE SRC = $s2SRC AND DST = $s_DST AND ID = $key;"));
+				pgquery("UPDATE ID_TWR SET(ID, TWR) = ($id, $TWR)
+						WHERE SRC = $s2SRC AND DST = $s_DST AND ID = $key;");
 				echo "Mapping $key for SRC $h2SRC and DST $h2DST updated.<br/>\n";
 			}
 		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
 			$key = intval($_GET['key']);
 			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST
-						AND ID = $key;"));
+				pgquery("DELETE FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST AND ID = $key;");
 				echo "Mapping $key for SRC $h2SRC and DST $h2DST deleted.<br/>\n";
 			} else {
 ?>
@@ -55,7 +53,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 			}
 		}
 	}
-	if ($can_view_remotes && can_view_table($s1SRC)) {
+	if ($can_view) {
 		$result = pgquery("SELECT ID, TWR FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST
 				ORDER BY ID ASC;");
 		echo "Viewing table &quot;ID_TWR&quot; for SRC $h2SRC and DST $h2DST.\n";
@@ -66,41 +64,45 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 					<th>identifier</th>
 					<th>time when received</th>
 <?php
-					if ($can_edit_remotes && can_edit_table($s1SRC)) {
+					if ($can_edit) {
 ?>
 						<th>Actions</th>
 <?php
 					}
 ?>
 				</tr>
-				<tr>
-					<td>
-						<input form="insert" type="text" name="ID"/>
-					</td>
-					<td>
-						<input form="insert" type="text" name="TWR"/>
-					</td>
-					<td>
-						<form id="insert" action="" method="GET">
 <?php
-							echo "<input type=\"hidden\" name=\"SRC\" value=\"$h1SRC\"/>\n";
-							echo "<input type=\"hidden\" name=\"DST\" value=\"$h1DST\"/>\n";
+				if ($can_edit) {
 ?>
-							<input type="submit" name="insert"
-									value="Insert new mapping for this SRC and this DST"/><br/>
-							<input type="reset" value="reset"/>
-						</form>
-						<form action="" method="GET">
+					<tr>
+						<td>
+							<input form="insert" type="text" name="ID"/>
+						</td>
+						<td>
+							<input form="insert" type="text" name="TWR"/>
+						</td>
+						<td>
+							<form id="insert" action="" method="GET">
 <?php
-							echo "<input type=\"hidden\" name=\"SRC\" value=\"$h1SRC\"/>\n";
-							echo "<input type=\"hidden\" name=\"DST\" value=\"$h1DST\"/>\n";
+								echo "<input type=\"hidden\" name=\"SRC\" value=\"$h1SRC\"/>\n";
+								echo "<input type=\"hidden\" name=\"DST\" value=\"$h1DST\"/>\n";
 ?>
-							<input type="submit" name="truncate"
-									value="Truncate mappings for this SRC and this DST"/>
-						</form>
-					</td>
-				</tr>
+								<input type="submit" name="insert"
+										value="Insert new mapping for this SRC and this DST"/><br/>
+								<input type="reset" value="reset"/>
+							</form>
+							<form action="" method="GET">
 <?php
+								echo "<input type=\"hidden\" name=\"SRC\" value=\"$h1SRC\"/>\n";
+								echo "<input type=\"hidden\" name=\"DST\" value=\"$h1DST\"/>\n";
+?>
+								<input type="submit" name="truncate"
+										value="Truncate mappings for this SRC and this DST"/>
+							</form>
+						</td>
+					</tr>
+<?php
+				}
 				for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 ?>
 					<tr>
@@ -116,29 +118,40 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 									value=\"{$row[1]}\"/>\n";
 ?>
 						</td>
-						<td>
 <?php
-							echo "<form id=\"update{$row[0]}\" action=\"\" method=\"GET\"/>\n";
-								echo "<input type=\"hidden\" name=\"SRC\" value=\"$h1SRC\"/>\n";
-								echo "<input type=\"hidden\" name=\"DST\" value=\"$h1DST\"/>\n";
-								echo "<input type=\"hidden\" name=\"key\" value=\"{$row[0]}\"/>\n";
+						if ($can_edit) {
 ?>
-								<input type="submit" name="update"
-										value="Update this mapping for this SRC and this DST\"/><br/>
-								<input type="reset" value="reset"/>
+							<td>
 <?php
-							echo "</form>\n";
+								echo "<form id=\"update{$row[0]}\" action=\"\" method=\"GET\"/>\n";
+									echo "<input type=\"hidden\" name=\"SRC\" value=\"$h1SRC\"/>\n";
+									echo "<input type=\"hidden\" name=\"DST\" value=\"$h1DST\"/>\n";
+									echo "<input type=\"hidden\" name=\"key\"
+											value=\"{$row[0]}\"/>\n";
 ?>
-							<form action="" method="GET">
+									<input type="submit" name="update"
+											value="Update this mapping for this SRC and this DST\"/>
+											<br/>
+									<input type="reset" value="reset"/>
 <?php
-								echo "<input type=\"hidden\" name=\"SRC\" value=\"{$h1SRC}\"/>\n";
-								echo "<input type=\"hidden\" name=\"DST\" value=\"{$h1DST}\"/>\n";
-								echo "<input type=\"hidden\" name=\"key\" value=\"{$row[0]}\"/>\n";
+								echo "</form>\n";
 ?>
-								<input type="submit" name="delete"
-										value="Delete this mapping for this SRC and this DST"/>
-							</form>
-						</td>
+								<form action="" method="GET">
+<?php
+									echo "<input type=\"hidden\" name=\"SRC\"
+											value=\"{$h1SRC}\"/>\n";
+									echo "<input type=\"hidden\" name=\"DST\"
+											value=\"{$h1DST}\"/>\n";
+									echo "<input type=\"hidden\" name=\"key\"
+											value=\"{$row[0]}\"/>\n";
+?>
+									<input type="submit" name="delete"
+											value="Delete this mapping for this SRC and this DST"/>
+								</form>
+							</td>
+<?php
+						}
+?>
 					</tr>
 <?php
 				}

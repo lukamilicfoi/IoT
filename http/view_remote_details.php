@@ -6,10 +6,12 @@ if (!empty($_GET['addr'])) {
 	$h1addr = htmlspecialchars($_GET['addr']);
 	$h2addr = "X&apos;$h1addr&apos;";
 	$u_addr = urlencode($_GET['addr']);
-	if ($can_edit_remotes && can_edit_table($s1SRC)) {
+	$can_view = checkAuthorization(8, 'view remotes') && can_view_table($s1addr);
+	$can_edit = checkAuthorization(9, 'edit remotes') && can_edit_table($s1addr);
+	if ($can_edit) {
 		if (!empty($_GET['out_ID'])) {
 			$out_ID = intval($_GET['out_ID']);
-			pg_free_result(pgquery("UPDATE addr_oID SET out_ID = $out_ID WHERE addr = $s2addr;"));
+			pgquery("UPDATE addr_oID SET out_ID = $out_ID WHERE addr = $s2addr;");
 			echo "out_ID changed for DST $h2addr.<br/>\n";
 		} else if (isset($_GET['randomize'])) {
 			pg_free_result(pgquery('UPDATE addr_oID SET out_ID = ' . rand(0, 255)
@@ -18,21 +20,21 @@ if (!empty($_GET['addr'])) {
 		} else if (!empty($_GET['add_proto'])) {
 			$s_add_proto = pg_escape_literal($_GET['add_proto']);
 			$h_add_proto = '&apos;' . htmlspecialchars($_GET['add_proto']) . '&apos;';
-			pg_free_result(pgquery("INSERT INTO SRC_proto(SRC, proto) VALUES($s2addr,
-					(SELECT proto FROM proto_name WHERE name = $s_add_proto));"));
+			pgquery("INSERT INTO SRC_proto(SRC, proto) VALUES($s2addr,
+					(SELECT proto FROM proto_name WHERE name = $s_add_proto));");
 			echo "proto $h_add_proto added for SRC $h2addr.<br/>\n";
 		} else if (!empty($_GET['add_DST'])) {
 			$s_add_DST = pgescapebytea($_GET['add_DST']);
 			$h_add_DST = 'X&apos;' . htmlspecialchars($_GET['add_DST']) . '&apos;';
-			pg_free_result(pgquery("INSERT INTO SRC_DST(SRC, DST) VALUES($s2addr, $s_add_DST);"));
+			pgquery("INSERT INTO SRC_DST(SRC, DST) VALUES($s2addr, $s_add_DST);");
 			echo "DST $h_add_DST added for SRC $h2addr.<br/>\n";
 		} else if (!empty($_GET['remove_proto'])) {
 			$s_remove_proto = pg_escape_literal($_GET['remove_proto']);
 			$h_remove_proto = '&apos;' . htmlspecialchars($_GET['remove_proto']) . '&apos;';
 			$u_remove_proto = urlencode($_GET['remove_proto']);
 			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM SRC_proto WHERE SRC = $s2addr AND proto
-						= (SELECT proto FROM proto_name WHERE name = $s_remove_proto);"));
+				pgquery("DELETE FROM SRC_proto WHERE SRC = $s2addr AND proto
+						= (SELECT proto FROM proto_name WHERE name = $s_remove_proto);");
 				echo "proto $h_remove_proto removed for SRC $h2addr.<br/>\n";
 			} else {
 ?>
@@ -48,8 +50,7 @@ if (!empty($_GET['addr'])) {
 			$h_remove_DST = 'X&apos;' . htmlspecialchars($_GET['remove_DST']) . '&apos;';
 			$u_remove_DST = urlencode($_GET['remove_DST']);
 			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM SRC_DST WHERE SRC = $s2addr
-						AND DST = $s_remove_DST;"));
+				pgquery("DELETE FROM SRC_DST WHERE SRC = $s2addr AND DST = $s_remove_DST;");
 				echo "DST $h_remove_DST removed for SRC $h2addr.<br/>\n";
 			} else {
 ?>
@@ -61,6 +62,8 @@ if (!empty($_GET['addr'])) {
 				exit(0);
 			}
 		}
+	}
+	if ($can_view) {
 ?>
 		<form action="" method="GET">
 			View destination:
@@ -70,17 +73,23 @@ if (!empty($_GET['addr'])) {
 				$str = substr($row[0], 2);
 				echo '<a href="view_source_destination_details.php',
 						"?SRC=$u_addr&amp;DST=$str\">$str</a>\n";
-				echo "<a href=\"?addr=$u_addr&amp;remove_DST=$str\">(remove)</a>\n";
+				if ($can_edit) {
+					echo "<a href=\"?addr=$u_addr&amp;remove_DST=$str\">(remove)</a>\n";
+				}
 			}
 			if (pg_num_rows($result) == 0) {
 ?>
 				&lt;no destinations&gt;
 <?php
 			}
-			echo "<input type=\"hidden\" name=\"addr\" value=\"$h1addr\"/>\n";
+			if ($can_edit) {
+				echo "<input type=\"hidden\" name=\"addr\" value=\"$h1addr\"/>\n";
 ?>
-			<input type="text" name="add_DST"/>
-			<input type="submit" value="(add)"/>
+				<input type="text" name="add_DST"/>
+				<input type="submit" value="(add)"/>
+<?php
+			}
+?>
 		</form>
 		outgoing ID
 <?php
@@ -88,15 +97,19 @@ if (!empty($_GET['addr'])) {
 		echo "<input form=\"change\" type=\"hidden\" name=\"addr\" value=\"$h1addr\"/>\n";
 		echo '<input form="change" type="text" name="out_ID" value="', pg_fetch_row($result)[0],
 				"\"/>\n";
+		if ($can_edit) {
 ?>
-		<input form="change" type="submit" value="change"/>
-		<input form="change" type="reset" value="reset"/>
+			<input form="change" type="submit" value="change"/>
+			<input form="change" type="reset" value="reset"/>
 <?php
-		echo "<input form=\"random\" type=\"hidden\" name=\"addr\" value=\"$h1addr\"/>\n";
+			echo "<input form=\"random\" type=\"hidden\" name=\"addr\" value=\"$h1addr\"/>\n";
 ?>
-		<input form="random" type="submit" name="randomize" value="randomize"/>
-		<form id="change" action="" method="GET"></form>
-		<form id="random" action="" method="GET"></form>
+			<input form="random" type="submit" name="randomize" value="randomize"/>
+			<form id="change" action="" method="GET"></form>
+			<form id="random" action="" method="GET"></form>
+<?php
+		}
+?>
 		<form action="" method="GET">
 			View protocol:
 <?php
@@ -113,10 +126,14 @@ if (!empty($_GET['addr'])) {
 				&lt;no protocols&gt;
 <?php
 			}
-			echo "<input type=\"hidden\" name=\"addr\" value=\"$h1addr\"/>\n";
+			if ($can_edit) {
+				echo "<input type=\"hidden\" name=\"addr\" value=\"$h1addr\"/>\n";
 ?>
-			<input type="text" name="add_proto"/>
-			<input type="submit" value="(add)"/>
+				<input type="text" name="add_proto"/>
+				<input type="submit" value="(add)"/>
+<?php
+			}
+?>
 		</form>
 		Write destination as a binary string, e.g., abababababababab.<br/>
 		Write id as an integer, e.g., 11.<br/>
@@ -124,8 +141,5 @@ if (!empty($_GET['addr'])) {
 		<a href="view_remotes.php">Done</a>
 <?php
 	}
-	pg_free_result($result1);
-	pg_free_result($result2);
-	pg_free_result($result3);
 }
 ?>

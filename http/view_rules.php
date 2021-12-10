@@ -5,9 +5,8 @@ $can_edit_rules = checkAuthorization(9, 'edit rules');
 if ($can_edit_rules) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
-			$result = pgquery('TRUNCATE TABLE rules CASCADE;');
+			pgquery('TRUNCATE TABLE rules CASCADE;');
 			echo "Table &quot;rules&quot; truncated.<br/>\n";
-			pg_free_result($result);
 		} else {
 ?>
 			Are you sure?
@@ -22,14 +21,12 @@ if ($can_edit_rules) {
 		$id = intval($_GET['id']);
 		if (isset($_GET['insert'])) {
 			if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
-					&& pg_num_rows(pgquery("SELECT TRUE FROM users WHERE username = $s_username
-					AND NOT is_administrator;") != 0 || $_SESSION['is_root']) {
-				pg_free_result(pgquery("INSERT INTO rules(username, id, send_receive_seconds,
-						filter, drop_modify_nothing, modification, query_command_nothing,
-						query_command_1, send_inject_query_command_nothing, query_command_2,
-						proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate,
-						deactivate, is_active) VALUES($s_username, $id, "
-						. intval($_GET['send_receive_seconds']) . ', '
+					&& !is_administrator($s_username) || $_SESSION['is_root']) {
+				pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter,
+						drop_modify_nothing, modification, query_command_nothing, query_command_1,
+						send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF,
+						ACF, broadcast, override_implicit_rules, activate, deactivate, is_active)
+						VALUES($s_username, $id, " . intval($_GET['send_receive_seconds']) . ', '
 						. pg_escape_literal($_GET['filter']) . ', '
 						. intval($_GET['drop_modify_nothing']) . ', '
 						. (!empty($_GET['modification']) ? pg_escape_literal($_GET['modification'])
@@ -47,7 +44,7 @@ if ($can_edit_rules) {
 						. pgescapebool($_GET['override_implicit_rules']) . ', '
 						. (!empty($_GET['activate']) ? intval($_GET['activate']) : 'NULL') . ', '
 						. (!empty($_GET['deactivate']) ? intval($_GET['deactivate']) : 'NULL')
-						. ', ' . pgescapebool($_GET['is_active']) . ');'));
+						. ', ' . pgescapebool($_GET['is_active']) . ');');
 				echo "For username $h_username rule $id inserted.<br/>\n";
 			}
 		} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
@@ -55,15 +52,14 @@ if ($can_edit_rules) {
 			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 			$key2 = intval($_GET['key2']);
 			if (($_GET['key1'] == $_SESSION['username'] && $_GET['key1'] == $_GET['username']
-					|| $_SESSION['is_administrator'] && pg_num_rows(pgquery("SELECT TRUE FROM users
-					WHERE (username = $s_key1 OR username = $s_username) AND is_administrator;"))
-					|| $_SESSION['is_root']) && isset($_GET['update'])) {
-				pg_free_result(pgquery("UPDATE rules SET (username, id, send_receive_seconds,
-						filter, drop_modify_nothing, modification, query_command_nothing,
-						query_command_1, send_inject_query_command_nothing, query_command_2,
-						proto_id, imm_addr, CCF, ACF, broadcast, override_implicit_rules, activate,
-						deactivate, is_active) = ($s_username, $id, "
-						. intval($_GET['send_receive_seconds']) . ', '
+					|| $_SESSION['is_administrator'] && !is_administrator($s_key1)
+					&& !is_administrator($s_username) || $_SESSION['is_root'])
+					&& isset($_GET['update'])) {
+				pgquery("UPDATE rules SET (username, id, send_receive_seconds, filter,
+						drop_modify_nothing, modification, query_command_nothing, query_command_1,
+						send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF,
+						ACF, broadcast, override_implicit_rules, activate, deactivate, is_active)
+						= ($s_username, $id, " . intval($_GET['send_receive_seconds']) . ', '
 						. pg_escape_literal($_GET['filter']) . ', '
 						. intval($_GET['drop_modify_nothing']) . ', '
 						. (!empty($_GET['modification']) ? pg_escape_literal($_GET['modification'])
@@ -82,8 +78,8 @@ if ($can_edit_rules) {
 						. (!empty($_GET['activate']) ? intval($_GET['activate']) : 'NULL') . ', '
 						. (!empty($_GET['deactivate']) ? intval($_GET['deactivate']) : 'NULL')
 						. ', ' . pgescapebool($_GET['is_active'])
-						. ") WHERE username = $s_key1 AND id = $key2;"));
-					echo "For username $h_key1 rule $key2 updated.<br/>\n";
+						. ") WHERE username = $s_key1 AND id = $key2;");
+				echo "For username $h_key1 rule $key2 updated.<br/>\n";
 			}
 		}
 	} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
@@ -92,12 +88,9 @@ if ($can_edit_rules) {
 		$u_key1 = urlencode($_GET['key1']);
 		$key2 = intval($_GET['key2']);
 		if (($_GET['key1'] == $_SESSION['username'] || $_SESSION['is_administrator']
-				&& pg_num_rows(pgquery("SELECT TRUE FROM users WHERE username = $s_username
-				AND NOT is_administrator;") == 0|| $_SESSION['is_root'])
-			 	&& isset($_GET['delete'])) {
+				&& !is_administrator($s_key1) || $_SESSION['is_root']) && isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
-				pg_free_result(pgquery("DELETE FROM rules WHERE username = $s_key1
-						AND id = $key2;"));
+				pgquery("DELETE FROM rules WHERE username = $s_key1 AND id = $key2;");
 				echo "For username $h_key1 rule $key2 deleted.<br/>\n";
 			} else {
 ?>
@@ -111,7 +104,6 @@ if ($can_edit_rules) {
 				exit(0);
 			}
 		}
-		pg_free_result($result);
 	}
 }
 if ($can_view_rules) {
@@ -126,8 +118,7 @@ if ($can_view_rules) {
 		$result = pgquery("SELECT rules.* FROM rules INNER JOIN users
 				ON rules.username = users.username WHERE rules.username = 'public'
 				OR rules.username = {$_SESSION['s_username']} OR NOT users.is_administrator
-				AND NOT table_user.is_read_only ORDER BY users.is_administrator DESC,
-				rules.username ASC, rules.id ASC;");
+				ORDER BY users.is_administrator DESC, rules.username ASC, rules.id ASC;");
 		echo "Viewing table &quot;rules&quot; for public, username $h2username and
 				non-administrators.<br/>\n";
 	} else {
@@ -172,135 +163,136 @@ if ($can_view_rules) {
 			if ($can_edit_rules) {
 ?>
 				<tr>
-				<td nowrap="nowrap">
+					<td nowrap="nowrap">
 <?php
-					if ($_SESSION['is_administrator']) {
+						if ($_SESSION['is_administrator']) {
 ?>
-						<input form="insert" type="text" name="username" size="10"/>
+							<input form="insert" type="text" name="username" size="10"/>
 <?php
-					} else {
-						echo "<input type=\"text\" value=\"{$_SESSION['h1username']}\" size=\"10\"
-								disabled=\"disabled\"/>\n";
-						echo "<input form=\"insert\" type=\"hidden\" name=\"username\"
-								value=\"{$_SESSION['h1username']}\"/>\n";
-					}
+						} else {
+							echo "<input type=\"text\" value=\"{$_SESSION['h1username']}\"
+									size=\"10\" disabled=\"disabled\"/>\n";
+							echo "<input form=\"insert\" type=\"hidden\" name=\"username\"
+									value=\"{$_SESSION['h1username']}\"/>\n";
+						}
 ?>
-					,
-				</td>
-				<td nowrap="nowrap">
-					<input form="insert" type="text" name="id" size="10"/>
-					.
-				</td>
-				<td nowrap="nowrap">
-					<input form="insert" type="radio" name="send_receive_seconds" value="0"
-						   checked="checked"/>
-					on sending when:<br/>
-					<input form="insert" type="radio" name="send_receive_seconds" value="1"/>
-					on receiving when:<br/>
-					<input form="insert" type="radio" name="send_receive_seconds" value="2"/>
-					every this amount of seconds:
-				</td>
-				<td nowrap="nowrap">
-					<input form="insert" type="text" name="filter" size="10"/>
-					.
-				</td>
-				<td nowrap="nowrap">
-					<input form="insert" type="radio" name="drop_modify_nothing" value="0"
-						   checked="checked"/>
-					drop message<br/>
-					<input form="insert" type="radio" name="drop_modify_nothing" value="1"/>
-					modify message with this:<br/>
-					<input form="insert" type="radio" name="drop_modify_nothing" value="2"/>
-					do nothing
-				</td>
-				<td nowrap="nowrap">
-					<input form="insert" type="text" name="modification" size="10"/>
-					,
-				</td>
-				<td nowrap="nowrap">
-					<input form="insert" type="radio" name="query_command_nothing" value="0"
-						   checked="checked"/>
-					SQL query:<br/>
-					<input form="insert" type="radio" name="query_command_nothing" value="1"/>
-					bash command:<br/>
-					<input form="insert" type="radio" name="query_command_nothing" value="2"/>
-					(execute nothing)
-				</td>
-				<td nowrap="nowrap">
-					<input form="insert" type="text" name="query_command_1" size="10"/>
-					,
-				</td>
-				<td nowrap="nowrap">
-					<input form="insert" type="radio" name="send_inject_query_command_nothing"
-						   value="0" checked="checked"/>
-					query and send it:<br/>
-					<input form="insert" type="radio" name="send_inject_query_command_nothing"
-						   value="1"/>
-					command and send it:<br/>
-					<input form="insert" type="radio" name="send_inject_query_command_nothing"
-						   value="2"/>
-					query and inject it:<br/>
-					<input form="insert" type="radio" name="send_inject_query_command_nothing"
-						   value="3"/>
-					command and inject it:<br/>
-					<input form="insert" type="radio" name="send_inject_query_command_nothing"
-						   value="4"/>
-					(form nothing)
-				</td>
-				<td>
-					<input form="insert" type="text" name="query_command_2" size="10"/>
-				</td>
-				<td>
-					<input form="insert" type="text" name="proto_id" size="10"/>
-				</td>
-				<td>
-					<input form="insert" type="text" name="imm_addr" size="10"/>
-				</td>
-				<td>
-					<input form="insert" type="checkbox" name="CCF"/>
-				</td>
-				<td>
-					<input form="insert" type="checkbox" name="ACF"/>
-				</td>
-				<td>
-					<input form="insert" type="checkbox" name="broadcast"/>
-				</td>
-				<td nowrap="nowrap">
-					<input form="insert" type="checkbox" name="override_implicit_rules"/>
-					.
-				</td>
-				<td nowrap="nowrap">
-					<input form="insert" type="text" name="activate"/>
-					.
-				</td>
-				<td nowrap="nowrap">
-					<input form="insert" type="text" name="deactivate"/>
-					.
-				</td>
-				<td>
-					<input form="insert" type="checkbox" name="is_active"/>
-				</td>
-				<td>
-					<input form="insert" type="text" name="last_run" value="LOCALTIMESTAMP(0)"
-						   disabled="disabled"/>
-				</td>
-				<td>
-					<form id="insert" action="" method="GET">
-						<input type="submit" name="insert" value="INSERT"/><br/>
-						<input form="insert" type="reset" value="reset"/><br/>
-					</form>
-<?php
-					if ($_SESSION['is_root']) {
-?>
-						<form action="" method="GET">
-							<input type="submit" name="truncate" value="TRUNCATE"/>
+						,
+					</td>
+					<td nowrap="nowrap">
+						<input form="insert" type="text" name="id" size="10"/>
+						.
+					</td>
+					<td nowrap="nowrap">
+						<input form="insert" type="radio" name="send_receive_seconds" value="0"
+						   	checked="checked"/>
+						on sending when:<br/>
+						<input form="insert" type="radio" name="send_receive_seconds" value="1"/>
+						on receiving when:<br/>
+						<input form="insert" type="radio" name="send_receive_seconds" value="2"/>
+						every this amount of seconds:
+					</td>
+					<td nowrap="nowrap">
+						<input form="insert" type="text" name="filter" size="10"/>
+						.
+					</td>
+					<td nowrap="nowrap">
+						<input form="insert" type="radio" name="drop_modify_nothing" value="0"
+						   	checked="checked"/>
+						drop message<br/>
+						<input form="insert" type="radio" name="drop_modify_nothing" value="1"/>
+						modify message with this:<br/>
+						<input form="insert" type="radio" name="drop_modify_nothing" value="2"/>
+						do nothing
+					</td>
+					<td nowrap="nowrap">
+						<input form="insert" type="text" name="modification" size="10"/>
+						,
+					</td>
+					<td nowrap="nowrap">
+						<input form="insert" type="radio" name="query_command_nothing" value="0"
+						   	checked="checked"/>
+						SQL query:<br/>
+						<input form="insert" type="radio" name="query_command_nothing" value="1"/>
+						bash command:<br/>
+						<input form="insert" type="radio" name="query_command_nothing" value="2"/>
+						(execute nothing)
+					</td>
+					<td nowrap="nowrap">
+						<input form="insert" type="text" name="query_command_1" size="10"/>
+						,
+					</td>
+					<td nowrap="nowrap">
+						<input form="insert" type="radio" name="send_inject_query_command_nothing"
+						   	value="0" checked="checked"/>
+						query and send it:<br/>
+						<input form="insert" type="radio" name="send_inject_query_command_nothing"
+						   	value="1"/>
+						command and send it:<br/>
+						<input form="insert" type="radio" name="send_inject_query_command_nothing"
+						   	value="2"/>
+						query and inject it:<br/>
+						<input form="insert" type="radio" name="send_inject_query_command_nothing"
+						   	value="3"/>
+						command and inject it:<br/>
+						<input form="insert" type="radio" name="send_inject_query_command_nothing"
+						   	value="4"/>
+						(form nothing)
+					</td>
+					<td>
+						<input form="insert" type="text" name="query_command_2" size="10"/>
+					</td>
+					<td>
+						<input form="insert" type="text" name="proto_id" size="10"/>
+					</td>
+					<td>
+						<input form="insert" type="text" name="imm_addr" size="10"/>
+					</td>
+					<td>
+						<input form="insert" type="checkbox" name="CCF"/>
+					</td>
+					<td>
+						<input form="insert" type="checkbox" name="ACF"/>
+					</td>
+					<td>
+						<input form="insert" type="checkbox" name="broadcast"/>
+					</td>
+					<td nowrap="nowrap">
+						<input form="insert" type="checkbox" name="override_implicit_rules"/>
+						.
+					</td>
+					<td nowrap="nowrap">
+						<input form="insert" type="text" name="activate"/>
+						.
+					</td>
+					<td nowrap="nowrap">
+						<input form="insert" type="text" name="deactivate"/>
+						.
+					</td>
+					<td>
+						<input form="insert" type="checkbox" name="is_active"/>
+					/td>
+					<td>
+						<input form="insert" type="text" name="last_run" value="LOCALTIMESTAMP(0)"
+						   	disabled="disabled"/>
+					</td>
+					<td>
+						<form id="insert" action="" method="GET">
+							<input type="submit" name="insert" value="INSERT"/><br/>
+							<input form="insert" type="reset" value="reset"/><br/>
 						</form>
 <?php
-					}
+						if ($_SESSION['is_root']) {
 ?>
-				</td>
-			</tr>
+							<form action="" method="GET">
+								<input type="submit" name="truncate" value="TRUNCATE"/>
+							</form>
 <?php
+						}
+?>
+					</td>
+				</tr>
+<?php
+			}
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 ?>
 				<tr>
@@ -504,25 +496,31 @@ if ($can_view_rules) {
 								"\"/>\n";
 ?>
 					</td>
-					<td>
 <?php
-						echo "<form id=$form action=\"\" method=\"GET\">\n";
-							echo "<input type=\"hidden\" name=\"key1\" value=\"$username\"/>\n";
-							echo "<input type=\"hidden\" name=\"key2\" value=\"{$row[1]}\"/>\n";
+					if ($can_edit_rules) {
 ?>
-							<input type="submit" name="update" value="UPDATE"/><br/>
-							<input type="reset" value="reset"/>
+						<td>
 <?php
-						echo "</form>";
+							echo "<form id=$form action=\"\" method=\"GET\">\n";
+								echo "<input type=\"hidden\" name=\"key1\" value=\"$username\"/>\n";
+								echo "<input type=\"hidden\" name=\"key2\" value=\"{$row[1]}\"/>\n";
 ?>
-						<form action="" method="GET">
+								<input type="submit" name="update" value="UPDATE"/><br/>
+								<input type="reset" value="reset"/>
 <?php
-							echo "<input type=\"hidden\" name=\"key1\" value=\"$username\"/>\n";
-							echo "<input type=\"hidden\" name=\"key2\" value=\"{$row[1]}\"/>\n";
+							echo "</form>";
 ?>
-							<input type="submit" name="delete" value="DELETE"/>
-						</form>
-					</td>
+							<form action="" method="GET">
+<?php
+								echo "<input type=\"hidden\" name=\"key1\" value=\"$username\"/>\n";
+								echo "<input type=\"hidden\" name=\"key2\" value=\"{$row[1]}\"/>\n";
+?>
+								<input type="submit" name="delete" value="DELETE"/>
+							</form>
+						</td>
+<?php
+					}
+?>
 				</tr>
 <?php
 			}
