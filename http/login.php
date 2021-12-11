@@ -9,9 +9,9 @@ if (!empty($_POST['username']) && !empty($_POST['password'])) {
 			WHERE username = {$_SESSION['s_username']};"));
 	if ($row && password_verify($_POST['password'], $row[0]) && $row[2] == 't') {
 		$_SESSION['is_root'] = $_POST['username'] == 'root';
-		$_SESSION['s_is_root'] = pgescapebool($_SESSION['is_root']);
+		$_SESSION['s_is_root'] = $_SESSION['is_root'] ? 'TRUE' : 'FALSE';
 		$_SESSION['is_administrator'] = $row[1] == 't';
-		$_SESSION['s_is_administrator'] = pgescapebool($_SESSION['is_administrator']);
+		$_SESSION['s_is_administrator'] = $_SESSION['is_administrator'] ? 'TRUE' : 'FALSE';
 		$_SESSION['username'] = $_POST['username'];
 	}
 } else if (isset($_GET['logout'])) {

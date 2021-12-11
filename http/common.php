@@ -55,7 +55,7 @@ function can_view_table($s_tablename) {
 			AND {$_SESSION['s_is_administrator']} OR {$_SESSION['s_is_root']});")) != 0;
 }
 
-function postgresqlOutputToMyInput($data, $oid) {
+function postgresql_output_to_my_input($data, $oid) {
 	if ($data === null) {
 		return '';
 	}
@@ -73,6 +73,11 @@ function postgresqlOutputToMyInput($data, $oid) {
 	default://17//BYTEA
 		return substr($data, 2);
 	}
+}
+
+function find_owner($s_tablename) {
+	return pg_fetch_row(pgquery("SELECT username FROM table_user
+			WHERE tablename = $s_tablename AND NOT is_read_only;"))[0];
 }
 
 function pgquery($string) {
@@ -95,7 +100,7 @@ function can_edit_table($s_tablename) {
 			OR {$_SESSION['s_is_root']}) AND NOT table_user.is_read_only;")) != 0;
 }
 
-function myInputToPostgresqlInput($data, $oid) {
+function my_input_to_postgresql_input($data, $oid) {
 	if ($data == '') {
 		return 'NULL';
 	}
@@ -115,6 +120,12 @@ function myInputToPostgresqlInput($data, $oid) {
 	default://17//BYTEA
 		return '\'\\x' . $data . '\'';
 	}
+}
+
+function is_administrator($s_username) {
+	return pg_num_rows(pgquery("SELECT TRUE FROM users
+			WHERE username = $s_username AND is_administrator;")) != 0;
+}
 
 function checkAuthorization($index, $text) {
 	$result = pgquery("SELECT can_view_tables, can_edit_tables, can_send_messages,

@@ -6,8 +6,7 @@ if ($can_edit_configuration && isset($_GET['update']) && !empty($_GET['username'
 	$s_username = pg_escape_literal($_GET['username']);
 	$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 	if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
-			&& pg_num_rows(pgquery("SELECT TRUE FROM users WHERE username = $s_username
-			AND is_administrator;")) == 0) || $_SESSION['is_root']) {
+			&& !is_administrator($s_username) || $_SESSION['is_root']) {
 		pgquery('UPDATE configuration SET (forward_messages, use_internet_switch_algorithm,
 				nsecs_id, nsecs_src, trust_everyone, default_gateway) = ('
 				. pgescapebool($_GET['forward_messages']) . ', '
@@ -21,9 +20,9 @@ if ($can_edit_configuration && isset($_GET['update']) && !empty($_GET['username'
 }
 if ($can_view_configuration) {
 	if ($_SESSION['is_root']) {
-		$result = pgquery('SELECT configuration.* FROM configuration INNER JOIN users
-				ON configuration.username = users.username ORDER BY users.is_administrator DESC,
-				configuration.username ASC;');
+		$result = pgquery('SELECT configuration.* FROM configuration
+				INNER JOIN users ON configuration.username = users.username
+				ORDER BY users.is_administrator DESC, configuration.username ASC;');
 ?>
 		Viewing table &quot;configuration&quot;, administrators first.
 <?php
