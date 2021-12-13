@@ -6,8 +6,8 @@ if (!empty($_GET['addr'])) {
 	$h1addr = htmlspecialchars($_GET['addr']);
 	$h2addr = "X&apos;$h1addr&apos;";
 	$u_addr = urlencode($_GET['addr']);
-	$can_view = checkAuthorization(8, 'view remotes') && can_view_table($s1addr);
-	$can_edit = checkAuthorization(9, 'edit remotes') && can_edit_table($s1addr);
+	$can_view = checkAuthorization(14, 'view remotes') && can_view_table($s1addr);
+	$can_edit = checkAuthorization(15, 'edit remotes') && can_edit_table($s1addr);
 	if ($can_edit) {
 		if (!empty($_GET['out_ID'])) {
 			$out_ID = intval($_GET['out_ID']);
@@ -119,7 +119,9 @@ if (!empty($_GET['addr'])) {
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 				echo '<a href="view_source_protocol_details.php',
 						"?SRC=$u_addr&amp;proto={$row[0]}\">{$row[0]}</a>\n";
-				echo "<a href=\"?addr=$u_addr&amp;remove_proto={$row[0]}\">(remove)</a>\n";
+				if ($can_edit) {
+					echo "<a href=\"?addr=$u_addr&amp;remove_proto={$row[0]}\">(remove)</a>\n";
+				}
 			}
 			if (pg_num_rows($result) == 0) {
 ?>

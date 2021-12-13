@@ -184,7 +184,7 @@ if ($can_view_rules) {
 					</td>
 					<td nowrap="nowrap">
 						<input form="insert" type="radio" name="send_receive_seconds" value="0"
-						   	checked="checked"/>
+								checked="checked"/>
 						on sending when:<br/>
 						<input form="insert" type="radio" name="send_receive_seconds" value="1"/>
 						on receiving when:<br/>
@@ -197,7 +197,7 @@ if ($can_view_rules) {
 					</td>
 					<td nowrap="nowrap">
 						<input form="insert" type="radio" name="drop_modify_nothing" value="0"
-						   	checked="checked"/>
+								checked="checked"/>
 						drop message<br/>
 						<input form="insert" type="radio" name="drop_modify_nothing" value="1"/>
 						modify message with this:<br/>
@@ -210,7 +210,7 @@ if ($can_view_rules) {
 					</td>
 					<td nowrap="nowrap">
 						<input form="insert" type="radio" name="query_command_nothing" value="0"
-						   	checked="checked"/>
+								checked="checked"/>
 						SQL query:<br/>
 						<input form="insert" type="radio" name="query_command_nothing" value="1"/>
 						bash command:<br/>
@@ -223,19 +223,19 @@ if ($can_view_rules) {
 					</td>
 					<td nowrap="nowrap">
 						<input form="insert" type="radio" name="send_inject_query_command_nothing"
-						   	value="0" checked="checked"/>
+								value="0" checked="checked"/>
 						query and send it:<br/>
 						<input form="insert" type="radio" name="send_inject_query_command_nothing"
-						   	value="1"/>
+								value="1"/>
 						command and send it:<br/>
 						<input form="insert" type="radio" name="send_inject_query_command_nothing"
-						   	value="2"/>
+								value="2"/>
 						query and inject it:<br/>
 						<input form="insert" type="radio" name="send_inject_query_command_nothing"
-						   	value="3"/>
+								value="3"/>
 						command and inject it:<br/>
 						<input form="insert" type="radio" name="send_inject_query_command_nothing"
-						   	value="4"/>
+								value="4"/>
 						(form nothing)
 					</td>
 					<td>
@@ -273,7 +273,7 @@ if ($can_view_rules) {
 					/td>
 					<td>
 						<input form="insert" type="text" name="last_run" value="LOCALTIMESTAMP(0)"
-						   	disabled="disabled"/>
+								disabled="disabled"/>
 					</td>
 					<td>
 						<form id="insert" action="" method="GET">

@@ -48,39 +48,35 @@ if ($can_edit_remotes) {
 }
 if ($can_view_remotes) {
 	if (isset($_SESSION['loaded'])) {
-		if ($_SESSION['is_root']) {
-			$result = pgquery('SELECT addr_oID.addr FROM addr_oID INNER JOIN table_user
-					ON \'t\' || encode(addr_oID.addr, \'hex\') = table_user.tablename
-					INNER JOIN users ON table_user.username = users.username
-					WHERE NOT table_user.is_read_only
-					ORDER BY users.is_administrator DESC, addr_oID.addr ASC;');
-		} else if ($_SESSION['is_administrator']) {
-			$result = pgquery("SELECT addr_oID.addr, table_user.tablename AS t FROM addr_oID
-					INNER JOIN table_user ON 't' || encode(addr_oID.addr, 'hex')
-					= table_user.tablename INNER JOIN users ON table_user.username = users.username
-					WHERE NOT table_user.is_read_only AND EXISTS (SELECT TRUE FROM table_user
-					WHERE tablename = t AND users.username = 'public' OR users.username
-					= {$_SESSION['s_username']}) OR NOT users.is_administrator
-					ORDER BY users.is_administrator DESC, addr_oID.addr ASC;");
-		} else {
-			$result = pgquery("SELECT addr_oID.addr, table_user.tablename AS t FROM addr_oID
-					INNER JOIN table_user ON 't' || encode(addr_oID.addr, 'hex')
-					= table_user.tablename INNER JOIN users ON table_user.username = users.username
-					WHERE NOT table_user.is_read_only AND EXISTS (SELECT TRUE FROM table_user
-					WHERE tablename = t AND users.username = 'public' OR users.username
-					= {$_SESSION['s_username']} ORDER BY addr_oID.addr ASC;");
-		}
 ?>
 		<form action="" method="GET">
 <?php
 			if ($_SESSION['is_root']) {
+				$result = pgquery('SELECT addr_oID.addr FROM addr_oID INNER JOIN table_user
+						ON \'t\' || encode(addr_oID.addr, \'hex\') = table_user.tablename
+						INNER JOIN users ON table_user.username = users.username
+						WHERE NOT table_user.is_read_only
+						ORDER BY users.is_administrator DESC, addr_oID.addr ASC;');
 ?>
 				View remote:
 <?php
 			} else if ($_SESSION['is_administrator']) {
-				echo "View remote (public, {$_SESSION['h2username']}&apos;s, non-administrators'
-						shown):\n";
+				$result = pgquery("SELECT addr_oID.addr, table_user.tablename AS t FROM addr_oID
+						INNER JOIN table_user ON 't' || encode(addr_oID.addr, 'hex')
+						= table_user.tablename INNER JOIN users ON table_user.username
+						= users.username WHERE NOT table_user.is_read_only AND EXISTS (SELECT TRUE
+						FROM table_user WHERE tablename = t AND users.username = 'public'
+						OR users.username = {$_SESSION['s_username']}) OR NOT users.is_administrator
+						ORDER BY users.is_administrator DESC, addr_oID.addr ASC;");
+				echo "View remote (public, {$_SESSION['h2username']}&apos;s,
+						non-administrators&apos; shown):\n";
 			} else {
+				$result = pgquery("SELECT addr_oID.addr, table_user.tablename AS t FROM addr_oID
+						INNER JOIN table_user ON 't' || encode(addr_oID.addr, 'hex')
+						= table_user.tablename INNER JOIN users ON table_user.username
+						= users.username WHERE NOT table_user.is_read_only AND EXISTS (SELECT TRUE
+						FROM table_user WHERE tablename = t AND users.username = 'public'
+						OR users.username = {$_SESSION['s_username']} ORDER BY addr_oID.addr ASC;");
 				echo "View remote (public, {$_SESSION['h2username']}&apos;s shown):\n";
 			}
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {

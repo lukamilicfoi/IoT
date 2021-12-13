@@ -21,18 +21,13 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		$s_username = pg_escape_literal($_POST['username']);
 		$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
 		$query = 'INSERT INTO users(username, password';
-		$fields = array('is_administrator', 'can_view_tables', 'can_edit_tables',
-			'can_send_messages', 'can_inject_messages', 'can_send_queries', 'can_view_rules',
-			'can_edit_rules', 'can_view_configuration', 'can_edit_configuration',
-			'can_view_permissions', 'can_edit_permissions', 'can_view_remotes', 'can_edit_remotes',
-			'can_execute_rules', 'can_actually_login');
 		for ($i = 0; $i < 16; $i++) {
-			$query .= ", {$fields[$i]}";
+			$query .= ", {$user_fields[$i]}";
 		}
 		$query .= ") VALUES($s_username, '" . password_hash($_POST['password'], PASSWORD_DEFAULT)
 				. '\'';
 		for ($i = 0; $i < 16; $i++) {
-			$query .= ', ' . pgescapebool($_POST[$fields[$i]]);
+			$query .= ', ' . pgescapebool($_POST[$user_fields[$i]]);
 		}
 		pgquery($query . ');');
 		pgquery("INSERT INTO configuration(username, forward_messages,
@@ -47,21 +42,16 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if ($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
 				&& !is_administrator($s_username) || $_SESSION['is_root']) {
 			$query = 'UPDATE users SET (' . (!empty($_POST['password']) ? 'password, ' : '');
-			$fields = array('is_administrator', 'can_view_tables', 'can_edit_tables',
-					'can_send_messages', 'can_inject_messages', 'can_send_queries',
-					'can_view_rules', 'can_edit_rules', 'can_view_configuration',
-					'can_edit_configuration', 'can_view_permissions', 'can_edit_permissions',
-					'can_view_remotes', 'can_edit_remotes', 'can_execute_rules',
-					'can_actually_login');
 			for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 16; $i++) {
-			$query .= "{$fields[$i]}, ";
-			$query = substr($query, 0, -2) . ") = (" . (!empty($_POST['password'])
-					? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\', ' : '');
-			for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 16; $i++) {
-				$query .= pgescapebool($_POST[$fields[$i]]) . ', ';
+				$query .= "{$user_fields[$i]}, ";
+				$query = substr($query, 0, -2) . ") = (" . (!empty($_POST['password'])
+						? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\', ' : '');
+				for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 16; $i++) {
+					$query .= pgescapebool($_POST[$user_fields[$i]]) . ', ';
+				}
+				pgquery(substr($query, 0, -2) . ") WHERE username = $s_username;");
+				echo "User $h_username updated.<br/>\n";
 			}
-			pgquery(substr($query, 0, -2) . ") WHERE username = $s_username;");
-			echo "User $h_username updated.<br/>\n";
 		}
 	}
 } else if (isset($_GET['delete']) && isset($_GET['key'])) {
@@ -88,9 +78,7 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 			. "' WHERE username = {$_SESSION['s_username']};");
 	echo "Password updated - for username $h2username.<br/>\n";
 }
-$result1 = pgquery("SELECT username, TRUE, is_administrator, can_view_tables,XXXXXX can_send_messages,
-		can_inject_messages, can_send_queries, can_view_rules, can_view_configuration,
-		can_view_permissions, can_view_remotes, can_execute_rules, can_actually_login FROM users
+$result1 = pgquery("SELECT username, TRUE, is_administrator, $joined_fields FROM users
 		WHERE username = {$_SESSION['s_username']};");
 if ($_SESSION['is_root']) {
 	$result2 = pgquery("SELECT * FROM users WHERE username <> 'root'
@@ -99,11 +87,9 @@ if ($_SESSION['is_root']) {
 	Viewing table &quot;users&quot;, administrators first.
 <?php
 } else if ($_SESSION['is_administrator']) {
-	$result2 = pgquery("SELECT username, TRUE, is_administrator, can_view_tables,XXXXXX
-			can_send_messages, can_inject_messages, can_send_queries, can_view_rules,
-			can_view_configuration, can_view_permissions, can_view_remotes, can_execute_rules,
-			can_actually_login FROM users WHERE NOT is_administrator
-			AND username <> {$_SESSION['s_username']} ORDER BY username ASC;");
+	$result2 = pgquery("SELECT username, TRUE, is_administrator, $joined_fields FROM users
+			WHERE NOT is_administrator AND username <> {$_SESSION['s_username']}
+			ORDER BY username ASC;");
 	echo "Viewing table &quot;users&quot; for username {$_SESSION['h2username']}
 			and non-administrators.\n";
 } else {
@@ -115,17 +101,11 @@ if ($_SESSION['is_root']) {
 		<tr>
 			<th>Username</th>
 			<th>New password?</th>
-			<th>Is administrator?</th>
-			<th>Can view tables?</th>
-			<th>Can send messages?</th>
-			<th>Can inject messages?</th>
-			<th>Can send queries?</th>
-			<th>Can view rules?</th>
-			<th>Can view configuration?</th>
-			<th>Can view permissions?</th>
-			<th>Can view remotes?</th>
-			<th>Can execute rules?</th>
-			<th>Can actually login?</th>
+<?php
+			for ($field : $user_fields) {
+				echo '<th>', ucfirst(str_replace($field, '_', ' ')), "</th>\n";
+			}
+?>
 			<th>Actions</th>
 		</tr>
 <?php
@@ -151,36 +131,17 @@ if ($_SESSION['is_root']) {
 					}
 ?>
 				</td>
-				<td>
-					<input form="insert" type="checkbox" name="can_view_tables"/>
-				</td>
-				<td>
-					<input form="insert" type="checkbox" name="can_send_messages"/>
-				</td>
-				<td>
-					<input form="insert" type="checkbox" name="can_inject_messages"/>
-				</td>
-				<td>
-					<input form="insert" type="checkbox" name="can_send_queries"/>
-				</td>
-				<td>
-					<input form="insert" type="checkbox" name="can_view_rules"/>
-				</td>
-				<td>
-					<input form="insert" type="checkbox" name="can_view_configuration"/>
-				</td>
-				<td>
-					<input form="insert" type="checkbox" name="can_view_permissions"/>
-				</td>
-				<td>
-					<input form="insert" type="checkbox" name="can_view_remotes"/>
-				</td>
-				<td>
-					<input form="insert" type="checkbox" name="can_execute_rules"/>
-				</td>
-				<td>
-					<input form="insert" type="checkbox" name="can_actually_login"/>
-				</td>
+<?php
+				for ($field : $user_fields) {
+?>
+					<td>
+<?php
+						echo "<input form=\"insert\" type=\"checkbox\" name=\"$field\"/>\n";
+?>
+					</td>
+<?php
+				}
+?>
 				<td>
 					<form id="insert" action="?" method="POST">
 						<input type="submit" name="insert" value="INSERT"/><br/>

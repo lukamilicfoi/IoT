@@ -23,7 +23,7 @@ if (!empty($_GET['tablename'])) {
 			}
 		} else if (!empty($_GET['t'])) {
 			if (isset($_GET['insert'])) {
-				$t = htmlspecialchars($_GET['t']);
+				$t = 'TIMESTAMP &apos;' . htmlspecialchars($_GET['t']) . '&apos;';
 				$result = pgquery("SELECT * FROM $s2tablename WHERE FALSE;");
 				$query = "INSERT INTO $s2tablename(";
 				for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
@@ -31,7 +31,7 @@ if (!empty($_GET['tablename'])) {
 				}
 				$query = substr($query, 0, -2) . ') VALUES(';
 				for ($i = 0; $i < $j; $i++) {
-					$query .= myInputToPostgresqlInput($_GET[pg_field_name($result, $i)],
+					$query .= my_input_to_postgresql_input($_GET[pg_field_name($result, $i)],
 							pg_field_type_oid($result, $i)) . ', ';
 				}
 				pgquery(substr($query, 0, -2) . ');');
@@ -46,7 +46,7 @@ if (!empty($_GET['tablename'])) {
 				}
 				$query = substr($query, 0, -2) . ') = ROW (';
 				for ($i = 0; $i < $j; $i++) {
-					$query .= myInputToPostgresqlInput($_GET[pg_field_name($result, $i)],
+					$query .= my_input_to_postgresql_input($_GET[pg_field_name($result, $i)],
 							pg_field_type_oid($result, $i)) . ', ';
 				}
 				pgquery(substr($query, 0, -2) . ") WHERE t = $s_key;");
@@ -136,7 +136,7 @@ if (!empty($_GET['tablename'])) {
 <?php
 								echo "<input form=\"update{$row[$t]}\" type=\"text\" name=\"",
 										pg_field_name($result, $i), '" value="',
-										htmlspecialchars(postgresqlOutputToMyInput($row[$i],
+										htmlspecialchars(postgresql_output_to_my_input($row[$i],
 										pg_field_type_oid($result, $i))), "\"/>\n";
 ?>
 							</td>
