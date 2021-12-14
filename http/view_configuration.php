@@ -1,17 +1,18 @@
 <?php
 require_once 'common.php';
-$can_view_configuration = checkAuthorization(10, 'view configuration');
-$can_edit_configuration = checkAuthorization(11, 'edit configuration');
+$can_view_configuration = check_authorization('can_view_configuration', 'view configuration');
+$can_edit_configuration = check_authorization('can_edit_configuration', 'edit configuration');
 if ($can_edit_configuration && isset($_GET['update']) && !empty($_GET['username'])) {
 	$s_username = pg_escape_literal($_GET['username']);
 	$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 	if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
 			&& !is_administrator($s_username) || $_SESSION['is_root']) {
-		pgquery('UPDATE configuration SET (forward_messages, use_internet_switch_algorithm,
-				nsecs_id, nsecs_src, trust_everyone, default_gateway) = ('
-				. pgescapebool($_GET['forward_messages']) . ', '
-				. pgescapebool($_GET['use_internet_switch_algorithm']) . ', '
-		   		. intval($_GET['nsecs_id']) . ', '. intval($_GET['nsecs_src']) . ', '
+		$query = 'UPDATE configuration SET (' . implode(', ', $configuration_fields) . ',
+				nsecs_id, nsecs_src, trust_everyone, default_gateway) = (';
+		for ($configuration_fields as $field) {
+			$query .= pgescapebool($_GET[$field]) . ', ';
+		}
+		pgquery($query . intval($_GET['nsecs_id']) . ', '. intval($_GET['nsecs_src']) . ', '
 		   		. pgescapebool($_GET['trust_everyone']) . ', '
 		   		. pgescapebytea($_GET['default_gateway']) . ") WHERE username = $s_username;");
 		pgquery('CALL config();');
@@ -43,8 +44,11 @@ if ($can_view_configuration) {
 		<tbody>
 			<tr>
 				<th>Username</th>
-				<th>Forward messages?</th>
-				<th>Use internet switch algorithm?</th>
+<?php
+				for ($configuration_fields as $field) {
+					echo '<th>', ucfirst(strtr($field, '_', ' ')), "?</th>\n";
+				}
+?>
 				<th>Duplicate expiration in seconds</th>
 				<th>Address expiration in seconds</th>
 				<th>Trust everyone?</th>
@@ -69,20 +73,19 @@ if ($can_view_configuration) {
 								value=\"$username\"/>\n";
 ?>
 					</td>
-					<td>
 <?php
-						echo "<input form=\"update_$username\" type=\"checkbox\"
-								name=\"forward_messages\"",
-								$row[1] == 't' ? ' checked="checked"' : '', "/>\n";
+					for ($configuration_fields as $field) {
 ?>
-					</td>
-					<td>
+						<td>
 <?php
-						echo "<input form=\"update_$username\" type=\"checkbox\"
-								name=\"use_internet_switch_algorithm\"",
-								$row[2] == 't' ? ' checked="checked"' : '', "/>\n";
+							echo "<input form=\"update_$username\" type=\"checkbox\"
+									name=\"$field\"",
+									$row[$field] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
-					</td>
+						</td>
+<?php
+					}
+?>
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\" name=\"nsecs_id\"

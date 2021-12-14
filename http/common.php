@@ -55,6 +55,8 @@ function can_view_table($s_tablename) {
 			AND {$_SESSION['s_is_administrator']} OR {$_SESSION['s_is_root']});")) != 0;
 }
 
+$configuration_fields = array('forward_messages', 'use_internet_switch_algorithm');
+
 function postgresql_output_to_my_input($data, $oid) {
 	if ($data === null) {
 		return '';
@@ -100,6 +102,11 @@ function can_edit_table($s_tablename) {
 			OR {$_SESSION['s_is_root']}) AND NOT table_user.is_read_only;")) != 0;
 }
 
+$user_fields = array('can_view_tables', 'can_edit_tables', 'can_send_messages',
+		'can_inject_messages', 'can_send_queries', 'can_view_rules', 'can_edit_rules',
+		'can_view_configuration', 'can_edit_configuration', 'can_view_permissions',
+		'can_edit_permissions', 'can_view_remotes', 'can_edit_remotes', 'can_execute_rules');
+
 function my_input_to_postgresql_input($data, $oid) {
 	if ($data == '') {
 		return 'NULL';
@@ -127,13 +134,9 @@ function is_administrator($s_username) {
 			WHERE username = $s_username AND is_administrator;")) != 0;
 }
 
-function checkAuthorization($index, $text) {
-	$result = pgquery("SELECT can_view_tables, can_edit_tables, can_send_messages,
-			can_inject_messages, can_send_queries, can_view_rules, can_edit_rules,
-			can_view_configuration, can_edit_configuration, can_view_permissions,
-			can_edit_permissions, can_view_remotes, can_edit_remotes, can_execute_rules FROM users
-			WHERE username = {$_SESSION['s_username']}  ;");
-	if (pg_fetch_row($result)[$index - 3] == 'f') {
+function check_authorization($field, $text) {
+	if (pg_num_rows(pgquery("SELECT TRUE FROM users WHERE username = {$_SESSION['s_username']}
+			AND $field ;")) == 0) {
 		echo "&lt;You are not authorized to $text.&gt;<br/>\n";
 		return false;
 	}

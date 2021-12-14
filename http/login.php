@@ -22,9 +22,9 @@ if (isset($_SESSION['username'])) {
 } else {
 ?>
 	<form action="" method="POST">
-		Username:
+		User:
 		<input type="text" name="username"/>
-		Password:
+		Pass:
 		<input type="password" name="password"/>
 		Actions:
 		<input type="submit" value="submit"/>
