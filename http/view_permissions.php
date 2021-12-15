@@ -1,12 +1,12 @@
 <?php
 require_once 'common.php';
-$can_view_permissions = checkAuthorization(12, 'view permissions');
-$can_edit_permissions = checkAuthorization(13, 'edit permissions');
+$can_view_permissions = check_authorization('can_view_permissions', 'view permissions');
+$can_edit_permissions = check_authorization('can_edit_permissions', 'edit permissions');
 if ($can_edit_permissions) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
-			pgquery('TRUNCATE TABLE table_user;');
-			echo "Table &quot;table_user&quot; truncated.<br/>\n";
+			pgquery('DELETE FROM table_user WHERE is_read_only;');
+			echo "Table &quot;table_user&quot; truncated - except for owners.<br/>\n";
 		} else {
 ?>
 			Are you sure?
@@ -62,12 +62,11 @@ if ($can_edit_permissions) {
 		$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
 		$u_key2 = urlencode($_GET['key2']);
 		$is_read_only = isset($_GET['is_read_only']);
-		if (!$is_read_only && ($key1_owner == $_SESSION['username'] || $key1_owner == 'public'
-				|| $_SESSION['is_administrator'] && !is_administrator($s_key2)
+		if ($is_read_only && ($key1_owner == $_SESSION['username'] || $key1_owner == 'public'
+				|| $_SESSION['is_administrator'] && !is_administrator($key1_owner)
 				|| $_SESSION['is_root']) && isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
-				pgquery("DELETE FROM table_user WHERE tablename = $s_key1
-						AND username = $s_key2;");
+				pgquery("DELETE FROM table_user WHERE tablename = $s_key1 AND username = $s_key2;");
 				echo "Row ($h_key1, $h_key2, FALSE) deleted.<br/>\n";
 			} else {
 ?>
@@ -88,7 +87,7 @@ if ($can_edit_permissions) {
 		$result = pgquery('SELECT tablename AS t, username, is_read_only,
 				(SELECT username FROM table_user WHERE tablename = t AND NOT is_read_only) AS u,
 				(SELECT is_administrator FROM users WHERE username = u) FROM table_user
-				ORDER BY is_administrator DESC, u ASC, t ASC, is_read_only ASC, username ASC;');
+				ORDER BY is_administrator DESC, u ASC, t ASC, is_read_only DESC, username ASC;');
 ?>
 		Viewing table &quot;table_user&quot;, administrators first.
 <?php
@@ -97,7 +96,7 @@ if ($can_edit_permissions) {
 				(SELECT username FROM table_user WHERE tablename = t AND NOT is_read_only) AS u,
 				(SELECT is_administrator FROM users WHERE username = u), EXISTS(SELECT TRUE
 				FROM table_user WHERE tablename = t AND username = 'public'
-				OR username = {$_SESSION['username']}) AS e FROM table_user
+				OR username = {$_SESSION['s_username']}) AS e FROM table_user
 				WHERE NOT is_administrator OR e
 				ORDER BY is_administrator DESC, u ASC, t ASC, is_read_only ASC, username ASC;");
 		echo "Viewing table &quot;table_user&quot; for public, username {$_SESSION['h2username']}
@@ -105,7 +104,7 @@ if ($can_edit_permissions) {
 	} else {
 		$result = pgquery("SELECT tablename AS t, username, is_read_only, EXISTS(SELECT TRUE
 				FROM table_user WHERE tablename = t AND username = 'public'
-				OR username = {$_SESSION['username']}) AS e FROM table_user
+				OR username = {$_SESSION['s_username']}) AS e FROM table_user
 				WHERE e ORDER BY t ASC, is_read_only ASC, username ASC;");
 		echo "Viewing table &quot;table_user&quot; for public
 				and username {$_SESSION['h2username']}.<br/>\n";
@@ -165,7 +164,8 @@ if ($can_edit_permissions) {
 						$username = htmlspecialchars($row[1]);
 						$form = "\"update_{$tablename}_$username\"";
 						echo "<input form=$form type=\"text\" name=\"tablename\"
-								value=\"$tablename\"/>\n";
+								value=\"$tablename\"", $row[2] == 't' ?
+								' disabled="disabled"' : '', "/>\n";
 ?>
 					</td>
 					<td>
@@ -177,7 +177,8 @@ if ($can_edit_permissions) {
 					<td>
 <?php
 						echo "<input form=$form type=\"checkbox\" name=\"is_read_only\"",
-								$row[2] == 't' ? ' checked="checked"' : '', "/>\n";
+								$row[2] == 't' ? ' checked="checked"' : '',
+								" disabled=\"disabled\"/>\n";
 ?>
 					</td>
 <?php

@@ -6,8 +6,8 @@ if (!empty($_GET['addr'])) {
 	$h1addr = htmlspecialchars($_GET['addr']);
 	$h2addr = "X&apos;$h1addr&apos;";
 	$u_addr = urlencode($_GET['addr']);
-	$can_view = checkAuthorization(14, 'view remotes') && can_view_table($s1addr);
-	$can_edit = checkAuthorization(15, 'edit remotes') && can_edit_table($s1addr);
+	$can_view = check_authorization('can_view_remotes', 'view remotes') && can_view_table($s1addr);
+	$can_edit = check_authorization('can_edit_remotes', 'edit remotes') && can_edit_table($s1addr);
 	if ($can_edit) {
 		if (!empty($_GET['out_ID'])) {
 			$out_ID = intval($_GET['out_ID']);
@@ -113,9 +113,9 @@ if (!empty($_GET['addr'])) {
 		<form action="" method="GET">
 			View protocol:
 <?php
-			$result = pgquery("SELECT proto_name.name FROM SRC_proto INNER JOIN proto_name
-					ON SRC_proto.proto = proto_name.proto WHERE SRC = $s2addr
-					ORDER BY SRC_proto.proto ASC;");
+			$result = pgquery("SELECT proto_name.name FROM SRC_proto
+					INNER JOIN proto_name ON SRC_proto.proto = proto_name.proto
+					WHERE SRC = $s2addr ORDER BY SRC_proto.proto ASC;");
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 				echo '<a href="view_source_protocol_details.php',
 						"?SRC=$u_addr&amp;proto={$row[0]}\">{$row[0]}</a>\n";

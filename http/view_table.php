@@ -6,8 +6,10 @@ if (!empty($_GET['tablename'])) {
 	$h1tablename = htmlspecialchars($_GET['tablename']);
 	$h2tablename = "&quot;$h1tablename&quot;";
 	$u_tablename = urlencode($_GET['tablename']);
-	$can_view = checkAuthorization(3, 'view tables') && can_view_table($s1tablename);
-	$can_edit = checkAuthorization(4, 'edit tables') && can_edit_table($s1tablename);
+	$can_view = check_authorization('can_view_tables', 'view tables')
+			&& can_view_table($s1tablename);
+	$can_edit = check_authorization('can_edit_tables', 'edit tables')
+			&& can_edit_table($s1tablename);
 	if ($can_edit) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
@@ -147,10 +149,8 @@ if (!empty($_GET['tablename'])) {
 							<td>
 <?php
 								echo "<form id=\"update{$row[$t]}\" action=\"\" method=\"GET\">\n";
-									echo '<input type="hidden" name="key" value="TIMESTAMP ',
-											pg_field_type_oid($result, $t) == 1184
-											? 'WITH TIME ZONE ' : '',
-											"&apos;{$row[$t]}&apos;\"/>\n";
+									echo '<input type="hidden" name="key"
+											value="{$row[$t]}\"/>\n";
 									echo "<input type=\"hidden\" name=\"tablename\"
 											value=\"$h1tablename\"/>\n";
 ?>
@@ -161,10 +161,7 @@ if (!empty($_GET['tablename'])) {
 ?>
 								<form action="" method="GET">
 <?php
-									echo '<input type="hidden" name="key" value="TIMESTAMP ',
-											pg_field_type_oid($result, $t) == 1184
-											? 'WITH TIME ZONE ' : '',
-											"&apos;{$row[$t]}&apos;\"/>\n";
+									echo '<input type="hidden" name="key" value="{$row[$t]}\"/>\n";
 									echo "<input type=\"hidden\" name=\"tablename\"
 											value=\"$h1tablename\"/>\n";
 ?>

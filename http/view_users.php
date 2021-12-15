@@ -1,5 +1,7 @@
 <?php
 require_once 'common.php';
+$user_fields_joined = join(', ', $user_fields);
+$user_fields_length = length($user_fields);
 if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 	if (isset($_GET['confirm'])) {
 		pg_free_result(pgquery('DELETE FROM users
@@ -20,13 +22,13 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 			|| $_SESSION['is_root']) && isset($_POST['insert'])) {
 		$s_username = pg_escape_literal($_POST['username']);
 		$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
-		$query = 'INSERT INTO users(username, password';
-		for ($i = 0; $i < 16; $i++) {
+		$query = 'INSERT INTO users(username, password, is_administrator';
+		for ($i = 0; $i < $user_fields_length; $i++) {
 			$query .= ", {$user_fields[$i]}";
 		}
 		$query .= ") VALUES($s_username, '" . password_hash($_POST['password'], PASSWORD_DEFAULT)
-				. '\'';
-		for ($i = 0; $i < 16; $i++) {
+				. '\', ' . pgescapebool($_POST['is_administrator']);
+		for ($i = 0; $i < $user_fields_length; $i++) {
 			$query .= ', ' . pgescapebool($_POST[$user_fields[$i]]);
 		}
 		pgquery($query . ');');
@@ -42,11 +44,11 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if ($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
 				&& !is_administrator($s_username) || $_SESSION['is_root']) {
 			$query = 'UPDATE users SET (' . (!empty($_POST['password']) ? 'password, ' : '');
-			for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 16; $i++) {
+			for ($i = $_SESSION['is_root'] ? 0 : 1; $i < $; $i++) {
 				$query .= "{$user_fields[$i]}, ";
 				$query = substr($query, 0, -2) . ") = (" . (!empty($_POST['password'])
 						? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\', ' : '');
-				for ($i = $_SESSION['is_root'] ? 0 : 1; $i < 16; $i++) {
+				for ($i = $_SESSION['is_root'] ? 0 : 1; $i < $; $i++) {
 					$query .= pgescapebool($_POST[$user_fields[$i]]) . ', ';
 				}
 				pgquery(substr($query, 0, -2) . ") WHERE username = $s_username;");
@@ -101,6 +103,7 @@ if ($_SESSION['is_root']) {
 		<tr>
 			<th>Username</th>
 			<th>New password?</th>
+			<th>Is administrator?</th>
 <?php
 			for ($field : $user_fields) {
 				echo '<th>', ucfirst(str_replace($field, '_', ' ')), "</th>\n";
@@ -173,7 +176,7 @@ if ($_SESSION['is_root']) {
 				<input form="update2" type="password" name="password"/>
 			</td>
 <?php
-			for ($i = 2; $i < 18; $i++) {
+			for ($i = 2; $i < $; $i++) {
 ?>
 				<td>
 <?php
@@ -210,7 +213,7 @@ if ($_SESSION['is_root']) {
 ?>
 					</td>
 <?php
-					for ($i = 2; $i < 18; $i++) {
+					for ($i = 2; $i < $; $i++) {
 ?>
 						<td>
 <?php

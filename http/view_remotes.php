@@ -1,7 +1,7 @@
 <?php
 require_once 'common.php';
-$can_view_remotes = checkAuthorization(14, 'view remotes');
-$can_edit_remotes = checkAuthorization(15, 'edit remotes');
+$can_view_remotes = check_authorization('can_view_remotes', 'view remotes');
+$can_edit_remotes = check_authorization('can_edit_remotes', 'edit remotes');
 if ($can_view_remotes && isset($_GET['load'])) {
 	pgquery('CALL load_store(TRUE);');
 	$_SESSION['loaded'] = true;
@@ -76,7 +76,8 @@ if ($can_view_remotes) {
 						= table_user.tablename INNER JOIN users ON table_user.username
 						= users.username WHERE NOT table_user.is_read_only AND EXISTS (SELECT TRUE
 						FROM table_user WHERE tablename = t AND users.username = 'public'
-						OR users.username = {$_SESSION['s_username']} ORDER BY addr_oID.addr ASC;");
+						OR users.username = {$_SESSION['s_username']})
+						ORDER BY addr_oID.addr ASC;");
 				echo "View remote (public, {$_SESSION['h2username']}&apos;s shown):\n";
 			}
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
