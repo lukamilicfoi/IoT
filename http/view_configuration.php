@@ -25,19 +25,22 @@ if ($can_view_configuration) {
 				INNER JOIN users ON configuration.username = users.username
 				ORDER BY users.is_administrator DESC, configuration.username ASC;');
 ?>
-		Viewing table &quot;configuration&quot;, administrators first.
+		Viewing table &quot;configuration&quot;, administrators first
+		(table sorted ascending by username).
 <?php
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT configuration.* FROM configuration INNER JOIN users
 				ON configuration.username = users.username WHERE NOT users.is_administrator
+				OR configuration.username = 'public'
 				OR configuration.username = {$_SESSION['s_username']}
 				ORDER BY users.is_administrator DESC, configuration.username ASC;");
-		echo "Viewing table &quot;configuration&quot; for username {$_SESSION['h2username']}
+		echo "Viewing table &quot;configuration&quot; for public, username {$_SESSION['h2username']}
 				and non-administrators.\n";
 	} else {
 		$result = pgquery("SELECT * FROM configuration
-				WHERE username = {$_SESSION['s_username']};");
-		echo "Viewing table &quot;configuration&quot; for username {$_SESSION['h2username']}.\n";
+				WHERE username = {$_SESSION['s_username']} OR username = 'public';");
+		echo "Viewing table &quot;configuration&quot; for public
+				and username {$_SESSION['h2username']}.\n";
 	}
 ?>
 	<table border="1">
@@ -135,6 +138,8 @@ if ($can_view_configuration) {
 		</tbody>
 	</table>
 	Write default gateway as a binary string, e.g., abababababababab.<br/>
+	The root can edit for any user, the administrators can edit for any non-administrators,
+	the others can edit only for themselves.
 	<a href="index.php">Done</a>
 <?php
 }

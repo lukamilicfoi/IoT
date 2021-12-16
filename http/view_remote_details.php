@@ -66,7 +66,7 @@ if (!empty($_GET['addr'])) {
 	if ($can_view) {
 ?>
 		<form action="" method="GET">
-			View destination:
+			View destination (destinations sorted ascending by address):
 <?php
 			$result = pgquery("SELECT DST FROM SRC_DST WHERE SRC = $s2addr ORDER BY DST ASC;");
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
@@ -111,7 +111,7 @@ if (!empty($_GET['addr'])) {
 		}
 ?>
 		<form action="" method="GET">
-			View protocol:
+			View protocol (protocols sorted ascending by name):
 <?php
 			$result = pgquery("SELECT proto_name.name FROM SRC_proto
 					INNER JOIN proto_name ON SRC_proto.proto = proto_name.proto

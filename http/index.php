@@ -39,7 +39,7 @@ if ($can_view_tables) {
 					ORDER BY tablename LIKE \'t________________\'
 					AND tablename <> \'table_constraints\' DESC, tablename ASC;');
 ?>
-			View table:
+			View table (tables sorted ascending by tablename):
 <?php
 		} else if ($_SESSION['is_administrator']) {
 			$result = pgquery("SELECT DISTINCT table_user.tablename FROM table_user INNER JOIN users
@@ -48,14 +48,15 @@ if ($can_view_tables) {
 					AND NOT table_user.is_read_only
 					ORDER BY table_user.tablename LIKE 't________________'
 					AND table_user.username <> 'table_contraints' DESC, table_user.tablename ASC;");
-			echo "View table (public, {$_SESSION['h1username']}&apos;s,
-					non-administrators&apos; shown):\n";
+			echo "View table (public-readable, {$_SESSION['h1username']}-readable,
+					non-administrators&apos; shown; tables sorted ascending by tablename):\n";
 		} else {
 			$result = pgquery("SELECT DISTINCT tablename FROM table_user WHERE username = 'public'
 					OR username = {$_SESSION['s_username']}
 					ORDER BY tablename LIKE 't________________'
 					AND tablename <> 'table_constraints' DESC, tablename ASC;");
-			echo "View table (public, {$_SESSION['h1username']}&apos;s shown):\n";
+			echo "View table (public-readable, {$_SESSION['h1username']}-readable shown;
+					tables sorted ascending by tablename):\n";
 		}
 		for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 			$u_tablename = urlencode($row[0]);
@@ -74,7 +75,7 @@ if ($can_view_tables) {
 		if ($can_edit_tables) {
 ?>
 			<input type="text" name="add"/>
-			<input type="submit" value="(add as public)"/>
+			<input type="submit" value="(add as public; write tablename as a string, e.g., table)"/>
 <?php
 		}
 ?>
@@ -211,7 +212,7 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write query as a string, e.g., SELECT a FROM b;.<br/><br/>
+	Write query as a string, e.g., SELECT a FROM b;. Current user permissions are checked.<br/><br/>
 <?php
 }
 if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
@@ -245,7 +246,9 @@ if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write username and rule as a string and an integer, e.g., root and 11.<br/><br/>
+	Write username and rule as a string and an integer, e.g., root and 11. The root can execute
+	for any user, the administrator can execute for itself and any non-administrator, the others
+	can execute only for themselves.<br/><br/>
 <?php
 }
 if (check_authorization('can_view_rules', 'view rules')) {

@@ -135,8 +135,8 @@ function is_administrator($s_username) {
 }
 
 function check_authorization($field, $text) {
-	if (pg_num_rows(pgquery("SELECT TRUE FROM users WHERE username = {$_SESSION['s_username']}
-			AND $field ;")) == 0) {
+	if (pg_num_rows(pgquery("SELECT TRUE FROM users
+			WHERE username = {$_SESSION['s_username']} AND $field;")) == 0) {
 		echo "&lt;You are not authorized to $text.&gt;<br/>\n";
 		return false;
 	}
