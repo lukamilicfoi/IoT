@@ -1,11 +1,10 @@
 <?php
 require_once 'common.php';
-$user_fields_joined = join(', ', $user_fields);
-$user_fields_length = length($user_fields);
+$user_fields_joined = implode(', ', $user_fields);
+$user_fields_length = count($user_fields);
 if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 	if (isset($_GET['confirm'])) {
-		pg_free_result(pgquery('DELETE FROM users
-				WHERE username <> \'root\' AND username <> \'public\';'));
+		pgquery('DELETE FROM users WHERE username <> \'root\' AND username <> \'public\';'));
 ?>
 		Table &quot;users&quot; truncated - except for &apos;root&apos; and &apos;public&apos;.<br/>
 <?php
@@ -22,38 +21,35 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 			|| $_SESSION['is_root']) && isset($_POST['insert'])) {
 		$s_username = pg_escape_literal($_POST['username']);
 		$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
-		$query = 'INSERT INTO users(username, password, is_administrator';
-		for ($i = 0; $i < $user_fields_length; $i++) {
-			$query .= ", {$user_fields[$i]}";
-		}
-		$query .= ") VALUES($s_username, '" . password_hash($_POST['password'], PASSWORD_DEFAULT)
-				. '\', ' . pgescapebool($_POST['is_administrator']);
+		$query = "INSERT INTO users(username, password, is_administrator, $joined_fields,
+				can_actually_login) VALUES($s_username, '"
+				. password_hash($_POST['password'], PASSWORD_DEFAULT) . '\', '
+				. pgescapebool($_POST['is_administrator']);
 		for ($i = 0; $i < $user_fields_length; $i++) {
 			$query .= ', ' . pgescapebool($_POST[$user_fields[$i]]);
 		}
-		pgquery($query . ');');
-		pgquery("INSERT INTO configuration(username, forward_messages,
-				use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone, default_gateway)
-				SELECT $s_username, forward_messages, use_internet_switch_algorithm, nsecs_id,
-				nsecs_src, trust_everyone, default_gateway FROM configuration
-				WHERE username = 'root';");
+		pgquery($query . ', ' . pgescapebool($_POST['can_actually_login']) . ');');
+		pgquery("INSERT INTO configuration(username, $configuration_fields_joined, nsecs_id,
+				nsecs_src, trust_everyone, default_gateway) SELECT $s_username,
+				$configuration_fields_joined, nsecs_id, nsecs_src, trust_everyone, default_gateway
+				FROM configuration WHERE username = 'root';");
 		echo "User $h_username inserted.<br/>\n";
 	} else if (isset($_POST['update1'])) {
 		$s_username = pg_escape_literal($_POST['username']);
 		$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
 		if ($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
 				&& !is_administrator($s_username) || $_SESSION['is_root']) {
-			$query = 'UPDATE users SET (' . (!empty($_POST['password']) ? 'password, ' : '');
-			for ($i = $_SESSION['is_root'] ? 0 : 1; $i < $; $i++) {
-				$query .= "{$user_fields[$i]}, ";
-				$query = substr($query, 0, -2) . ") = (" . (!empty($_POST['password'])
-						? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\', ' : '');
-				for ($i = $_SESSION['is_root'] ? 0 : 1; $i < $; $i++) {
-					$query .= pgescapebool($_POST[$user_fields[$i]]) . ', ';
-				}
-				pgquery(substr($query, 0, -2) . ") WHERE username = $s_username;");
-				echo "User $h_username updated.<br/>\n";
+			$query = 'UPDATE users SET (' . (!empty($_POST['password']) ? 'password, ' : '')
+					. ($_SESSION['is_root'] ? 'is_administrator, ' : '')
+					"$user_fields_joined) = (" . (!empty($_POST['password'])
+					? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\', ' : '')
+					. ($_SESSION['is_root'] ? pgescapebool($_POST['is_administrator']) : '');
+			for ($user_fields as $field) {
+				$query .= pgescapebool($_POST[$field]) . ', ';
 			}
+			pgquery($query . pgescapebool($_POST['can_actually_login'])
+					. ") WHERE username = $s_username;");
+			echo "User $h_username updated.<br/>\n";
 		}
 	}
 } else if (isset($_GET['delete']) && isset($_GET['key'])) {
@@ -80,7 +76,7 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 			. "' WHERE username = {$_SESSION['s_username']};");
 	echo "Password updated - for username $h2username.<br/>\n";
 }
-$result1 = pgquery("SELECT username, TRUE, is_administrator, $joined_fields FROM users
+$result1 = pgquery("SELECT username, TRUE, is_administrator, $user_fields_joined FROM users
 		WHERE username = {$_SESSION['s_username']};");
 if ($_SESSION['is_root']) {
 	$result2 = pgquery("SELECT * FROM users WHERE username <> 'root'
@@ -98,6 +94,7 @@ if ($_SESSION['is_root']) {
 	echo "Viewing table &quot;users&quot; for username {$_SESSION['h2username']}.\n";
 }
 ?>
+Table sorted ascending by username.
 <table border="1">
 	<tbody>
 		<tr>
@@ -250,4 +247,6 @@ if ($_SESSION['is_root']) {
 	</tbody>
 </table>
 Write username as a string, e.g., root.<br/>
+The root can edit all users, an administrator can edit all non-administrators, a non-administrator
+		cannot edit.<br/>
 <a href="index.php">Done</a>

@@ -128,6 +128,7 @@ if ($can_view_rules) {
 		echo "Viewing table &quot;rules&quot; for public and username $h2username.<br/>\n";
 	}
 ?>
+	Table is ascending by username and ascending by id.<br/>
 	<table border="1">
 		<tbody>
 			<tr>
@@ -541,6 +542,8 @@ if ($can_view_rules) {
 	When broadcasting a message any imm_DST is ignored.<br/>
 	On send and receive rules last_run is meaningless.<br/>
 	Strings are written without excess quotations, e.g., proto = 'tcp'.<br/>
+	The root can edit rules for all users, an administrator can edit rules for himself
+			and all non-administrators, a non-administrator can edit rules only for himself.<br/>
 	<a href="index.php">Done</a>
 <?php
 }

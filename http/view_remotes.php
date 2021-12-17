@@ -58,7 +58,7 @@ if ($can_view_remotes) {
 						WHERE NOT table_user.is_read_only
 						ORDER BY users.is_administrator DESC, addr_oID.addr ASC;');
 ?>
-				View remote:
+				View remote (remotes sorted ascending by address):
 <?php
 			} else if ($_SESSION['is_administrator']) {
 				$result = pgquery("SELECT addr_oID.addr, table_user.tablename AS t FROM addr_oID
@@ -68,7 +68,7 @@ if ($can_view_remotes) {
 						FROM table_user WHERE tablename = t AND users.username = 'public'
 						OR users.username = {$_SESSION['s_username']}) OR NOT users.is_administrator
 						ORDER BY users.is_administrator DESC, addr_oID.addr ASC;");
-				echo "View remote (public, {$_SESSION['h2username']}&apos;s,
+				echo "View remote (public-readable, {$_SESSION['h2username']}-readable,
 						non-administrators&apos; shown):\n";
 			} else {
 				$result = pgquery("SELECT addr_oID.addr, table_user.tablename AS t FROM addr_oID
@@ -78,7 +78,8 @@ if ($can_view_remotes) {
 						FROM table_user WHERE tablename = t AND users.username = 'public'
 						OR users.username = {$_SESSION['s_username']})
 						ORDER BY addr_oID.addr ASC;");
-				echo "View remote (public, {$_SESSION['h2username']}&apos;s shown):\n";
+				echo "View remote (public-readable,
+						{$_SESSION['h2username']}-readable shown):\n";
 			}
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 				$str = substr($row[0], 2);
@@ -95,12 +96,13 @@ if ($can_view_remotes) {
 			if ($can_edit_remotes) {
 ?>
 				<input type="text" name="add"/>
-				<input type="submit" value="(add as public)"/>
+				<input type="submit"
+						value="(add as public; write remote as a binary string, e.g., abababababababab)"/>
 <?php
 			}
 ?>
 		</form>
-		Write remote as a binary string, e.g., abababababababab.<br/>
+		Write remote as? a binary string, e.g., aba?babababababab.<br/>
 		<a href="?load">Reload all remotes from running program</a><br/>
 <?php
 		if ($can_edit_remotes) {

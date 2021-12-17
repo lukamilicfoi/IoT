@@ -68,6 +68,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 				= (SELECT proto FROM proto_name WHERE name = $s_proto) ORDER BY imm_SRC ASC;");
 		echo "Viewing table &quot;iSRC_TWR&quot; for SRC $h2SRC and proto $h2proto.\n";
 ?>
+		Table sorted ascending by immediate source address.
 		<table border="1">
 			<tbody>
 				<tr>
@@ -142,7 +143,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 									echo "<input type=\"hidden\" name=\"key\" value=\"$str\"/>\n";
 ?>
 									<input type="submit" name="update"
-											value="Update this mapping for this SRC and this proto/>
+											value="Update this mapping for this SRC and this proto"/>
 											<br/>
 									<input type="reset" value="reset"/>
 <?php
@@ -150,9 +151,9 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 ?>
 								<form action="" method="GET">
 <?php
-									echo "<input type=\"hidden\" name=\"SRC\" value=\"{$h1SRC}\"/>\n";
+									echo "<input type=\"hidden\" name=\"SRC\" value=\"$h1SRC\"/>\n";
 									echo "<input type=\"hidden\" name=\"proto\"
-											value=\"{$h1proto}\"/>\n";
+											value=\"$h1proto\"/>\n";
 									echo "<input type=\"hidden\" name=\"key\" value=\"$str\"/>\n";
 ?>
 									<input type="submit" name="delete"
@@ -170,6 +171,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 		</table>
 		Write the first column as a binary string, e.g., abababababababab.<br/>
 		Write the second column as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
+		You can edit something only if you have edit permissions on this remote.<br/>
 <?php
 		echo "<a href=\"view_remote_details.php?addr=$u_SRC\">Done</a>\n";
 	}

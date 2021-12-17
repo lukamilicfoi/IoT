@@ -74,8 +74,9 @@ if (!empty($_GET['tablename'])) {
 	}
 	if ($can_view) {
 		$result = pgquery("TABLE $s2tablename ORDER BY t DESC;");
-		echo "Viewing table $h2tablename, newest first.\n";
+		echo "Viewing table $h2tablename.\n";
 ?>
+		Table sorted descending by t.
 		<table border="1">
 			<tbody>
 				<tr>
@@ -149,7 +150,7 @@ if (!empty($_GET['tablename'])) {
 							<td>
 <?php
 								echo "<form id=\"update{$row[$t]}\" action=\"\" method=\"GET\">\n";
-									echo '<input type="hidden" name="key"
+									echo "<input type=\"hidden\" name=\"key\"
 											value="{$row[$t]}\"/>\n";
 									echo "<input type=\"hidden\" name=\"tablename\"
 											value=\"$h1tablename\"/>\n";
@@ -161,7 +162,8 @@ if (!empty($_GET['tablename'])) {
 ?>
 								<form action="" method="GET">
 <?php
-									echo '<input type="hidden" name="key" value="{$row[$t]}\"/>\n";
+									echo "<input type=\"hidden\" name=\"key\"
+											value="{$row[$t]}\"/>\n";
 									echo "<input type=\"hidden\" name=\"tablename\"
 											value=\"$h1tablename\"/>\n";
 ?>
@@ -177,6 +179,7 @@ if (!empty($_GET['tablename'])) {
 ?>
 			</tbody>
 		</table>
+		You can edit something only if you have edit permissions on the table.<br/>
 		<a href="index.php">Done</a>
 <?php
 	}

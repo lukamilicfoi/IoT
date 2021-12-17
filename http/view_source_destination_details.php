@@ -58,6 +58,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 				ORDER BY ID ASC;");
 		echo "Viewing table &quot;ID_TWR&quot; for SRC $h2SRC and DST $h2DST.\n";
 ?>
+		Table sorted ascending by identifier.
 		<table border="1">
 			<tbody>
 				<tr>
@@ -139,9 +140,9 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 								<form action="" method="GET">
 <?php
 									echo "<input type=\"hidden\" name=\"SRC\"
-											value=\"{$h1SRC}\"/>\n";
+											value=\"$h1SRC\"/>\n";
 									echo "<input type=\"hidden\" name=\"DST\"
-											value=\"{$h1DST}\"/>\n";
+											value=\"$h1DST\"/>\n";
 									echo "<input type=\"hidden\" name=\"key\"
 											value=\"{$row[0]}\"/>\n";
 ?>
@@ -160,6 +161,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 		</table>
 		Write the first column as an integer, e.g., 11.<br/>
 		Write the second column as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
+		You can edit something only if you have edit permissions on this remote.<br/>
 <?php
 		echo "<a href=\"view_remote_details.php?addr=$u_SRC\">Done</a>\n";
 	}
