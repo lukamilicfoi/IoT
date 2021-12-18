@@ -31,33 +31,33 @@ if ($can_edit_tables) {
 	}
 }
 if ($can_view_tables) {
+	if ($_SESSION['is_root']) {
+		$result = pgquery('SELECT DISTINCT tablename FROM table_user
+				ORDER BY tablename LIKE \'t________________\'
+				AND tablename <> \'table_constraints\' DESC, tablename ASC;');
+?>
+		You are authorized to view (edit) all tables.
+<?php
+	} else if ($_SESSION['is_administrator']) {
+		$result = pgquery("SELECT DISTINCT table_user.tablename FROM table_user INNER JOIN users
+				ON table_user.username = users.username
+				WHERE table_user.username = {$_SESSION['s_username']} OR NOT users.is_administrator
+				ORDER BY table_user.tablename LIKE 't________________'
+				AND table_user.username <> 'table_constraints' DESC, table_user.tablename ASC;");
+		echo "You are authorized to view (edit) {$_SESSION['h1username']}-readable (-owned) or
+				non-administrator-readable (-owned) tables.\n";
+	} else {
+		$result = pgquery("SELECT DISTINCT tablename FROM table_user
+				WHERE username = {$_SESSION['s_username']} OR username = 'public'
+				ORDER BY tablename LIKE 't________________'
+				AND tablename <> 'table_constraints' DESC, tablename ASC;");
+		echo "You are authorized to view (edit) {$_SESSION['h1username']}-readable (-owned) or
+				public-readable (-owned) tables.\n";
+	}
 ?>
 	<form action="" method="GET">
+		View table, device tables shown first:
 <?php
-		if ($_SESSION['is_root']) {
-			$result = pgquery('SELECT DISTINCT tablename FROM table_user
-					ORDER BY tablename LIKE \'t________________\'
-					AND tablename <> \'table_constraints\' DESC, tablename ASC;');
-?>
-			View table (tables sorted ascending by tablename):
-<?php
-		} else if ($_SESSION['is_administrator']) {
-			$result = pgquery("SELECT DISTINCT table_user.tablename FROM table_user INNER JOIN users
-					ON table_user.username = users.username WHERE table_user.username = 'public'
-					OR table_user.username = {$_SESSION['s_username']} OR NOT users.is_administrator
-					AND NOT table_user.is_read_only
-					ORDER BY table_user.tablename LIKE 't________________'
-					AND table_user.username <> 'table_contraints' DESC, table_user.tablename ASC;");
-			echo "View table (public-readable, {$_SESSION['h1username']}-readable,
-					non-administrators&apos; shown; tables sorted ascending by tablename):\n";
-		} else {
-			$result = pgquery("SELECT DISTINCT tablename FROM table_user WHERE username = 'public'
-					OR username = {$_SESSION['s_username']}
-					ORDER BY tablename LIKE 't________________'
-					AND tablename <> 'table_constraints' DESC, tablename ASC;");
-			echo "View table (public-readable, {$_SESSION['h1username']}-readable shown;
-					tables sorted ascending by tablename):\n";
-		}
 		for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 			$u_tablename = urlencode($row[0]);
 			$h_tablename = htmlspecialchars($row[0]);
@@ -75,12 +75,13 @@ if ($can_view_tables) {
 		if ($can_edit_tables) {
 ?>
 			<input type="text" name="add"/>
-			<input type="submit" value="(add as public; write tablename as a string, e.g., table)"/>
+			<input type="submit" value="(add as public)"/>
+			Write name as a string, e.g., table.
 <?php
 		}
 ?>
 	</form>
-	<br/>
+	Tables ordered by name ascending.<br/><br/>
 <?php
 }
 if (check_authorization('can_send_messages', 'send messages')) {
@@ -203,6 +204,17 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 		</table>
 <?php
 	}
+	if ($_SESSION['is_root']) {
+?>
+		You are authorized to send queries to read (write) all tables.
+<?php
+	} else if ($_SESSION['is_administrator']) {
+		echo "You are authorized to send queries to read (write) {$_SESSION['s_username']}-readable
+				(-owned) or non-administrator-readable (-owned) tables.\n";
+	} else {
+		echo "You are authorized to send queries to read (write) {$_SESSION['h1username']}-readable
+				(-owned) or non-administrator-readable (-owned) tables.\n";
+	}
 ?>
 	<form action="" method="GET">
 <?php
@@ -212,7 +224,7 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write query as a string, e.g., SELECT a FROM b;. Current user permissions are checked.<br/><br/>
+	Write query as a string, e.g., SELECT a FROM b;.<br/><br/>
 <?php
 }
 if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
@@ -226,29 +238,27 @@ if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
 		}
 		echo "For username $h_username timed rule $id manually executed.\n";
 	}
+	if ($_SESSION['is_root']) {
+?>
+		You are authorized to execute rules for all users.
+<?php
+	} else if ($_SESSION['is_administrator']) {
+		echo "You are authorized to execute rules for {$_SESSION['h1username']}
+				or non-administrators.\n";
+	} else {
+		echo "You are authorized to execute rules for {$_SESSION['h1username']} or public.\n";
+	}
 ?>
 	<form action="" method="GET">
 		For username
-<?php
-		if ($_SESSION['is_administrator']) {
-?>
-			<input type="text" name="username"/>
-<?php
-		} else {
-			echo "<input type=\"text\" value=\"{$_SESSION['h1username']}\"
-					disabled=\"disabled\"/>\n";
-			echo "<input type=\"hidden\" name=\"username\" value=\"{$_SESSION['h1username']}\"/>\n";
-		}
-?>
+		<input type="text" name="username"/>
 		manually execute timed rule
 		<input type="text" name="id"/>
 		right now
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write username and rule as a string and an integer, e.g., root and 11. The root can execute
-	for any user, the administrator can execute for itself and any non-administrator, the others
-	can execute only for themselves.<br/><br/>
+	Write username and rule as a string and an integer, e.g., root and 11.<br/><br/>
 <?php
 }
 if (check_authorization('can_view_rules', 'view rules')) {
