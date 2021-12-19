@@ -50,7 +50,7 @@ if ($can_edit_permissions) {
 				pgquery("UPDATE table_user SET (tablename, username) = ($s_tablename, $s_username)
 						WHERE tablename = $s_key1 AND username = $s_key2
 						AND is_read_only = $s_key3;");
-				echo "Row ($h_key1, $h_key2, $s_key)
+				echo "Row ($h_key1, $h_key2, $s_key3)
 						updated to ($h_username, $h_tablename, $s_key3).<br/>\n";
 			}
 		}
@@ -62,21 +62,18 @@ if ($can_edit_permissions) {
 		$s_key2 = pg_escape_literal($_GET['key2']);
 		$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
 		$u_key2 = urlencode($_GET['key2']);
-		$key3 = isset($_GET['key3']);
-		$s_key3 = pgescapebool($_GET['key3']);
-		if ($key3 && ($key1_owner == $_SESSION['username'] || $key1_owner == 'public'
+		if (($key1_owner == $_SESSION['username'] || $key1_owner == 'public'
 				|| $_SESSION['is_administrator'] && !is_administrator($key1_owner)
-				|| $_SESSION['is_root']) && isset($_GET['delete'])) {
+				|| $_SESSION['is_root']) && isset($_GET['delete']) {
 			if (isset($_GET['confirm'])) {
 				pgquery("DELETE FROM table_user WHERE tablename = $s_key1 AND username = $s_key2
-						AND is_read_only = $s_key3;");
+						AND is_read_only = FALSE;");
 				echo "Row ($h_key1, $h_key2, FALSE) deleted.<br/>\n";
 			} else {
 ?>
 				Are you sure?
 <?php
-				echo "<a href=\"?key1=$u_key1&amp;key2=$u_key2", $key3 ? '&amp;key3=$s_key3' : '',
-						"&amp;delete&amp;confirm\">Yes</a>\n";
+				echo "<a href=\"?key1=$u_key1&amp;key2=$u_key2&amp;delete&amp;confirm\">Yes</a>\n";
 ?>
 				<a href="">No</a>
 <?php
@@ -87,33 +84,29 @@ if ($can_edit_permissions) {
 }
 if ($can_edit_permissions) {
 	if ($_SESSION['is_root']) {
-		$result = pgquery('SELECT tablename AS t, username, is_read_only,
-				(SELECT username FROM table_user WHERE tablename = t AND NOT is_read_only) AS u,
-				(SELECT is_administrator FROM users WHERE username = u) FROM table_user
-				ORDER BY is_administrator DESC, t ASC, is_read_only ASC, username ASC;');
+		$result = pgquery('SELECT * FROM table_user
+				ORDER BY is_read_only ASC, tablename ASC, username ASC;');
 ?>
-		Viewing table &quot;table_user&quot;, administrators first.
+		You are authorized to view (edit) permissions for all tables.
 <?php
 	} else if ($_SESSION['is_administrator']) {
-		$result = pgquery("SELECT tablename AS t, username, is_read_only,
-				(SELECT username FROM table_user WHERE tablename = t AND NOT is_read_only) AS u,
-				(SELECT is_administrator FROM users WHERE username = u), EXISTS(SELECT TRUE
-				FROM table_user WHERE tablename = t AND username = 'public'
-				OR username = {$_SESSION['s_username']}) AS e FROM table_user
-				WHERE NOT is_administrator OR e
-				ORDER BY is_administrator DESC, t ASC, is_read_only ASC, username ASC;");
-		echo "Viewing table &quot;table_user&quot; for public, username {$_SESSION['h2username']}
-				and non-administrators.<br/>\n";
+		$result = pgquery("SELECT tablename AS t, username, is_read_only FROM table_user
+				WHERE EXISTS(SELECT TRUE FROM table_user WHERE tablename = t
+				AND (username = {$_SESSION['s_username']} OR NOT is_administrator))
+				ORDER BY is_read_only ASC, tablename ASC, username ASC;");
+		echo "You are authorized to view (edit) permissions for {$_SESSION['h1username']}-readable
+				(-owned) or non-administrator-readable (-owned) tables.\n";
 	} else {
-		$result = pgquery("SELECT tablename AS t, username, is_read_only, EXISTS(SELECT TRUE
-				FROM table_user WHERE tablename = t AND username = 'public'
-				OR username = {$_SESSION['s_username']}) AS e FROM table_user
-				WHERE e ORDER BY t ASC, is_read_only ASC, username ASC;");
-		echo "Viewing table &quot;table_user&quot; for public
-				and username {$_SESSION['h2username']}.<br/>\n";
+		$result = pgquery("SELECT tablename AS t, username, is_read_only FROM table_user
+				WHERE EXISTS(SELECT TRUE FROM table_user WHERE tablename = t
+				AND (username = {$_SESSION['s_username']} OR username = 'public'))
+				ORDER BY is_read_only ASC, tablename ASC, username ASC;");
+		echo "You are authorized to view (edit) permissions for {$_SESSION['h1username']}-readable
+				(-owned) or public-readable tables.\n";
 	}
 ?>
-	Table sorted ascending by tablename, owners first, then ascending by username.<br/>
+	Viewing table &quot;table_user&quot;, owners first.
+	Tables ordered by tablename ascending and username ascending.
 	<table border="1">
 		<tbody>
 			<tr>
@@ -180,7 +173,7 @@ if ($can_edit_permissions) {
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"checkbox\" name=\"is_read_only\"",
+						echo "<input form=$form type=\"checkbox\" name=\"key3\"",
 								$row[2] == 't' ? ' checked="checked"' : '',
 								" disabled=\"disabled\"/>\n";
 ?>
@@ -219,8 +212,6 @@ if ($can_edit_permissions) {
 		</tbody>
 	</table>
 	Write tablename and username as a string, e.g., tabababababababab and root.<br/>
-	The root can edit all tables, the administrator can edit his, public, and non-administrator's
-			tables, the others can edit public and their own.<br/>
 	<a href="index.php">Done</a>
 <?php
 }

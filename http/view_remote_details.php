@@ -64,9 +64,10 @@ if (!empty($_GET['addr'])) {
 		}
 	}
 	if ($can_view) {
+		echo 'You are authorized to view ', $can_edit ? '(edit) ' : '', "everything here.\n";
 ?>
 		<form action="" method="GET">
-			View destination (destinations sorted ascending by address):
+			View destination (destinations ordered by address ascending):
 <?php
 			$result = pgquery("SELECT DST FROM SRC_DST WHERE SRC = $s2addr ORDER BY DST ASC;");
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
@@ -111,7 +112,7 @@ if (!empty($_GET['addr'])) {
 		}
 ?>
 		<form action="" method="GET">
-			View protocol (protocols sorted ascending by name):
+			View protocol (protocols ordered by name ascending):
 <?php
 			$result = pgquery("SELECT proto_name.name FROM SRC_proto
 					INNER JOIN proto_name ON SRC_proto.proto = proto_name.proto
