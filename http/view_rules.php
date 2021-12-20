@@ -1,7 +1,7 @@
 <?php
 require_once 'common.php';
-$can_edit_rules = checkAuthorization(8, 'view rules')) {
-$can_edit_rules = checkAuthorization(9, 'edit rules');
+$can_edit_rules = check_authorization('can_view_rules', 'view rules')) {
+$can_edit_rules = check_authorization('can_edit_rules', 'edit rules');
 if ($can_edit_rules) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
@@ -96,8 +96,7 @@ if ($can_edit_rules) {
 ?>
 				Are you sure?
 <?php
-				echo '<a href="',
-						"?key1=$u_key1&amp;key2=$key2&amp;delete&amp;confirm\">Yes</a>\n";
+				echo "<a href=\"?key1=$u_key1&amp;key2=$key2&amp;delete&amp;confirm\">Yes</a>\n";
 ?>
 				<a href="?">No</a>
 <?php
@@ -108,27 +107,32 @@ if ($can_edit_rules) {
 }
 if ($can_view_rules) {
 	if ($_SESSION['is_root']) {
-		$result = pgquery('SELECT rules.* FROM rules INNER JOIN users
-				ON rules.username = users.username ORDER BY users.is_administrator DESC,
-				rules.username ASC, rules.id ASC;');
+		$result = pgquery('SELECT rules.*, proto_name.proto FROM rules INNER JOIN users
+				ON rules.username = users.username
+				INNER JOIN proto_name ON rules.proto_id = proto_name.proto
+				ORDER BY users.is_administrator DESC, rules.username ASC, rules.id ASC;');
 ?>
-		Viewing table &quot;rules&quot;, administrators first.
+		You are authorized to view (edit) rules for all users.
 <?php
 	} else if ($_SESSION['is_administrator']) {
-		$result = pgquery("SELECT rules.* FROM rules INNER JOIN users
-				ON rules.username = users.username WHERE rules.username = 'public'
-				OR rules.username = {$_SESSION['s_username']} OR NOT users.is_administrator
+		$result = pgquery("SELECT rules.*, proto_name.proto FROM rules INNER JOIN users
+				ON rules.username = users.username
+				INNER JOIN proto_name ON rules.proto_id = proto_name.proto  
+				WHERE rules.username = {$_SESSION['s_username']} OR NOT users.is_administrator
 				ORDER BY users.is_administrator DESC, rules.username ASC, rules.id ASC;");
-		echo "Viewing table &quot;rules&quot; for public, username $h2username and
-				non-administrators.<br/>\n";
+		echo "You are authorized to view (edit) rules for {$_SESSION['h2username']}
+				or non-administrators.\n";
 	} else {
-		$result = pgquery("SELECT rules.* FROM rules INNER JOIN proto_name
-				ON rules.proto_id = proto_name.proto WHERE rules.username = 'public'
-				OR rules.username = {$_SESSION['s_username']} ORDER BY rules.id ASC;");
-		echo "Viewing table &quot;rules&quot; for public and username $h2username.<br/>\n";
+		$result = pgquery("SELECT rules.*, proto_name.proto FROM rules INNER JOIN proto_name
+				ON rules.proto_id = proto_name.proto
+				WHERE rules.username = {$_SESSION['s_username']}
+				OR rules.username = 'public' ORDER BY rules.username ASC, rules.id ASC;");
+		echo "You are authorized to view (edit) rules for {$_SESSION['h2username']}
+				or public.\n";
 	}
 ?>
-	Table is ascending by username and ascending by id.<br/>
+	Viewing table &quot;rules&quot;<br/>
+	Table ordered by username ascending and id ascending.
 	<table border="1">
 		<tbody>
 			<tr>
@@ -165,18 +169,7 @@ if ($can_view_rules) {
 ?>
 				<tr>
 					<td nowrap="nowrap">
-<?php
-						if ($_SESSION['is_administrator']) {
-?>
-							<input form="insert" type="text" name="username" size="10"/>
-<?php
-						} else {
-							echo "<input type=\"text\" value=\"{$_SESSION['h1username']}\"
-									size=\"10\" disabled=\"disabled\"/>\n";
-							echo "<input form=\"insert\" type=\"hidden\" name=\"username\"
-									value=\"{$_SESSION['h1username']}\"/>\n";
-						}
-?>
+						<input form="insert" type="text" name="username" size="10"/>
 						,
 					</td>
 					<td nowrap="nowrap">
@@ -301,15 +294,8 @@ if ($can_view_rules) {
 <?php
 						$username = htmlspecialchars($row[0]);
 						$form = "\"update_{$username}_{$row[1]}\"";
-						if ($_SESSION['is_administrator']) {
-							echo "<input form=$form type=\"text\" name=\"username\"
+						echo "<input form=$form type=\"text\" name=\"username\"
 									value=\"$username\" size=\"10\"/>\n";
-						} else {
-							echo "<input type=\"text\" value=\"$username\" size=\"10\"
-									disabled=\"disabled\"/>\n";
-							echo "<input form=$form type=\"hidden\" name=\"username\"
-									value=\"$username\" size=\"10\"/>\n";
-						}
 ?>
 						,
 					</td>
@@ -435,8 +421,8 @@ if ($can_view_rules) {
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"text\" name=\"proto_id\" value=\"", $row[10]
-								=== null ? '' : htmlspecialchars($row[10]), "\" size=\"10\"/>\n";
+						echo "<input form=$form type=\"text\" name=\"proto_id\" value=\"", $row[20]
+								=== null ? '' : htmlspecialchars($row[20]), "\" size=\"10\"/>\n";
 ?>
 					</td>
 					<td>
@@ -533,7 +519,7 @@ if ($can_view_rules) {
 	Modification is performed like &quot;UPDATE message SET &lt;semicolon-separated command 1&gt;;
 	UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;&quot;.<br/>
 	During SQL queries the current message is stored in table "formatted_message_for_send_receive"
-	and columns HD, ID, etc.<br/>
+			and columns HD, ID, etc.<br/>
 	bash commands are NOT executed as /root/, but as the user who started the database.<br/>
 	Filter can be either a number or a string.<br/>
 	Leaving a field empty indicates null value.<br/>
@@ -542,8 +528,6 @@ if ($can_view_rules) {
 	When broadcasting a message any imm_DST is ignored.<br/>
 	On send and receive rules last_run is meaningless.<br/>
 	Strings are written without excess quotations, e.g., proto = 'tcp'.<br/>
-	The root can edit rules for all users, an administrator can edit rules for himself
-			and all non-administrators, a non-administrator can edit rules only for himself.<br/>
 	<a href="index.php">Done</a>
 <?php
 }

@@ -58,7 +58,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 				ORDER BY ID ASC;");
 		echo "Viewing table &quot;ID_TWR&quot; for SRC $h2SRC and DST $h2DST.\n";
 ?>
-		Table sorted ascending by identifier.
+		Table ordered by identifier ascending.
 		<table border="1">
 			<tbody>
 				<tr>
@@ -139,10 +139,8 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 ?>
 								<form action="" method="GET">
 <?php
-									echo "<input type=\"hidden\" name=\"SRC\"
-											value=\"$h1SRC\"/>\n";
-									echo "<input type=\"hidden\" name=\"DST\"
-											value=\"$h1DST\"/>\n";
+									echo "<input type=\"hidden\" name=\"SRC\" value=\"$h1SRC\"/>\n";
+									echo "<input type=\"hidden\" name=\"DST\" value=\"$h1DST\"/>\n";
 									echo "<input type=\"hidden\" name=\"key\"
 											value=\"{$row[0]}\"/>\n";
 ?>

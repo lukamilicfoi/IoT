@@ -76,7 +76,7 @@ if (!empty($_GET['tablename'])) {
 		$result = pgquery("TABLE $s2tablename ORDER BY t DESC;");
 		echo "Viewing table $h2tablename.\n";
 ?>
-		Table sorted descending by t.
+		Table ordered by t descending.
 		<table border="1">
 			<tbody>
 				<tr>
@@ -178,8 +178,7 @@ if (!empty($_GET['tablename'])) {
 				}
 ?>
 			</tbody>
-		</table>
-		You can edit something only if you have edit permissions on the table.<br/>
+				</table>
 		<a href="index.php">Done</a>
 <?php
 	}

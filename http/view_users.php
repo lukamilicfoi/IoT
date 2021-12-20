@@ -25,14 +25,14 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 				can_actually_login) VALUES($s_username, '"
 				. password_hash($_POST['password'], PASSWORD_DEFAULT) . '\', '
 				. pgescapebool($_POST['is_administrator']);
-		for ($i = 0; $i < $user_fields_length; $i++) {
-			$query .= ', ' . pgescapebool($_POST[$user_fields[$i]]);
+		for ($user_fields as $field) {
+			$query .= ', ' . pgescapebool($_POST[$field]);
 		}
 		pgquery($query . ', ' . pgescapebool($_POST['can_actually_login']) . ');');
-		pgquery("INSERT INTO configuration(username, $configuration_fields_joined, nsecs_id,
-				nsecs_src, trust_everyone, default_gateway) SELECT $s_username,
-				$configuration_fields_joined, nsecs_id, nsecs_src, trust_everyone, default_gateway
-				FROM configuration WHERE username = 'root';");
+		pgquery('INSERT INTO configuration(username, ' . implode(', ', $configuration_fields)
+				. ", nsecs_id, nsecs_src, trust_everyone, default_gateway) SELECT $s_username,"
+				. implode(', ', $configuration_fields) . ', nsecs_id, nsecs_src, trust_everyone,
+				default_gateway FROM configuration WHERE username = \'root\';');
 		echo "User $h_username inserted.<br/>\n";
 	} else if (isset($_POST['update1'])) {
 		$s_username = pg_escape_literal($_POST['username']);
@@ -43,7 +43,7 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 					. ($_SESSION['is_root'] ? 'is_administrator, ' : '')
 					"$user_fields_joined) = (" . (!empty($_POST['password'])
 					? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\', ' : '')
-					. ($_SESSION['is_root'] ? pgescapebool($_POST['is_administrator']) : '');
+					. ($_SESSION['is_root'] ? pgescapebool($_POST['is_administrator']) : '') .', ';
 			for ($user_fields as $field) {
 				$query .= pgescapebool($_POST[$field]) . ', ';
 			}
@@ -76,25 +76,25 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 			. "' WHERE username = {$_SESSION['s_username']};");
 	echo "Password updated - for username $h2username.<br/>\n";
 }
-$result1 = pgquery("SELECT username, TRUE, is_administrator, $user_fields_joined FROM users
-		WHERE username = {$_SESSION['s_username']};");
 if ($_SESSION['is_root']) {
-	$result2 = pgquery("SELECT * FROM users WHERE username <> 'root'
-			ORDER BY is_administrator DESC, username ASC;");
+	$result = pgquery("SELECT * FROM users ORDER BY is_administrator DESC, username ASC;");
 ?>
-	Viewing table &quot;users&quot;, administrators first.
+	You are authorized to view (edit) all users.
 <?php
 } else if ($_SESSION['is_administrator']) {
-	$result2 = pgquery("SELECT username, TRUE, is_administrator, $joined_fields FROM users
-			WHERE NOT is_administrator AND username <> {$_SESSION['s_username']}
-			ORDER BY username ASC;");
-	echo "Viewing table &quot;users&quot; for username {$_SESSION['h2username']}
-			and non-administrators.\n";
+	$result = pgquery("SELECT username, TRUE, is_administrator, $user_fields_joined,
+			can_actually_login FROM users WHERE username == {$_SESSION['s_username']}
+			OR NOT is_administrator ORDER BY username ASC;");
+	echo "You are authorized to view (edit) {$_SESSION['h2username']} or non-administrators.\n";
 } else {
-	echo "Viewing table &quot;users&quot; for username {$_SESSION['h2username']}.\n";
+	$result = pgquery("SELECT username, TRUE, is_administrator, $user_fields_joined,
+			can_actually_login FROM users WHERE username == {$_SESSION['s_username']}
+			OR username = 'public' ORDER BY username ASC;");
+	echo "You are authorized to view (edit) {$_SESSION['h2username']} or public.\n";
 }
 ?>
-Table sorted ascending by username.
+Viewing table &quot;users&quot;.<br/>
+Table ordered by username ascending.
 <table border="1">
 	<tbody>
 		<tr>
@@ -132,7 +132,7 @@ Table sorted ascending by username.
 ?>
 				</td>
 <?php
-				for ($field : $user_fields) {
+				for ($user_fields as $field) {
 ?>
 					<td>
 <?php
@@ -160,93 +160,57 @@ Table sorted ascending by username.
 			</tr>
 <?php
 		}
+		for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 ?>
-		<tr>
-			<td>
-<?php
-				$row = pg_fetch_row($result1);
-				echo '<input type="text" value="', htmlspecialchars($row[0]),
-						"\" disabled=\"disabled\"/>\n";
-?>
-			</td>
-			<td>
-				<input form="update2" type="password" name="password"/>
-			</td>
-<?php
-			for ($i = 2; $i < $; $i++) {
-?>
+			<tr>
 				<td>
 <?php
-					echo '<input type="checkbox"', $row[$i] == 't' ? ' checked="checked"' : '',
-							" disabled=\"disabled\"/>\n";
+					$username = htmlspecialchars($row[0]);
+					echo "<input type=\"text\" value=\"$username\" disabled=\"disabled\"/>\n";
+					echo "<input form=\"update1_$username\" type=\"hidden\" name=\"username\"
+							value=\"$username\"/>\n";
+?>
+				</td>
+				<td>
+<?php
+					echo "<input form=\"update1_$username\" type=\"text\" name=\"password\"/>\n";
 ?>
 				</td>
 <?php
-			}
-?>
-			<td>
-				<form id="update2" action="?" method="POST">
-					<input type="submit" name="update2" value="UPDATE"/>
-				</form>
-			</td>
-		</tr>
-<?php
-		if ($_SESSION['is_administrator']) {
-			for ($row = pg_fetch_row($result2); $row; $row = pg_fetch_row($result2)) {
-?>
-				<tr>
-					<td>
-<?php
-						$username = htmlspecialchars($row[0]);
-						echo "<input type=\"text\" value=\"$username\" disabled=\"disabled\"/>\n";
-						echo "<input form=\"update1_$username\" type=\"hidden\" name=\"username\"
-								value=\"$username\"/>\n";
-?>
-					</td>
-					<td>
-<?php
-						echo "<input form=\"update1_$username\" type=\"text\"
-								name=\"password\"/>\n";
-?>
-					</td>
-<?php
-					for ($i = 2; $i < $; $i++) {
-?>
-						<td>
-<?php
-							echo "<input form=\"update1_$username\" type=\"checkbox\" name=\"",
-									pg_field_name($result2, $i), '"', $row[$i] == 't'
-									? ' checked="checked"' : '', !$_SESSION['is_root'] && $i == 2
-									? ' disabled="disabled"' : '', "/>\n";
-?>
-						</td>
-<?php
-					}
+				for ($user_fields as $field) {
 ?>
 					<td>
 <?php
-						echo "<form id=\"update1_$username\" action=\"\" method=\"POST\">\n";
+						echo "<input form=\"update1_$username\" type=\"checkbox\" name=\"$field\"",
+								$row[$i] == 't' ? ' checked="checked"' : '',
+								!$_SESSION['is_root'] && $i == 2
+								? ' disabled="disabled"' : '', "/>\n";
 ?>
-							<input type="submit" name="update1" value="UPDATE"/><br/>
-							<input type="reset" value="reset"/>
-<?php
-						echo "</form>\n";
-?>
-						<form action="" method="GET">
-<?php
-							echo "<input type=\"hidden\" name=\"key\" value=\"$username\"/>\n";
-?>
-							<input type="submit" name="delete" value="DELETE"/>
-						</form>
 					</td>
-				</tr>
 <?php
-			}
+				}
+?>
+				<td>
+<?php
+					echo "<form id=\"update1_$username\" action=\"\" method=\"POST\">\n";
+?>
+						<input type="submit" name="update1" value="UPDATE"/><br/>
+						<input type="reset" value="reset"/>
+<?php
+					echo "</form>\n";
+?>
+					<form action="" method="GET">
+<?php
+						echo "<input type=\"hidden\" name=\"key\" value=\"$username\"/>\n";
+?>
+						<input type="submit" name="delete" value="DELETE"/>
+					</form>
+				</td>
+			</tr>
+<?php
 		}
 ?>
 	</tbody>
 </table>
 Write username as a string, e.g., root.<br/>
-The root can edit all users, an administrator can edit all non-administrators, a non-administrator
-		cannot edit.<br/>
 <a href="index.php">Done</a>

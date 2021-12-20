@@ -48,46 +48,39 @@ if ($can_edit_remotes) {
 }
 if ($can_view_remotes) {
 	if (isset($_SESSION['loaded'])) {
+		if ($_SESSION['is_root']) {
+			$result = pgquery('SELECT addr FROM addr_oID ORDER BY addr ASC;');
+?>
+			You are authorized to view (edit) all remotes.
+<?php
+		} else if ($_SESSION['is_administrator']) {
+			$result = pgquery("SELECT DISTINCT addr_oID.addr FROM addr_oID INNER JOIN table_user
+					ON 't' || encode(addr_oID.addr, 'hex') = table_user.tablename INNER JOIN users
+					ON table_user.username = users.username
+					WHERE users.username = {$_SESSION['s_username']} OR NOT users.is_administrator
+					ORDER BY addr_oID.addr ASC;");
+			echo "You are authorized to view (edit) {$_SESSION['h2username']}-readable (-owned)
+					or non-administrator-readable (-owned) remotes.\n";
+		} else {
+			$result = pgquery("SELECT DISTINCT addr_oID.addr FROM addr_oID INNER JOIN table_user
+					ON 't' || encode(addr_oID.addr, 'hex') = table_user.tablename INNER JOIN users
+					ON table_user.username = users.username
+					WHERE users.username = {$_SESSION['s_username']} OR users.username = 'public'
+					ORDER BY addr_oID.addr ASC;");
+			echo "You are authorized to view (edit) {$_SESSION['h2username']}-readable (-owned)
+					or public-readable (-owned) remotes.\n";
+		}
+		for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
+			$str = substr($row[0], 2);
+			echo "<a href=\"view_remote_details.php?addr=$str\">$str</a>\n";
+			if ($can_edit_remotes) {
+				echo "<a href=\"?remove=$str\">(remove)</a>\n";
+			}
+		}
 ?>
 		<form action="" method="GET">
+			View remotes:
 <?php
-			if ($_SESSION['is_root']) {
-				$result = pgquery('SELECT addr_oID.addr FROM addr_oID INNER JOIN table_user
-						ON \'t\' || encode(addr_oID.addr, \'hex\') = table_user.tablename
-						INNER JOIN users ON table_user.username = users.username
-						WHERE NOT table_user.is_read_only
-						ORDER BY users.is_administrator DESC, addr_oID.addr ASC;');
-?>
-				View remote (remotes sorted ascending by address):
-<?php
-			} else if ($_SESSION['is_administrator']) {
-				$result = pgquery("SELECT addr_oID.addr, table_user.tablename AS t FROM addr_oID
-						INNER JOIN table_user ON 't' || encode(addr_oID.addr, 'hex')
-						= table_user.tablename INNER JOIN users ON table_user.username
-						= users.username WHERE NOT table_user.is_read_only AND EXISTS (SELECT TRUE
-						FROM table_user WHERE tablename = t AND users.username = 'public'
-						OR users.username = {$_SESSION['s_username']}) OR NOT users.is_administrator
-						ORDER BY users.is_administrator DESC, addr_oID.addr ASC;");
-				echo "View remote (public-readable, {$_SESSION['h2username']}-readable,
-						non-administrators&apos; shown):\n";
-			} else {
-				$result = pgquery("SELECT addr_oID.addr, table_user.tablename AS t FROM addr_oID
-						INNER JOIN table_user ON 't' || encode(addr_oID.addr, 'hex')
-						= table_user.tablename INNER JOIN users ON table_user.username
-						= users.username WHERE NOT table_user.is_read_only AND EXISTS (SELECT TRUE
-						FROM table_user WHERE tablename = t AND users.username = 'public'
-						OR users.username = {$_SESSION['s_username']})
-						ORDER BY addr_oID.addr ASC;");
-				echo "View remote (public-readable,
-						{$_SESSION['h2username']}-readable shown):\n";
-			}
-			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
-				$str = substr($row[0], 2);
-				echo "<a href=\"view_remote_details.php?addr=$str\">$str</a>\n";
-				if ($can_edit_remotes) {
-					echo "<a href=\"?remove=$str\">(remove)</a>\n";
-				}
-			}
 			if (pg_num_rows($result) == 0) {
 ?>
 				&lt;no remotes&gt;
@@ -96,13 +89,13 @@ if ($can_view_remotes) {
 			if ($can_edit_remotes) {
 ?>
 				<input type="text" name="add"/>
-				<input type="submit"
-						value="(add as public; write remote as a binary string, e.g., abababababababab)"/>
+				<input type="submit" value="(add as public)"/>
+				Write remote as a binary string, e.g., abababababababab.
 <?php
 			}
 ?>
 		</form>
-		Write remote as? a binary string, e.g., aba?babababababab.<br/>
+		Remotes ordered by address ascending.<br/>
 		<a href="?load">Reload all remotes from running program</a><br/>
 <?php
 		if ($can_edit_remotes) {

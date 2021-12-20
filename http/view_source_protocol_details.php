@@ -68,7 +68,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 				= (SELECT proto FROM proto_name WHERE name = $s_proto) ORDER BY imm_SRC ASC;");
 		echo "Viewing table &quot;iSRC_TWR&quot; for SRC $h2SRC and proto $h2proto.\n";
 ?>
-		Table sorted ascending by immediate source address.
+		Table ordered by immediate source address ascending.
 		<table border="1">
 			<tbody>
 				<tr>
@@ -143,8 +143,8 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 									echo "<input type=\"hidden\" name=\"key\" value=\"$str\"/>\n";
 ?>
 									<input type="submit" name="update"
-											value="Update this mapping for this SRC and this proto"/>
-											<br/>
+											value="Update this mapping for this SRC and this proto"
+											/><br/>
 									<input type="reset" value="reset"/>
 <?php
 								echo "</form>\n";
@@ -157,7 +157,8 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 									echo "<input type=\"hidden\" name=\"key\" value=\"$str\"/>\n";
 ?>
 									<input type="submit" name="delete"
-											value="Delete this mapping for this SRC and this proto"/>
+											value="Delete this mapping for this SRC and this proto"
+											/>
 								</form>
 							</td>
 <?php
