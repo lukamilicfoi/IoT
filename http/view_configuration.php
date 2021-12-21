@@ -7,8 +7,8 @@ if ($can_edit_configuration && isset($_GET['update']) && !empty($_GET['username'
 	$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 	if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
 			&& !is_administrator($s_username) || $_SESSION['is_root']) {
-		$query = 'UPDATE configuration SET (' . implode(', ', $configuration_fields) . ',
-				nsecs_id, nsecs_src, trust_everyone, default_gateway) = (';
+		$query = "UPDATE configuration SET ($configuration_fields_joined,
+				nsecs_id, nsecs_src, trust_everyone, default_gateway) = (";
 		for ($configuration_fields as $field) {
 			$query .= pgescapebool($_GET[$field]) . ', ';
 		}
@@ -21,18 +21,16 @@ if ($can_edit_configuration && isset($_GET['update']) && !empty($_GET['username'
 }
 if ($can_view_configuration) {
 	if ($_SESSION['is_root']) {
-		$result = pgquery('SELECT configuration.* FROM configuration
-				INNER JOIN users ON configuration.username = users.username
-				ORDER BY users.is_administrator DESC, configuration.username ASC;');
+		$result = pgquery('SELECT * FROM configuration ORDER BY username ASC;');
 ?>
 		You are authorized to view (edit) configuration for all users.
 <?php
 	} else if ($_SESSION['is_administrator']) {
-		$result = pgquery("SELECT configuration.* FROM configuration INNER JOIN users
-				ON configuration.username = users.username WHERE configuration.username
-				= {$_SESSION['s_username']} OR NOT users.is_administrator
-				ORDER BY users.is_administrator DESC, configuration.username ASC;");
-		echo "You are authorized to view (edit) configuration for {$_SESSION['h2username']}
+		$result = pgquery("SELECT configuration.* FROM configuration
+				INNER JOIN users ON configuration.username = users.username
+				WHERE configuration.username = {$_SESSION['s_username']}
+				OR NOT users.is_administrator ORDER BY configuration.username ASC;");
+		echo "You are authorized to view (edit) configuration for username {$_SESSION['h2username']}
 				or non-administrators.\n";
 	} else {
 		$result = pgquery("SELECT * FROM configuration
@@ -41,7 +39,7 @@ if ($can_view_configuration) {
 				or public.\n";
 	}
 ?>
-	Viewing table &quot;configuration&quot;, administrators first.<br/>
+	Viewing table &quot;configuration&quot;.<br/>
 	Table ordered by username ascending.
 	<table border="1">
 		<tbody>
@@ -77,13 +75,13 @@ if ($can_view_configuration) {
 ?>
 					</td>
 <?php
-					for ($configuration_fields as $field) {
+					for ($i = 0; $i < $configuration_fields_length; $i++) {
 ?>
 						<td>
 <?php
 							echo "<input form=\"update_$username\" type=\"checkbox\"
-									name=\"$field\"",
-									$row[$field] == 't' ? ' checked="checked"' : '', "/>\n";
+									name=\"{$configuration_fields[$i]}\"",
+									$row[$i + 1] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
 						</td>
 <?php

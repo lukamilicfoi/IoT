@@ -44,14 +44,14 @@ if ($can_view_tables) {
 				WHERE table_user.username = {$_SESSION['s_username']} OR NOT users.is_administrator
 				ORDER BY table_user.tablename LIKE 't________________'
 				AND table_user.username <> 'table_constraints' DESC, table_user.tablename ASC;");
-		echo "You are authorized to view (edit) {$_SESSION['h1username']}-readable (-owned) or
+		echo "You are authorized to view (edit) {$_SESSION['h2username']}-readable (-owned) or
 				non-administrator-readable (-owned) tables.\n";
 	} else {
 		$result = pgquery("SELECT DISTINCT tablename FROM table_user
 				WHERE username = {$_SESSION['s_username']} OR username = 'public'
 				ORDER BY tablename LIKE 't________________'
 				AND tablename <> 'table_constraints' DESC, tablename ASC;");
-		echo "You are authorized to view (edit) {$_SESSION['h1username']}-readable (-owned) or
+		echo "You are authorized to view (edit) {$_SESSION['h2username']}-readable (-owned) or
 				public-readable (-owned) tables.\n";
 	}
 ?>
@@ -90,9 +90,9 @@ if (check_authorization('can_send_messages', 'send messages')) {
 		$h_msgtosend = 'X&apos;' . htmlspecialchars($_GET['msgtosend']) . '&apos;';
 		$proto_id = pg_escape_literal($_GET['proto_id']);
 		$imm_DST = pgescapebytea($_GET['imm_DST']);
-		pgquery("CALL send_inject(TRUE, $s_msgtosend, $proto_id, $imm_DST, "
-				. pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF']) . ', '
-				. pgescapebool($_GET['broadcast']) . ', '
+		pgquery("SELECT send_inject(TRUE, $s_msgtosend, (SELECT proto FROM proto_name
+				WHERE name = $proto_id), $imm_DST, " . pgescapebool($_GET['CCF']) . ', '
+				. pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast']) . ', '
 				. pgescapebool($_GET['override_implicit_rules']) . ');');
 		echo "Message $h_msgtosend sent.\n";
 	}
@@ -125,9 +125,9 @@ if (check_authorization('can_inject_messages', 'inject messages')) {
 		$h_msgtoinject = 'X&apos;' . htmlspecialchars($_GET['msgtoinject']) . '&apos;';
 		$proto_id = pg_escape_literal($_GET['proto_id']);
 		$imm_SRC = pgescapebytea($_GET['imm_SRC']);
-		pgquery("CALL send_inject(FALSE, $s_msgtoinject, $proto_id, $imm_SRC, "
-				. pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF']) . ', '
-				. pgescapebool($_GET['broadcast']) . ', '
+		pgquery("SELECT send_inject(FALSE, $s_msgtoinject, (SELECT proto FROM proto_name
+				WHERE name = $proto_id), $imm_SRC, " . pgescapebool($_GET['CCF']) . ', '
+				. pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast']) . ', '
 				. pgescapebool($_GET['override_implicit_rules']) . ');');
 		echo "Message $h_msgtoinject injected.\n";
 	}
@@ -209,10 +209,10 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 		You are authorized to send queries to read (write) all tables.
 <?php
 	} else if ($_SESSION['is_administrator']) {
-		echo "You are authorized to send queries to read (write) {$_SESSION['s_username']}-readable
+		echo "You are authorized to send queries to read (write) {$_SESSION['h2username']}-readable
 				(-owned) or non-administrator-readable (-owned) tables.\n";
 	} else {
-		echo "You are authorized to send queries to read (write) {$_SESSION['h1username']}-readable
+		echo "You are authorized to send queries to read (write) {$_SESSION['h2username']}-readable
 				(-owned) or non-administrator-readable (-owned) tables.\n";
 	}
 ?>
@@ -243,7 +243,7 @@ if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
 		You are authorized to execute rules for all users.
 <?php
 	} else if ($_SESSION['is_administrator']) {
-		echo "You are authorized to execute rules for {$_SESSION['h1username']}
+		echo "You are authorized to execute rules for {$_SESSION['h2username']}
 				or non-administrators.\n";
 	} else {
 		echo "You are authorized to execute rules for {$_SESSION['h1username']} or public.\n";

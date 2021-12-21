@@ -40,8 +40,8 @@ if (!empty($_GET['addr'])) {
 ?>
 				Are you sure?
 <?php
-				echo "<a href=\"?addr=$u_addr&amp;remove_proto=$u_remove_proto&amp;confirm\">",
-						"Yes</a>\n";
+				echo '<a href="',
+						"?addr=$u_addr&amp;remove_proto=$u_remove_proto&amp;confirm\">Yes</a>\n";
 				echo "<a href=\"?addr=$u_addr\">No</a>\n";
 				exit(0);
 			}
@@ -67,7 +67,7 @@ if (!empty($_GET['addr'])) {
 		echo 'You are authorized to view ', $can_edit ? '(edit) ' : '', "everything here.\n";
 ?>
 		<form action="" method="GET">
-			View destination (destinations ordered by address ascending):
+			View destination:
 <?php
 			$result = pgquery("SELECT DST FROM SRC_DST WHERE SRC = $s2addr ORDER BY DST ASC;");
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
@@ -88,11 +88,13 @@ if (!empty($_GET['addr'])) {
 ?>
 				<input type="text" name="add_DST"/>
 				<input type="submit" value="(add)"/>
+				Write destination as a binary string, e.g., abababababababab.
 <?php
 			}
 ?>
 		</form>
-		outgoing ID
+		Destinations ordered by address ascending.<br/><br/>
+		Outgoing ID:
 <?php
 		$result = pgquery("SELECT out_ID FROM addr_oID WHERE addr = $s2addr;");
 		echo "<input form=\"change\" type=\"hidden\" name=\"addr\" value=\"$h1addr\"/>\n";
@@ -108,15 +110,17 @@ if (!empty($_GET['addr'])) {
 			<input form="random" type="submit" name="randomize" value="randomize"/>
 			<form id="change" action="" method="GET"></form>
 			<form id="random" action="" method="GET"></form>
+			Write id as an integer, e.g., 11.
 <?php
 		}
 ?>
+		<br/>
 		<form action="" method="GET">
-			View protocol (protocols ordered by name ascending):
+			View protocol:
 <?php
 			$result = pgquery("SELECT proto_name.name FROM SRC_proto
 					INNER JOIN proto_name ON SRC_proto.proto = proto_name.proto
-					WHERE SRC = $s2addr ORDER BY SRC_proto.proto ASC;");
+					WHERE SRC = $s2addr ORDER BY proto_name.name ASC;");
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 				echo '<a href="view_source_protocol_details.php',
 						"?SRC=$u_addr&amp;proto={$row[0]}\">{$row[0]}</a>\n";
@@ -134,13 +138,12 @@ if (!empty($_GET['addr'])) {
 ?>
 				<input type="text" name="add_proto"/>
 				<input type="submit" value="(add)"/>
+				Write protocol as a string, e.g., tcp.
 <?php
 			}
 ?>
 		</form>
-		Write destination as a binary string, e.g., abababababababab.<br/>
-		Write id as an integer, e.g., 11.<br/>
-		Write protocol as a string, e.g., tcp.<br/>
+		Protocols ordered by name ascending.<br/><br/>
 		<a href="view_remotes.php">Done</a>
 <?php
 	}

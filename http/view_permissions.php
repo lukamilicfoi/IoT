@@ -43,13 +43,13 @@ if ($can_edit_permissions) {
 			$key3 = isset($_GET['key3']);
 			$s_key3 = pgescapebool($_GET['key3']);
 			if (($key3 || $_GET['key1'] == $_GET['tablename'])
-					&& $key1_owner_is_user_or_public && $tablename_owner_is_user_or_public
+					&& ($key1_owner_is_user_or_public && $tablename_owner_is_user_or_public
 					|| $_SESSION['is_administrator'] && ($key1_owner_is_user_or_public
 					|| !$key1_owner_is_administrator) && ($tablename_owner_is_user_or_public
-					|| !$tablename_owner_is_administrator) || $_SESSION['is_root']) {
+					|| !$tablename_owner_is_administrator) || $_SESSION['is_root'])) {
 				pgquery("UPDATE table_user SET (tablename, username) = ($s_tablename, $s_username)
 						WHERE tablename = $s_key1 AND username = $s_key2
-						AND is_read_only = $s_key3;");
+						AND " . ($key3 ? '' : 'NOT ') . 'is_read_only;');
 				echo "Row ($h_key1, $h_key2, $s_key3)
 						updated to ($h_username, $h_tablename, $s_key3).<br/>\n";
 			}
@@ -67,7 +67,7 @@ if ($can_edit_permissions) {
 				|| $_SESSION['is_root']) && isset($_GET['delete']) {
 			if (isset($_GET['confirm'])) {
 				pgquery("DELETE FROM table_user WHERE tablename = $s_key1 AND username = $s_key2
-						AND is_read_only = FALSE;");
+						AND NOT is_read_only;");
 				echo "Row ($h_key1, $h_key2, FALSE) deleted.<br/>\n";
 			} else {
 ?>
@@ -91,21 +91,21 @@ if ($can_edit_permissions) {
 <?php
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT tablename AS t, username, is_read_only FROM table_user
-				WHERE EXISTS(SELECT TRUE FROM table_user WHERE tablename = t
-				AND (username = {$_SESSION['s_username']} OR NOT is_administrator))
-				ORDER BY is_read_only ASC, tablename ASC, username ASC;");
-		echo "You are authorized to view (edit) permissions for {$_SESSION['h1username']}-readable
+				WHERE EXISTS(SELECT TRUE FROM table_user INNER JOIN users ON table_user.username
+				= users.username WHERE tablename = t AND (username = {$_SESSION['s_username']}
+				OR NOT is_administrator)) ORDER BY is_read_only ASC, tablename ASC, username ASC;");
+		echo "You are authorized to view (edit) permissions for {$_SESSION['h2username']}-readable
 				(-owned) or non-administrator-readable (-owned) tables.\n";
 	} else {
 		$result = pgquery("SELECT tablename AS t, username, is_read_only FROM table_user
-				WHERE EXISTS(SELECT TRUE FROM table_user WHERE tablename = t
-				AND (username = {$_SESSION['s_username']} OR username = 'public'))
-				ORDER BY is_read_only ASC, tablename ASC, username ASC;");
-		echo "You are authorized to view (edit) permissions for {$_SESSION['h1username']}-readable
+				WHERE EXISTS(SELECT TRUE FROM table_user INNER JOIN users ON table_user.username
+				= users.username WHERE tablename = t AND (username = {$_SESSION['s_username']}
+				OR username = 'public')) ORDER BY is_read_only ASC, tablename ASC, username ASC;");
+		echo "You are authorized to view (edit) permissions for {$_SESSION['h2username']}-readable
 				(-owned) or public-readable tables.\n";
 	}
 ?>
-	Viewing table &quot;table_user&quot;, owners first.
+	Viewing table &quot;table_user&quot;, table owners shown first.
 	Tables ordered by tablename ascending and username ascending.
 	<table border="1">
 		<tbody>
@@ -161,8 +161,8 @@ if ($can_edit_permissions) {
 						$username = htmlspecialchars($row[1]);
 						$form = "\"update_{$tablename}_$username\"";
 						echo "<input form=$form type=\"text\" name=\"tablename\"
-								value=\"$tablename\"", $row[2] == 't' ?
-								' disabled="disabled"' : '', "/>\n";
+								value=\"$tablename\"",
+								$row[2] == 't' ? ' disabled="disabled"' : '', "/>\n";
 ?>
 					</td>
 					<td>

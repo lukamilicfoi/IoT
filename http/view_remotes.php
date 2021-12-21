@@ -22,7 +22,7 @@ if ($can_edit_remotes) {
 		$h_add = 'X&apos;' . htmlspecialchars($_GET['add']) . '&apos;';
 		if (can_edit_table($s1add)) {
 			pgquery("INSERT INTO addr_oID(addr, out_ID) VALUES($s2add, " . rand(0, 255) . ');');
-			echo "Remote $h_add added.\n";
+			echo "Remote $h_add added.<br/>\n";
 		}
 	} else if (!empty($_GET['remove'])) {
 		$s1remove = pgescapename($_GET['remove']);
@@ -32,7 +32,7 @@ if ($can_edit_remotes) {
 		if (isset($_GET['confirm'])) {
 			if (can_edit_table($s1remove)) {
 				pgquery("DELETE FROM addr_oID WHERE addr = $s2remove;");
-				echo "Remote $h_remove removed.\n";
+				echo "Remote $h_remove removed.<br/>\n";
 			}
 		} else {
 ?>
@@ -70,17 +70,17 @@ if ($can_view_remotes) {
 			echo "You are authorized to view (edit) {$_SESSION['h2username']}-readable (-owned)
 					or public-readable (-owned) remotes.\n";
 		}
-		for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
-			$str = substr($row[0], 2);
-			echo "<a href=\"view_remote_details.php?addr=$str\">$str</a>\n";
-			if ($can_edit_remotes) {
-				echo "<a href=\"?remove=$str\">(remove)</a>\n";
-			}
-		}
 ?>
 		<form action="" method="GET">
 			View remotes:
 <?php
+			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
+				$str = substr($row[0], 2);
+				echo "<a href=\"view_remote_details.php?addr=$str\">$str</a>\n";
+				if ($can_edit_remotes) {
+					echo "<a href=\"?remove=$str\">(remove)</a>\n";
+				}
+			}
 			if (pg_num_rows($result) == 0) {
 ?>
 				&lt;no remotes&gt;
@@ -89,7 +89,7 @@ if ($can_view_remotes) {
 			if ($can_edit_remotes) {
 ?>
 				<input type="text" name="add"/>
-				<input type="submit" value="(add as public)"/>
+				<input type="submit" value="(add if permitted)"/>
 				Write remote as a binary string, e.g., abababababababab.
 <?php
 			}
@@ -113,8 +113,6 @@ if ($can_view_remotes) {
 <?php
 		}
 	}
-?>
-	<a href="index.php">Done</a>
-<?php
 }
 ?>
+<a href="index.php">Done</a>
