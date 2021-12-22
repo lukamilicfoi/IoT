@@ -107,28 +107,24 @@ if ($can_edit_rules) {
 }
 if ($can_view_rules) {
 	if ($_SESSION['is_root']) {
-		$result = pgquery('SELECT rules.*, proto_name.proto FROM rules INNER JOIN users
-				ON rules.username = users.username
-				INNER JOIN proto_name ON rules.proto_id = proto_name.proto
-				ORDER BY users.is_administrator DESC, rules.username ASC, rules.id ASC;');
+		$result = pgquery('SELECT rules.*, proto_name.proto FROM rules INNER JOIN proto_name
+				ON rules.proto_id = proto_name.proto ORDER BY rules.username ASC, rules.id ASC;');
 ?>
 		You are authorized to view (edit) rules for all users.
 <?php
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT rules.*, proto_name.proto FROM rules INNER JOIN users
-				ON rules.username = users.username
-				INNER JOIN proto_name ON rules.proto_id = proto_name.proto  
-				WHERE rules.username = {$_SESSION['s_username']} OR NOT users.is_administrator
-				ORDER BY users.is_administrator DESC, rules.username ASC, rules.id ASC;");
+				ON rules.username = users.username INNER JOIN proto_name ON rules.proto_id
+				= proto_name.proto WHERE rules.username = {$_SESSION['s_username']}
+				OR NOT users.is_administrator ORDER BY rules.username ASC, rules.id ASC;");
 		echo "You are authorized to view (edit) rules for {$_SESSION['h2username']}
 				or non-administrators.\n";
 	} else {
-		$result = pgquery("SELECT rules.*, proto_name.proto FROM rules INNER JOIN proto_name
-				ON rules.proto_id = proto_name.proto
+		$result = pgquery("SELECT rules.*, proto_name.proto FROM rules
+				INNER JOIN proto_name ON rules.proto_id = proto_name.proto
 				WHERE rules.username = {$_SESSION['s_username']}
 				OR rules.username = 'public' ORDER BY rules.username ASC, rules.id ASC;");
-		echo "You are authorized to view (edit) rules for {$_SESSION['h2username']}
-				or public.\n";
+		echo "You are authorized to view (edit) rules for {$_SESSION['h2username']} or public.\n";
 	}
 ?>
 	Viewing table &quot;rules&quot;<br/>
@@ -264,7 +260,7 @@ if ($can_view_rules) {
 					</td>
 					<td>
 						<input form="insert" type="checkbox" name="is_active"/>
-					/td>
+					</td>
 					<td>
 						<input form="insert" type="text" name="last_run" value="LOCALTIMESTAMP(0)"
 								disabled="disabled"/>
@@ -517,7 +513,7 @@ if ($can_view_rules) {
 	If &quot;SELECT &lt;filter&gt;&quot; evaluates to TRUE, the filter is triggered.
 	You can use column names HD, ID, etc. Appropriate FROM is automatically appended.<br/>
 	Modification is performed like &quot;UPDATE message SET &lt;semicolon-separated command 1&gt;;
-	UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;&quot;.<br/>
+			UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;&quot;.<br/>
 	During SQL queries the current message is stored in table "formatted_message_for_send_receive"
 			and columns HD, ID, etc.<br/>
 	bash commands are NOT executed as /root/, but as the user who started the database.<br/>
@@ -528,7 +524,7 @@ if ($can_view_rules) {
 	When broadcasting a message any imm_DST is ignored.<br/>
 	On send and receive rules last_run is meaningless.<br/>
 	Strings are written without excess quotations, e.g., proto = 'tcp'.<br/>
-	<a href="index.php">Done</a>
 <?php
 }
 ?>
+<a href="index.php">Done</a>
