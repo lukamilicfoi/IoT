@@ -76,7 +76,7 @@ if (!empty($_GET['tablename'])) {
 		$result = pgquery("TABLE $s2tablename ORDER BY t DESC;");
 		echo "Viewing table $h2tablename.\n";
 ?>
-		Table ordered by t descending.
+		Table ordered by &quot;t&quot; descending.
 		<table border="1">
 			<tbody>
 				<tr>
@@ -178,8 +178,7 @@ if (!empty($_GET['tablename'])) {
 				}
 ?>
 			</tbody>
-				</table>
-		<a href="index.php">Done</a>
+		</table>
 <?php
 	}
 }

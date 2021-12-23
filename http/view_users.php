@@ -77,7 +77,7 @@ if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 	echo "Password updated - for username $h2username.<br/>\n";
 }
 if ($_SESSION['is_root']) {
-	$result = pgquery("SELECT * FROM users ORDER BY is_administrator DESC, username ASC;");
+	$result = pgquery("SELECT * FROM users ORDER BY username ASC;");
 ?>
 	You are authorized to view (edit) all users.
 <?php
@@ -103,7 +103,7 @@ Table ordered by username ascending.
 			<th>Is administrator?</th>
 <?php
 			for ($field : $user_fields) {
-				echo '<th>', ucfirst(str_replace($field, '_', ' ')), "</th>\n";
+				echo '<th>', ucfirst(str_replace($field, '_', ' ')), "?</th>\n";
 			}
 ?>
 			<th>Actions</th>
@@ -167,21 +167,24 @@ Table ordered by username ascending.
 <?php
 					$username = htmlspecialchars($row[0]);
 					echo "<input type=\"text\" value=\"$username\" disabled=\"disabled\"/>\n";
-					echo "<input form=\"update1_$username\" type=\"hidden\" name=\"username\"
+					echo '<input form="update', $username == $_SESSION['h1username'] ? '2' : '2',
+							"_$username\" type=\"hidden\" name=\"username\"
 							value=\"$username\"/>\n";
 ?>
 				</td>
 				<td>
 <?php
-					echo "<input form=\"update1_$username\" type=\"text\" name=\"password\"/>\n";
+					echo '<input form="update', $username != $_SESSION['h1username'] ? '1' : '2',
+							"_$username\" type=\"text\" name=\"password\"/>\n";
 ?>
 				</td>
 <?php
-				for ($user_fields as $field) {
+				for ($i = 0; $i < $user_fields_length; $i++) {
 ?>
 					<td>
 <?php
-						echo "<input form=\"update1_$username\" type=\"checkbox\" name=\"$field\"",
+						echo "<input form=\"update1_$username\" type=\"checkbox\"
+								name=\"{$user_fields[$i]}\"",
 								$row[$i] == 't' ? ' checked="checked"' : '',
 								!$_SESSION['is_root'] && $i == 2
 								? ' disabled="disabled"' : '', "/>\n";
