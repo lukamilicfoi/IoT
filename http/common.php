@@ -48,14 +48,22 @@ function pgescapebool(&$boolvar) {
 }
 
 function can_view_table($s_tablename) {
-	return pg_num_rows(pgquery("SELECT TRUE FROM table_user INNER JOIN users
-			ON table_user.username = users.username WHERE table_user.username = $s_tablename
-			AND (table_user.username = 'public' OR table_user.username = {$_SESSION['s_username']}
-			OR NOT users.is_administator AND NOT table_user.is_read_only
+	return pg_num_rows(pgquery("SELECT TRUE FROM table_owner INNER JOIN users
+			ON table_owner.username = users.username WHERE table_owner.tablename = $s_tablename
+			AND (table_owner.username = {$_SESSION['s_username']} OR table_owner.username = 'public'
+			OR NOT users.is_administrator AND {$_SESSION['s_is_administrator']}
+			OR {$_SESSION['s_is_root']}) UNION SELECT TRUE FROM table_reader
+			ON table_reader.username = users.username WHERE table_reader.username = $s_tablename
+			AND (table_reader.username = {$_SESSION['s_username']}
+			OR table_reader.username = 'public' OR NOT users.is_administrator
 			AND {$_SESSION['s_is_administrator']} OR {$_SESSION['s_is_root']});")) != 0;
 }
 
-$configuration_fields = array('forward_messages', 'use_internet_switch_algorithm');
+function pgconnect($username) {
+	if (!pg_connect("$username")) {
+		exit('Could not connect - ' . pg_last_error());
+	}
+}
 
 function postgresql_output_to_my_input($data, $oid) {
 	if ($data === null) {
@@ -78,8 +86,8 @@ function postgresql_output_to_my_input($data, $oid) {
 }
 
 function find_owner($s_tablename) {
-	return pg_fetch_row(pgquery("SELECT username FROM table_user
-			WHERE tablename = $s_tablename AND NOT is_read_only;"))[0];
+	return pg_fetch_row(pgquery("SELECT username FROM table_owner
+			WHERE tablename = $s_tablename;"))[0];
 }
 
 function pgquery($string) {
@@ -95,17 +103,18 @@ function pgescapebytea($byteavar) {
 }
 
 function can_edit_table($s_tablename) {
-	return pg_num_rows(pgquery("SELECT TRUE FROM table_user INNER JOIN users
-			ON table_user.username = users.username WHERE table_user.tablename = $s_tablename
-			AND (table_user.username = 'public' OR table_user.username = {$_SESSION['s_username']}
+	return pg_num_rows(pgquery("SELECT TRUE FROM table_owner INNER JOIN users
+			ON table_owner.username = users.username WHERE table_owner.tablename = $s_tablename
+			AND (table_owner.username = {$_SESSION['s_username']} OR table_owner.username = 'public'
 			OR NOT users.is_administrator AND {$_SESSION['s_is_administrator']}
-			OR {$_SESSION['s_is_root']}) AND NOT table_user.is_read_only;")) != 0;
+			OR {$_SESSION['s_is_root']});")) != 0;
 }
 
 $user_fields = array('can_view_tables', 'can_edit_tables', 'can_send_messages',
 		'can_inject_messages', 'can_send_queries', 'can_view_rules', 'can_edit_rules',
 		'can_view_configuration', 'can_edit_configuration', 'can_view_permissions',
-		'can_edit_permissions', 'can_view_remotes', 'can_edit_remotes', 'can_execute_rules');
+		'can_edit_permissions', 'can_view_remotes', 'can_edit_remotes', 'can_execute_rules',
+		'can_view_users', 'can_edit_users');
 
 function my_input_to_postgresql_input($data, $oid) {
 	if ($data == '') {

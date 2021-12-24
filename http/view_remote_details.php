@@ -6,8 +6,8 @@ if (!empty($_GET['addr'])) {
 	$h1addr = htmlspecialchars($_GET['addr']);
 	$h2addr = "X&apos;$h1addr&apos;";
 	$u_addr = urlencode($_GET['addr']);
-	$can_view = check_authorization('can_view_remotes', 'view remotes') && can_view_table($s1addr);
-	$can_edit = check_authorization('can_edit_remotes', 'edit remotes') && can_edit_table($s1addr);
+	$can_view = check_authorization('view remotes') && can_view_table($s1addr);
+	$can_edit = check_authorization('edit remotes') && can_edit_table($s1addr);
 	if ($can_edit) {
 		if (!empty($_GET['out_ID'])) {
 			$out_ID = intval($_GET['out_ID']);
@@ -114,7 +114,7 @@ if (!empty($_GET['addr'])) {
 <?php
 		}
 ?>
-		<br/>
+		<br/><br/>
 		<form action="" method="GET">
 			View protocol:
 <?php
@@ -144,7 +144,7 @@ if (!empty($_GET['addr'])) {
 ?>
 		</form>
 		Protocols ordered by name ascending.<br/><br/>
-		<a href="view_remotes.php">Done</a>
+		<a href="view_remotes.php">Done</a><br/>
 <?php
 	}
 }

@@ -1,14 +1,13 @@
 <?php
 require_once 'common.php';
-$can_view_tables = check_authorization('can_view_tables', 'view tables');
-$can_edit_tables = check_authorization('can_edit_tables', 'edit tables');
+$can_view_tables = check_authorization('view tables');
+$can_edit_tables = check_authorization('edit tables');
 if ($can_edit_tables) {
 	if (!empty($_GET['add'])) {
 		$s1add = pg_escape_identifier($_GET['add']);
 		$s2add = pg_escape_literal($_GET['add']);
 		pgquery("CREATE TABLE $s1add(t TIMESTAMP(4) WITHOUT TIME ZONE);");
-		pgquery("INSERT INTO table_user(tablename, username, is_read_only)
-				VALUES($s2add, 'public', FALSE);");
+		pgquery("INSERT INTO table_owner(tablename, username) VALUES($s2add, 'public');");
 	} else if (!empty($_GET['remove'])) {
 		$s1remove = pg_escape_identifier($_GET['remove']);
 		$s2remove = pg_escape_literal($_GET['remove']);
@@ -16,7 +15,7 @@ if ($can_edit_tables) {
 		if (can_edit_table($s2remove)) {
 			if (isset($_GET['confirm'])) {
 				pgquery("DROP TABLE $s1remove;");
-				pgquery("DELETE FROM table_user WHERE tablename = $s2remove;");
+				pgquery("DELETE FROM table_owner WHERE tablename = $s2remove;");
 			} else {
 ?>
 				Are you sure?
@@ -31,26 +30,17 @@ if ($can_edit_tables) {
 	}
 }
 if ($can_view_tables) {
+	$result = pgquery('SELECT tablename FROM table_owner
+			ORDER BY tablename LIKE \'t________________\'
+			AND tablename <> \'table_constraints\' DESC, tablename ASC;');
 	if ($_SESSION['is_root']) {
-		$result = pgquery('SELECT DISTINCT tablename FROM table_user
-				ORDER BY tablename LIKE \'t________________\'
-				AND tablename <> \'table_constraints\' DESC, tablename ASC;');
 ?>
 		You are authorized to view (edit) all tables.
 <?php
 	} else if ($_SESSION['is_administrator']) {
-		$result = pgquery("SELECT DISTINCT table_user.tablename FROM table_user INNER JOIN users
-				ON table_user.username = users.username
-				WHERE table_user.username = {$_SESSION['s_username']} OR NOT users.is_administrator
-				ORDER BY table_user.tablename LIKE 't________________'
-				AND table_user.username <> 'table_constraints' DESC, table_user.tablename ASC;");
 		echo "You are authorized to view (edit) {$_SESSION['h2username']}-readable (-owned) or
 				non-administrator-readable (-owned) tables.\n";
 	} else {
-		$result = pgquery("SELECT DISTINCT tablename FROM table_user
-				WHERE username = {$_SESSION['s_username']} OR username = 'public'
-				ORDER BY tablename LIKE 't________________'
-				AND tablename <> 'table_constraints' DESC, tablename ASC;");
 		echo "You are authorized to view (edit) {$_SESSION['h2username']}-readable (-owned) or
 				public-readable (-owned) tables.\n";
 	}
@@ -62,7 +52,9 @@ if ($can_view_tables) {
 			$u_tablename = urlencode($row[0]);
 			$h_tablename = htmlspecialchars($row[0]);
 			$s_tablename = pg_escape_literal($row[0]);
-			echo "<a href=\"view_table.php?tablename=$u_tablename\">$h_tablename</a>\n";
+			if (can_view_table($s_tablename)) {
+				echo "<a href=\"view_table.php?tablename=$u_tablename\">$h_tablename</a>\n";
+			}
 			if (can_edit_table($s_tablename)) {
 				echo "<a href=\"?remove=$u_tablename\">(remove)</a>\n";
 			}
@@ -84,7 +76,7 @@ if ($can_view_tables) {
 	Tables ordered by name ascending.<br/><br/>
 <?php
 }
-if (check_authorization('can_send_messages', 'send messages')) {
+if (check_authorization('send messages')) {
 	if (!empty($_GET['msgtosend']) && !empty($_GET['proto_id']) && !empty($_GET['imm_DST'])) {
 		$s_msgtosend = pgescapebytea($_GET['msgtosend']);
 		$h_msgtosend = 'X&apos;' . htmlspecialchars($_GET['msgtosend']) . '&apos;';
@@ -119,7 +111,7 @@ if (check_authorization('can_send_messages', 'send messages')) {
 			write protocol as a string, e.g., tcp.<br/><br/>
 <?php
 }
-if (check_authorization('can_inject_messages', 'inject messages')) {
+if (check_authorization('inject messages')) {
 	if (!empty($_GET['msgtoinject']) && !empty($_GET['proto_id']) && !empty($_GET['imm_SRC'])) {
 		$s_msgtoinject = pgescapebytea($_GET['msgtoinject']);
 		$h_msgtoinject = 'X&apos;' . htmlspecialchars($_GET['msgtoinject']) . '&apos;';
@@ -154,7 +146,7 @@ if (check_authorization('can_inject_messages', 'inject messages')) {
 			write protocol as a string, e.g., tcp.<br/><br/>
 <?php
 }
-if (check_authorization('can_send_queries', 'send queries to database')) {
+if (check_authorization('send queries')) {
 	if (!empty($_GET['query'])) {
 		$h_query = '&apos;' . htmlspecialchars($_GET['query']) . '&apos;';
 		if (!$_SESSION['is_root']) {
@@ -165,11 +157,10 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 			if (!flock($flock, LOCK_EX)) {
 				exit('cannot flock');
 			}
-			pg_connect('host=localhost dbname=postgres user=postgres client_encoding=UTF8');
+			pgconnect('postgres');
 			pgquery("UPDATE current_username SET current_username = {$_SESSION['s_username']};");
 			pg_close();
-			pg_connect('host=localhost dbname=postgres user=' . ($_SESSION['is_administrator']
-					? 'administrator' : 'local') . ' client_encoding=UTF8');
+			pgconnect($_SESSION['is_administrator'] ? 'administrator' : 'local');
 		}
 		$result = pgquery($_GET['query']);
 		if (!$_SESSION['is_root']) {
@@ -227,7 +218,7 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 	Write query as a string, e.g., SELECT a FROM b;.<br/><br/>
 <?php
 }
-if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
+if (check_authorization('execute rules')) {
 	if (!empty($_GET['username']) && !empty($_GET['id'])) {
 		$s_username = pg_escape_literal($_GET['username']);
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']);
@@ -261,7 +252,7 @@ if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
 	Write username and rule as a string and an integer, e.g., root and 11.<br/><br/>
 <?php
 }
-if (check_authorization('can_view_rules', 'view rules')) {
+if (check_authorization('view rules')) {
 ?>
 	<a href="view_rules.php">View rules</a><br/>
 <?php
@@ -271,17 +262,17 @@ if (check_authorization('can_view_rules', 'view rules')) {
 <a href="view_users.php">View users</a><br/>
 <a href="view_adapters_and_underlying_protocols.php">View adapters and underlying protocols</a><br/>
 <?php
-if (check_authorization('can_view_configuration', 'view configuration')) {
+if (check_authorization('view configuration')) {
 ?>
 	<a href="view_configuration.php">View configuration</a><br/>
 <?php
 }
-if (check_authorization('can_view_permissions', 'view permissions')) {
+if (check_authorization('view permissions')) {
 ?>
 	<a href="view_permissions.php">View permissions</a><br/>
 <?php
 }
-if (check_authorization('can_view_remotes', 'view remotes')) {
+if (check_authorization('view remotes')) {
 ?>
 	<a href="view_remotes.php">View remotes</a><br/>
 <?php

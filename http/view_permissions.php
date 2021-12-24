@@ -1,12 +1,12 @@
 <?php
 require_once 'common.php';
-$can_view_permissions = check_authorization('can_view_permissions', 'view permissions');
-$can_edit_permissions = check_authorization('can_edit_permissions', 'edit permissions');
+$can_view_permissions = check_authorization('view permissions');
+$can_edit_permissions = check_authorization('edit permissions');
 if ($can_edit_permissions) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
-			pgquery('DELETE FROM table_user WHERE is_read_only;');
-			echo "Table &quot;table_user&quot; truncated - except for owners.<br/>\n";
+			pgquery('TRUNCATE TABLE table_reader;');
+			echo "Table &quot;table_reader&quot; truncated.<br/>\n";
 		} else {
 ?>
 			Are you sure?
@@ -27,11 +27,11 @@ if ($can_edit_permissions) {
 		if (isset($_GET['insert'])) {
 			if ($tablename_owner_is_user_or_public || $_SESSION['is_administrator']
 					&& !$tablename_owner_is_administrator || $_SESSION['is_root']) {
-				pgquery("INSERT INTO table_user(tablename, username, is_read_only)
-						VALUES($s_tablename, $s_username, FALSE);");
-				echo "Row ($h_tablename, $h_username, FALSE) inserted.<br/>\n";
+				pgquery("INSERT INTO table_reader(tablename, username)
+						VALUES($s_tablename, $s_username);");
+				echo "Owner ($h_tablename, $h_username) inserted.<br/>\n";
 			}
-		} else if (!empty($_GET['key1']) && !empty($_GET['key2']) && isset($_GET['update'])) {
+		} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
 			$s_key1 = pg_escape_literal($_GET['key1']);
 			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 			$key1_owner = find_owner($s_key1);
@@ -40,18 +40,19 @@ if ($can_edit_permissions) {
 					|| $key1_owner == 'public';
 			$s_key2 = pg_escape_literal($_GET['key2']);
 			$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
-			$key3 = isset($_GET['key3']);
-			$s_key3 = pgescapebool($_GET['key3']);
-			if (($key3 || $_GET['key1'] == $_GET['tablename'])
-					&& ($key1_owner_is_user_or_public && $tablename_owner_is_user_or_public
+			if (($key1_owner_is_user_or_public || $_SESSION['is_administrator']
+					&& !$key1_owner_is_administrator || $_SESSION['is_root'])
+					&& isset($_GET['update1'])) {
+				pgquery("UPDATE table_owner SET username = $s_username
+						WHERE tablename = $s_tablename;");
+			} else if (($key1_owner_is_user_or_public && $tablename_owner_is_user_or_public
 					|| $_SESSION['is_administrator'] && ($key1_owner_is_user_or_public
 					|| !$key1_owner_is_administrator) && ($tablename_owner_is_user_or_public
-					|| !$tablename_owner_is_administrator) || $_SESSION['is_root'])) {
-				pgquery("UPDATE table_user SET (tablename, username) = ($s_tablename, $s_username)
-						WHERE tablename = $s_key1 AND username = $s_key2
-						AND " . ($key3 ? '' : 'NOT ') . 'is_read_only;');
-				echo "Row ($h_key1, $h_key2, $s_key3)
-						updated to ($h_username, $h_tablename, $s_key3).<br/>\n";
+					|| !$tablename_owner_is_administrator) || $_SESSION['is_root'])
+					&& isset($_GET['update2'])) {
+				pgquery("UPDATE table_reader SET (tablename, username) = ($s_tablename, $s_username)
+						WHERE tablename = $s_key1 AND username = $s_key2;");
+				echo "Reader ($h_key1, $h_key2) updated to ($h_username, $h_tablename).<br/>\n";
 			}
 		}
 	} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
@@ -66,9 +67,9 @@ if ($can_edit_permissions) {
 				|| $_SESSION['is_administrator'] && !is_administrator($key1_owner)
 				|| $_SESSION['is_root']) && isset($_GET['delete']) {
 			if (isset($_GET['confirm'])) {
-				pgquery("DELETE FROM table_user WHERE tablename = $s_key1 AND username = $s_key2
-						AND NOT is_read_only;");
-				echo "Row ($h_key1, $h_key2, FALSE) deleted.<br/>\n";
+				pgquery("DELETE FROM table_reader WHERE tablename = $s_key1
+						AND username = $s_key2;");
+				echo "Reader ($h_key1, $h_key2) deleted.<br/>\n";
 			} else {
 ?>
 				Are you sure?
@@ -83,24 +84,15 @@ if ($can_edit_permissions) {
 	}
 }
 if ($can_edit_permissions) {
+	$result = pgquery('SELECT tablename FROM table_owner ORDER BY tablename ASC;');
 	if ($_SESSION['is_root']) {
-		$result = pgquery('SELECT * FROM table_user
-				ORDER BY is_read_only ASC, tablename ASC, username ASC;');
 ?>
 		You are authorized to view (edit) permissions for all tables.
 <?php
 	} else if ($_SESSION['is_administrator']) {
-		$result = pgquery("SELECT tablename AS t, username, is_read_only FROM table_user
-				WHERE EXISTS(SELECT TRUE FROM table_user INNER JOIN users ON table_user.username
-				= users.username WHERE tablename = t AND (username = {$_SESSION['s_username']}
-				OR NOT is_administrator)) ORDER BY is_read_only ASC, tablename ASC, username ASC;");
 		echo "You are authorized to view (edit) permissions for {$_SESSION['h2username']}-readable
 				(-owned) or non-administrator-readable (-owned) tables.\n";
 	} else {
-		$result = pgquery("SELECT tablename AS t, username, is_read_only FROM table_user
-				WHERE EXISTS(SELECT TRUE FROM table_user INNER JOIN users ON table_user.username
-				= users.username WHERE tablename = t AND (username = {$_SESSION['s_username']}
-				OR username = 'public')) ORDER BY is_read_only ASC, tablename ASC, username ASC;");
 		echo "You are authorized to view (edit) permissions for {$_SESSION['h2username']}-readable
 				(-owned) or public-readable tables.\n";
 	}
@@ -112,7 +104,6 @@ if ($can_edit_permissions) {
 			<tr>
 				<th>Tablename</th>
 				<th>Username</th>
-				<th>Is read only?</th>
 <?php
 				if ($can_edit_permissions) {
 ?>
@@ -130,9 +121,6 @@ if ($can_edit_permissions) {
 					</td>
 					<td>
 						<input form="insert" type="text" name="username"/>
-					</td>
-					<td>
-						<input type="checkbox" disabled="disabled"/>
 					</td>
 					<td>
 						<form id="insert" action="" method="GET">
@@ -157,11 +145,12 @@ if ($can_edit_permissions) {
 				<tr>
 					<td>
 <?php
-						$tablename = htmlspecialchars($row[0]);
+						$h_tablename = htmlspecialchars($row[0]);
+						$s_tablename = pg_escape_literal($row[0]);
 						$username = htmlspecialchars($row[1]);
 						$form = "\"update_{$tablename}_$username\"";
 						echo "<input form=$form type=\"text\" name=\"tablename\"
-								value=\"$tablename\"",
+								value=\"$h_tablename\"",
 								$row[2] == 't' ? ' disabled="disabled"' : '', "/>\n";
 ?>
 					</td>
@@ -173,19 +162,13 @@ if ($can_edit_permissions) {
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"checkbox\" name=\"key3\"",
-								$row[2] == 't' ? ' checked="checked"' : '',
-								" disabled=\"disabled\"/>\n";
-?>
-					</td>
-<?php
-					if ($can_edit_permissions) {
+					if ($can_edit_permissions && can_edit_table($s_tablename)) {
 ?>
 						<td>
 <?php
 							echo "<form id=$form action=\"\" method=\"GET\">\n";
 								echo "<input type=\"hidden\" name=\"key1\"
-										value=\"$tablename\"/>\n";
+										value=\"$h_tablename\"/>\n";
 								echo "<input type=\"hidden\" name=\"key2\" value=\"$username\"/>\n";
 ?>
 								<input type="submit" name="update" value="UPDATE"/>
@@ -196,7 +179,7 @@ if ($can_edit_permissions) {
 							<form action="" method="GET">
 <?php
 								echo "<input type=\"hidden\" name=\"key1\"
-										value=\"$tablename\"/>\n";
+										value=\"$h_tablename\"/>\n";
 								echo "<input type=\"hidden\" name=\"key2\" value=\"$username\"/>\n";
 ?>
 								<input type="submit" name="delete" value="DELETE"/>
