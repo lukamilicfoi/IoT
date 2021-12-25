@@ -1,7 +1,7 @@
 <?php
 require_once 'common.php';
-$can_view_remotes = check_authorization('can_view_remotes', 'view remotes');
-$can_edit_remotes = check_authorization('can_edit_remotes', 'edit remotes');
+$can_view_remotes = check_authorization('view remotes');
+$can_edit_remotes = check_authorization('edit remotes');
 if ($can_view_remotes && isset($_GET['load'])) {
 	pgquery('CALL load_store(TRUE);');
 	$_SESSION['loaded'] = true;
@@ -48,25 +48,15 @@ if ($can_edit_remotes) {
 }
 if ($can_view_remotes) {
 	if (isset($_SESSION['loaded'])) {
+		$result = pgquery('SELECT addr FROM addr_oID ORDER BY addr ASC;');
 		if ($_SESSION['is_root']) {
-			$result = pgquery('SELECT addr FROM addr_oID ORDER BY addr ASC;');
 ?>
 			You are authorized to view (edit) all remotes.
 <?php
 		} else if ($_SESSION['is_administrator']) {
-			$result = pgquery("SELECT DISTINCT addr_oID.addr FROM addr_oID INNER JOIN table_user
-					ON 't' || encode(addr_oID.addr, 'hex') = table_user.tablename INNER JOIN users
-					ON table_user.username = users.username
-					WHERE users.username = {$_SESSION['s_username']} OR NOT users.is_administrator
-					ORDER BY addr_oID.addr ASC;");
 			echo "You are authorized to view (edit) {$_SESSION['h2username']}-readable (-owned)
 					or non-administrator-readable (-owned) remotes.\n";
 		} else {
-			$result = pgquery("SELECT DISTINCT addr_oID.addr FROM addr_oID INNER JOIN table_user
-					ON 't' || encode(addr_oID.addr, 'hex') = table_user.tablename INNER JOIN users
-					ON table_user.username = users.username
-					WHERE users.username = {$_SESSION['s_username']} OR users.username = 'public'
-					ORDER BY addr_oID.addr ASC;");
 			echo "You are authorized to view (edit) {$_SESSION['h2username']}-readable (-owned)
 					or public-readable (-owned) remotes.\n";
 		}
@@ -75,9 +65,12 @@ if ($can_view_remotes) {
 			View remotes:
 <?php
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
-				$str = substr($row[0], 2);
-				echo "<a href=\"view_remote_details.php?addr=$str\">$str</a>\n";
-				if ($can_edit_remotes) {
+				$h_addr = substr($row[0], 2);
+				$s_addr = pgescapename($h_addr);
+				if (can_view_table($s_addr) {
+					echo "<a href=\"view_remote_details.php?addr=$h_addr\">$h_addr</a>\n";
+				}
+				if ($can_edit_remotes && can_edit_table($s_addr)) {
 					echo "<a href=\"?remove=$str\">(remove)</a>\n";
 				}
 			}

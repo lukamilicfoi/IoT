@@ -6,10 +6,8 @@ if (!empty($_GET['tablename'])) {
 	$h1tablename = htmlspecialchars($_GET['tablename']);
 	$h2tablename = "&quot;$h1tablename&quot;";
 	$u_tablename = urlencode($_GET['tablename']);
-	$can_view = check_authorization('can_view_tables', 'view tables')
-			&& can_view_table($s1tablename);
-	$can_edit = check_authorization('can_edit_tables', 'edit tables')
-			&& can_edit_table($s1tablename);
+	$can_view = check_authorization('view tables') && can_view_table($s1tablename);
+	$can_edit = check_authorization('edit tables') && can_edit_table($s1tablename);
 	if ($can_edit) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
@@ -74,7 +72,7 @@ if (!empty($_GET['tablename'])) {
 	}
 	if ($can_view) {
 		$result = pgquery("TABLE $s2tablename ORDER BY t DESC;");
-		echo "Viewing table $h2tablename.\n";
+		echo "Viewing table $h2tablename.<br/>\n";
 ?>
 		Table ordered by &quot;t&quot; descending.
 		<table border="1">
@@ -179,6 +177,7 @@ if (!empty($_GET['tablename'])) {
 ?>
 			</tbody>
 		</table>
+		<a href="index.php">Done</a>
 <?php
 	}
 }

@@ -10,8 +10,8 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 	$h1proto = htmlspecialchars($_GET['proto']);
 	$h2proto = "&apos;$h1proto&apos;";
 	$u_proto = urlencode($_GET['proto']);
-	$can_view = check_authorization('can_view_remotes', 'view remotes');
-	$can_edit = check_authorization('can_edit_remotes', 'edit remotes');
+	$can_view = check_authorization('view remotes');
+	$can_edit = check_authorization('edit remotes');
 	if ($can_edit) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {

@@ -1,7 +1,7 @@
 <?php
 require_once 'common.php';
-$can_edit_rules = check_authorization('can_view_rules', 'view rules')) {
-$can_edit_rules = check_authorization('can_edit_rules', 'edit rules');
+$can_edit_rules = check_authorization('view rules')) {
+$can_edit_rules = check_authorization('edit rules');
 if ($can_edit_rules) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
@@ -511,7 +511,7 @@ if ($can_view_rules) {
 		</tbody>
 	</table>
 	If &quot;SELECT &lt;filter&gt;&quot; evaluates to TRUE, the filter is triggered.
-	You can use column names HD, ID, etc. Appropriate FROM is automatically appended.<br/>
+			You can use column names HD, ID, etc. Appropriate FROM is automatically appended.<br/>
 	Modification is performed like &quot;UPDATE message SET &lt;semicolon-separated command 1&gt;;
 			UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;&quot;.<br/>
 	During SQL queries the current message is stored in table "formatted_message_for_send_receive"
@@ -524,6 +524,7 @@ if ($can_view_rules) {
 	When broadcasting a message any imm_DST is ignored.<br/>
 	On send and receive rules last_run is meaningless.<br/>
 	Strings are written without excess quotations, e.g., proto = 'tcp'.<br/>
+
 <?php
 }
 ?>

@@ -10,8 +10,8 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 	$h1DST = htmlspecialchars($_GET['DST']);
 	$h2DST = "X&apos;$h1DST&apos;";
 	$u_DST = urlencode($_GET['DST']);
-	$can_view = check_authorization('can_view_remotes', 'view remotes') && can_view_table($s1SRC);
-	$can_edit = check_authorization('can_edit_remotes', 'edit remotes') && can_edit_table($s1SRC);
+	$can_view = check_authorization('view remotes') && can_view_table($s1SRC);
+	$can_edit = check_authorization('edit remotes') && can_edit_table($s1SRC);
 	if ($can_edit) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
