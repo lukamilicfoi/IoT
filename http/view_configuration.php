@@ -22,7 +22,7 @@ if ($can_view_configuration) {
 	if ($_SESSION['is_root']) {
 		$result = pgquery('SELECT * FROM configuration ORDER BY username ASC;');
 ?>
-		You are authorized to view (edit) configuration for all users.
+		You are authorized to view (edit) configuration for all users.<br/>
 <?php
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT configuration.* FROM configuration
@@ -30,12 +30,12 @@ if ($can_view_configuration) {
 				WHERE configuration.username = {$_SESSION['s_username']}
 				OR NOT users.is_administrator ORDER BY configuration.username ASC;");
 		echo "You are authorized to view (edit) configuration for username {$_SESSION['h2username']}
-				or non-administrators.\n";
+				or non-administrators.<br/>\n";
 	} else {
 		$result = pgquery("SELECT * FROM configuration
 				WHERE username = {$_SESSION['s_username']} OR username = 'public';");
 		echo "You are authorized to view (edit) configuration for username {$_SESSION['h2username']}
-				or public.\n";
+				or public.<br/>\n";
 	}
 ?>
 	Viewing table &quot;configuration&quot;.<br/>
@@ -73,14 +73,14 @@ if ($can_view_configuration) {
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"checkbox\"
-									name=\"forward_messages\"",
-									$row[1] == 't' ? ' checked="checked"' : '', "/>\n";
+								name=\"forward_messages\"",
+								$row[1] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"checkbox\"
-									name=\"use_internet_switch_algorithm\"",
+								name=\"use_internet_switch_algorithm\"",
 									$row[2] == 't' ? ' checked="checked"' : '', "/>\n";
 ?>
 					</td>

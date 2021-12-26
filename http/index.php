@@ -30,17 +30,35 @@ if ($can_edit_tables) {
 	}
 }
 if ($can_view_tables) {
-	$result = pgquery('SELECT tablename FROM table_owner
-			ORDER BY tablename LIKE \'t________________\'
-			AND tablename <> \'table_constraints\' DESC, tablename ASC;');
 	if ($_SESSION['is_root']) {
+		$result = pgquery('SELECT tablename, TRUE, tablename LIKE \'t________________\'
+				AND tablename <> \'table_constraints\' AS is_device FROM table_owner
+				ORDER BY is_device ASC, tablename ASC;');
 ?>
 		You are authorized to view (edit) all tables.
 <?php
 	} else if ($_SESSION['is_administrator']) {
+		$result = pgquery("SELECT table_owner.tablename AS table_name, table_owner.username
+				= {$_SESSION['s_username']} OR NOT users.is_administrator AS can_edit,
+				table_owner.tablename LIKE 't________________' AND table_owner.tablename
+				<> 'table_constraints' AS is_device FROM table_owner INNER JOIN users
+				ON table_owner.username = users.username WHERE can_edit OR EXISTS(SELECT TRUE
+				FROM table_reader INNER JOIN users ON table_reader.username = users.username
+				WHERE table_reader.tablename = table_name
+				AND table_reader.username = {$_SESSION['s_username']} OR NOT users.is_administrator)
+				ORDER BY is_device ASC, table_name ASC;");
 		echo "You are authorized to view (edit) {$_SESSION['h2username']}-readable (-owned) or
 				non-administrator-readable (-owned) tables.\n";
 	} else {
+		$result = pgquery("SELECT table_owner.tablename AS table_name, table_owner.username
+				= {$_SESSION['s_username']} OR table_owner.username = 'public' AS can_edit,
+				table_owner.tablename LIKE 't________________' AND table_owner.tablename
+				<> 'table_constraints' AS is_device FROM table_owner INNER JOIN users
+				ON table_owner.username = users.username WHERE can_edit OR EXISTS(SELECT TRUE
+				FROM table_reader INNER JOIN users ON table_reader.username = users.username
+				WHERE table_reader.tablename = table_name
+				AND table_reader.username = {$_SESSION['s_username']}
+				OR table_reader.username = 'public') ORDER BY is_device ASC, table_name ASC;");
 		echo "You are authorized to view (edit) {$_SESSION['h2username']}-readable (-owned) or
 				public-readable (-owned) tables.\n";
 	}
@@ -52,10 +70,8 @@ if ($can_view_tables) {
 			$u_tablename = urlencode($row[0]);
 			$h_tablename = htmlspecialchars($row[0]);
 			$s_tablename = pg_escape_literal($row[0]);
-			if (can_view_table($s_tablename)) {
-				echo "<a href=\"view_table.php?tablename=$u_tablename\">$h_tablename</a>\n";
-			}
-			if (can_edit_table($s_tablename)) {
+			echo "<a href=\"view_table.php?tablename=$u_tablename\">$h_tablename</a>\n";
+			if ($row[2] == 't') {
 				echo "<a href=\"?remove=$u_tablename\">(remove)</a>\n";
 			}
 		}
@@ -227,7 +243,7 @@ if (check_authorization('execute rules')) {
 				&& !is_administrator($s_username) || $_SESSION['is_root']) {
 			pgquery("CALL manually_execute_timed_rule($s_username, $id);");
 		}
-		echo "For username $h_username timed rule $id manually executed.\n";
+		echo "For username $h_username timed rule $id manually executed.<br/>\n";
 	}
 	if ($_SESSION['is_root']) {
 ?>
@@ -278,4 +294,4 @@ if (check_authorization('view remotes')) {
 <?php
 }
 ?>
-<br/><a href="login.php?logout">Logout</a>
+<a href="login.php?logout">Logout</a>

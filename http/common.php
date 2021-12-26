@@ -143,9 +143,9 @@ function is_administrator($s_username) {
 			WHERE username = $s_username AND is_administrator;")) != 0;
 }
 
-function check_authorization($field, $text) {
-	if (pg_num_rows(pgquery("SELECT TRUE FROM users
-			WHERE username = {$_SESSION['s_username']} AND $field;")) == 0) {
+function check_authorization($text) {
+	if (pg_num_rows(pgquery("SELECT TRUE FROM users WHERE username = {$_SESSION['s_username']} 
+			AND can_" . strtr($text, ' ', '_') . ';')) == 0) {
 		echo "&lt;You are not authorized to $text.&gt;<br/>\n";
 		return false;
 	}

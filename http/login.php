@@ -27,8 +27,8 @@ if (isset($_SESSION['username'])) {
 		Pass:
 		<input type="password" name="password"/>
 		Actions:
-		<input type="submit" value="submit"/>
-		<input type="reset" value="reset"/>
+		<input type="submit" value="login"/>
+		<input type="reset" value="clear"/>
 	</form>
 <?php
 }

@@ -71,11 +71,11 @@ if (!empty($_GET['addr'])) {
 <?php
 			$result = pgquery("SELECT DST FROM SRC_DST WHERE SRC = $s2addr ORDER BY DST ASC;");
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
-				$str = substr($row[0], 2);
+				$DST = substr($row[0], 2);
 				echo '<a href="view_source_destination_details.php',
-						"?SRC=$u_addr&amp;DST=$str\">$str</a>\n";
+						"?SRC=$u_addr&amp;DST=$DST\">$DST</a>\n";
 				if ($can_edit) {
-					echo "<a href=\"?addr=$u_addr&amp;remove_DST=$str\">(remove)</a>\n";
+					echo "<a href=\"?addr=$u_addr&amp;remove_DST=$DST\">(remove)</a>\n";
 				}
 			}
 			if (pg_num_rows($result) == 0) {
@@ -143,8 +143,8 @@ if (!empty($_GET['addr'])) {
 			}
 ?>
 		</form>
-		Protocols ordered by name ascending.<br/><br/>
-		<a href="view_remotes.php">Done</a><br/>
+		Protocols ordered by name ascending.<br/>
+		<a href="view_remotes.php">Done</a>
 <?php
 	}
 }
