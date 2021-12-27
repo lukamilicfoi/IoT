@@ -66,7 +66,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 	if ($can_view) {
 		$result = pgquery("SELECT imm_SRC, TWR FROM iSRC_TWR WHERE SRC = $s2SRC AND proto
 				= (SELECT proto FROM proto_name WHERE name = $s_proto) ORDER BY imm_SRC ASC;");
-		echo "Viewing table &quot;iSRC_TWR&quot; for SRC $h2SRC and proto $h2proto.\n";
+		echo "Viewing table &quot;iSRC_TWR&quot; for SRC $h2SRC and proto $h2proto.<br/>\n";
 ?>
 		Table ordered by immediate source address ascending.
 		<table border="1">
@@ -77,7 +77,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 <?php
 					if ($can_edit) {
 ?>
-						<th>Actions</th>
+						<th>(actions)</th>
 <?php
 					}
 ?>

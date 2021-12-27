@@ -56,7 +56,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 	if ($can_view) {
 		$result = pgquery("SELECT ID, TWR FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST
 				ORDER BY ID ASC;");
-		echo "Viewing table &quot;ID_TWR&quot; for SRC $h2SRC and DST $h2DST.\n";
+		echo "Viewing table &quot;ID_TWR&quot; for SRC $h2SRC and DST $h2DST.<br/>\n";
 ?>
 		Table ordered by identifier ascending.
 		<table border="1">
@@ -67,7 +67,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 <?php
 					if ($can_edit) {
 ?>
-						<th>Actions</th>
+						<th>(actions)</th>
 <?php
 					}
 ?>

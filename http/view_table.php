@@ -80,7 +80,7 @@ if (!empty($_GET['tablename'])) {
 				<tr>
 <?php
 					for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
-						echo '<th>', pg_field_name($result, $i), ' (',
+						echo '<th>', htmlspecialchars(pg_field_name($result, $i)), ' (',
 								pg_field_type_oid($result, $i), ")</th>\n";
 					}
 					if ($can_edit) {
@@ -136,7 +136,7 @@ if (!empty($_GET['tablename'])) {
 							<td>
 <?php
 								echo "<input form=\"update{$row[$t]}\" type=\"text\" name=\"",
-										pg_field_name($result, $i), '" value="',
+										htmlspecialchars(pg_field_name($result, $i)), '" value="',
 										htmlspecialchars(postgresql_output_to_my_input($row[$i],
 										pg_field_type_oid($result, $i))), "\"/>\n";
 ?>

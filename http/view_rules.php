@@ -110,7 +110,7 @@ if ($can_view_rules) {
 		$result = pgquery('SELECT rules.*, proto_name.proto FROM rules INNER JOIN proto_name
 				ON rules.proto_id = proto_name.proto ORDER BY rules.username ASC, rules.id ASC;');
 ?>
-		You are authorized to view (edit) rules for all users.
+		You are authorized to view (edit) rules for all users.<br/>
 <?php
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT rules.*, proto_name.proto FROM rules INNER JOIN users
@@ -118,13 +118,14 @@ if ($can_view_rules) {
 				= proto_name.proto WHERE rules.username = {$_SESSION['s_username']}
 				OR NOT users.is_administrator ORDER BY rules.username ASC, rules.id ASC;");
 		echo "You are authorized to view (edit) rules for {$_SESSION['h2username']}
-				or non-administrators.\n";
+				or non-administrators.<br/>\n";
 	} else {
 		$result = pgquery("SELECT rules.*, proto_name.proto FROM rules
 				INNER JOIN proto_name ON rules.proto_id = proto_name.proto
 				WHERE rules.username = {$_SESSION['s_username']}
 				OR rules.username = 'public' ORDER BY rules.username ASC, rules.id ASC;");
-		echo "You are authorized to view (edit) rules for {$_SESSION['h2username']} or public.\n";
+		echo "You are authorized to view (edit) rules for {$_SESSION['h2username']}
+				or public.<br/>\n";
 	}
 ?>
 	Viewing table &quot;rules&quot;<br/>
@@ -514,8 +515,8 @@ if ($can_view_rules) {
 			You can use column names HD, ID, etc. Appropriate FROM is automatically appended.<br/>
 	Modification is performed like &quot;UPDATE message SET &lt;semicolon-separated command 1&gt;;
 			UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;&quot;.<br/>
-	During SQL queries the current message is stored in table "formatted_message_for_send_receive"
-			and columns HD, ID, etc.<br/>
+	During SQL queries the current message is stored in table
+			&quot;formatted_message_for_send_receive&quot; and columns HD, ID, etc.<br/>
 	bash commands are NOT executed as /root/, but as the user who started the database.<br/>
 	Filter can be either a number or a string.<br/>
 	Leaving a field empty indicates null value.<br/>

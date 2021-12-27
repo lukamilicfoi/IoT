@@ -111,7 +111,7 @@ if ($can_view_users) {
 				<th>Is administrator?</th>
 <?php
 				for ($user_fields as $field) {
-					echo '<th>', ucfirst(str_replace($field, '_', ' ')), "?</th>\n";
+					echo '<th>', ucfirst(strtr($field, '_', ' ')), "?</th>\n";
 				}
 ?>
 				<th>Actions</th>
@@ -177,27 +177,42 @@ if ($can_view_users) {
 					<td>
 <?php
 						$username = htmlspecialchars($row[0]);
-						echo "<input type=\"text\" value=\"$username\" disabled=\"disabled\"/>\n";
-						echo '<input form="update', $username != $_SESSION['h1username']
-								? '1' : '2', "_$username\" type=\"hidden\" name=\"username\"
-								value=\"$username\"/>\n";
+						if ($username == $_SESSION['h1username']) {
+							echo "<input type=\"text\" value=\"$username\"
+									disabled=\"disabled\"/>\n";
+							echo "<input form=\"update2\" type=\"hidden\" name=\"username\"
+									value=\"$username\"/>\n";
+						} else if ($can_edit_users) {
+							echo "<input form=\"update1_$username\" type=\"text\" name=\"username\"
+									value=\"$username\"/>\n";
+						} else {
+							echo "<input type=\"text\" value=\"$username\"
+									disabled=\"disabled\"/>\n";
+						}
 ?>
 					</td>
 					<td>
 <?php
-						echo '<input form="update', $username != $_SESSION['h1username']
-								? '1' : '2', "_$username\" type=\"password\" name=\"password\"/>\n";
+						if ($username == $_SESSION['h1username']) {
+							echo "<input form=\"update2\" type=\"password\" name=\"password\"/>\n";
+						} else if ($can_edit_users) {
+							echo "<input form=\"update1\" type=\"password\" name=\"password\"/>\n";
+						} else {
+							echo "<input type=\"password\" disabled=\"disabled\"/>\n";
+						}
 ?>
 					</td>
 					<td>
 <?php
 						if ($_SESSION['is_root'] && $username != 'root') {
-							echo "<input form=\"update2\" type=\"checkbox\"
-									name=\"is_administrator\"", $row[2] == 't'
-									? ' checked=\"checked\"' : '', "/>\n";
+							echo "<input form=\"update1_$username\" type=\"checkbox\"",
+									$row[2] == 't' ? ' checked="checked"' : '', "/>\n";
 						} else {
-							echo '<input type="checkbox"', $row[2] == 't'
-									? ' checked="checked"' : '', " disabled=\"disabled\"/>\n";
+							echo '<input type="checkbox"', $row[2] == 't' ? ' checked="checked"'
+									: '', " disabled=\"disabled\"/>\n";
+							echo "<input form=\"update1_$username\" type=\"hidden\"
+									name=\"is_administrator\"", $row[2] == 't' ? ' value="true"'
+									: '', "/>\n";
 						}
 ?>
 					</td>
@@ -209,8 +224,8 @@ if ($can_view_users) {
 							echo "<input form=\"update1_$username\" type=\"checkbox\"
 									name=\"{$user_fields[$i]}\"",
 									$row[$i + 3] == 't' ? ' checked="checked"' : '',
-									$can_edit_users || $username == $_SESSION['h1username']
-									? ' disabled="disabled"' : '', "/>\n";
+									$can_edit_users && $username != $_SESSION['h1username']
+									? '' : ' disabled="disabled"', "/>\n";
 ?>
 						</td>
 <?php
@@ -220,26 +235,37 @@ if ($can_view_users) {
 <?php
 						echo "<input form=\"update1_$username\" type=\"checkbox\"
 								name=\"can_actually_login\"",
-								$row[15] == 't' ? ' checked="checked"' : '',
-								$can_edit_users || $username == $_SESSION['h1username']
-								? ' disabled="disabled"' : '', "/>\n";
+								$row[$user_fields_length + 4] == 't' ? ' checked="checked"' : '',
+								$can_edit_users && $username != $_SESSION['h1username']
+								? '' : ' disabled="disabled"', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo "<form id=\"update1_$username\" action=\"\" method=\"POST\">\n";
+						if ($username = $_SESSION['h1username']) {
 ?>
-							<input type="submit" name="update1" value="UPDATE"/><br/>
-							<input type="reset" value="reset"/>
+							<form id="update2" action="" method="POST">
+								<input type="submit" name="update2" value="UPDATE"/><br/>
+								<input type="reset" value="reset"/>
+							</form>
 <?php
-						echo "</form>\n";
+						} else if ($can_edit_users) {
+							echo "<form id=\"update1_$username\" action=\"\" method=\"POST\">\n";
 ?>
-						<form action="" method="GET">
+								<input type="submit" name="update1" value="UPDATE"/><br/>
+								<input type="reset" value="reset"/>
 <?php
-							echo "<input type=\"hidden\" name=\"key\" value=\"$username\"/>\n";
+							echo "</form>\n";
 ?>
-							<input type="submit" name="delete" value="DELETE"/>
-						</form>
+							<form action="" method="GET">
+<?php
+								echo "<input type=\"hidden\" name=\"key\" value=\"$username\"/>\n";
+?>
+								<input type="submit" name="delete" value="DELETE"/>
+							</form>
+<?php
+						}
+?>
 					</td>
 				</tr>
 <?php
