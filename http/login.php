@@ -23,9 +23,9 @@ if (isset($_SESSION['username'])) {
 ?>
 	<form action="" method="POST">
 		User:
-		<input type="text" name="username"/>
+		<input type="text" name="username" required/>
 		Pass:
-		<input type="password" name="password"/>
+		<input type="password" name="password" required/>
 		Actions:
 		<input type="submit" value="login"/>
 		<input type="reset" value="clear"/>

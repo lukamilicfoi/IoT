@@ -1,12 +1,13 @@
 <?php
 require_once 'common.php';
-$can_view_configuration = check_authorization('view configuration');
-$can_edit_configuration = check_authorization('edit configuration');
+$can_view_configuration = check_authorization('can_view_configuration', 'view configuration');
+$can_edit_configuration = check_authorization('can_edit_configuration', 'edit configuration');
 if ($can_edit_configuration && isset($_GET['update']) && !empty($_GET['username'])) {
 	$s_username = pg_escape_literal($_GET['username']);
 	$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
-	if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
-			&& !is_administrator($s_username) || $_SESSION['is_root']) {
+	if ($_GET['username'] == $_SESSION['username'] || $_GET['username'] == 'public'
+			|| $_SESSION['is_administrator'] && !is_administrator($s_username)
+			|| $_SESSION['is_root']) {
 		pgquery('UPDATE configuration SET (forward_messages, use_internet_switch_algorithm,
 				nsecs_id, nsecs_src, trust_everyone, default_gateway) = ('
 				. pgescapebool($_GET['forward_messages']) . ', '
@@ -32,8 +33,8 @@ if ($can_view_configuration) {
 		echo "You are authorized to view (edit) configuration for username {$_SESSION['h2username']}
 				or non-administrators.<br/>\n";
 	} else {
-		$result = pgquery("SELECT * FROM configuration
-				WHERE username = {$_SESSION['s_username']} OR username = 'public';");
+		$result = pgquery("SELECT * FROM configuration WHERE username = {$_SESSION['s_username']}
+				OR username = 'public' ORDER BY configuration.username ASC;");
 		echo "You are authorized to view (edit) configuration for username {$_SESSION['h2username']}
 				or public.<br/>\n";
 	}
@@ -65,23 +66,22 @@ if ($can_view_configuration) {
 					<td>
 <?php
 						$username = htmlspecialchars($row[0]);
-						echo "<input type=\"text\" value=\"$username\" disabled=\"disabled\"/>\n";
-						echo "<input form=\"update_$username\" type=\"hidden\" name=\"username\"
-								value=\"$username\"/>\n";
+						echo "<input form=\"update_$username\" type=\"text\" name=\"username\"
+								value=\"$username\" readonly/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"checkbox\"
 								name=\"forward_messages\"",
-								$row[1] == 't' ? ' checked="checked"' : '', "/>\n";
+								$row[1] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"checkbox\"
 								name=\"use_internet_switch_algorithm\"",
-									$row[2] == 't' ? ' checked="checked"' : '', "/>\n";
+								$row[2] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
 					<td>
@@ -100,7 +100,7 @@ if ($can_view_configuration) {
 <?php
 						echo "<input form=\"update_$username\" type=\"checkbox\"
 								name=\"trust_everyone\"",
-								$row[5] == 't' ? ' checked="checked"' : '', "/>\n";
+								$row[5] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
 					<td>

@@ -1,7 +1,7 @@
 <?php
 require_once 'common.php';
-$can_view_tables = check_authorization('view tables');
-$can_edit_tables = check_authorization('edit tables');
+$can_view_tables = check_authorization('can_view_tables', 'view device or regular tables');
+$can_edit_tables = check_authorization('can_edit_tables', 'edit device or regular tables');
 if ($can_edit_tables) {
 	if (!empty($_GET['add'])) {
 		$s1add = pg_escape_identifier($_GET['add']);
@@ -40,27 +40,25 @@ if ($can_view_tables) {
 	} else if ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT table_owner.tablename AS table_name, table_owner.username
 				= {$_SESSION['s_username']} OR NOT users.is_administrator AS can_edit,
-				table_owner.tablename LIKE 't________________' AND table_owner.tablename
-				<> 'table_constraints' AS is_device FROM table_owner INNER JOIN users
-				ON table_owner.username = users.username WHERE can_edit OR EXISTS(SELECT TRUE
-				FROM table_reader INNER JOIN users ON table_reader.username = users.username
+				table_name LIKE 't________________' AND table_name <> 'table_constraints'
+				AS is_device FROM table_owner INNER JOIN users ON table_owner.username
+				= users.username WHERE can_edit OR EXISTS(SELECT TRUE FROM table_reader
+				INNER JOIN users ON table_reader.username = users.username
 				WHERE table_reader.tablename = table_name
-				AND table_reader.username = {$_SESSION['s_username']} OR NOT users.is_administrator)
-				ORDER BY is_device ASC, table_name ASC;");
-		echo "You are authorized to view (edit) {$_SESSION['h2username']}-readable (-owned) or
-				non-administrator-readable (-owned) tables.\n";
+				AND (table_reader.username = {$_SESSION['s_username']}
+				OR NOT users.is_administrator)) ORDER BY is_device ASC, table_name ASC;");
+		echo "You are authorized to view (edit) username-{$_SESSION['h2username']}-readable (-owned)
+				or non-administrator-readable (-owned) tables.\n";
 	} else {
 		$result = pgquery("SELECT table_owner.tablename AS table_name, table_owner.username
 				= {$_SESSION['s_username']} OR table_owner.username = 'public' AS can_edit,
-				table_owner.tablename LIKE 't________________' AND table_owner.tablename
-				<> 'table_constraints' AS is_device FROM table_owner INNER JOIN users
-				ON table_owner.username = users.username WHERE can_edit OR EXISTS(SELECT TRUE
-				FROM table_reader INNER JOIN users ON table_reader.username = users.username
-				WHERE table_reader.tablename = table_name
-				AND table_reader.username = {$_SESSION['s_username']}
-				OR table_reader.username = 'public') ORDER BY is_device ASC, table_name ASC;");
-		echo "You are authorized to view (edit) {$_SESSION['h2username']}-readable (-owned) or
-				public-readable (-owned) tables.\n";
+				table_name LIKE 't________________' AND table_name <> 'table_constraints'
+				AS is_device FROM table_owner INNER JOIN users ON table_owner.username
+				= users.username WHERE can_edit OR EXISTS(SELECT TRUE FROM table_reader
+				WHERE tablename = table_name AND (username = {$_SESSION['s_username']}
+				OR username = 'public')) ORDER BY is_device ASC, table_name ASC;");
+		echo "You are authorized to view (edit) username-{$_SESSION['h2username']}-readable (-owned)
+				or public-readable (-owned) tables.\n";
 	}
 ?>
 	<form action="" method="GET">
@@ -71,7 +69,7 @@ if ($can_view_tables) {
 			$h_tablename = htmlspecialchars($row[0]);
 			$s_tablename = pg_escape_literal($row[0]);
 			echo "<a href=\"view_table.php?tablename=$u_tablename\">$h_tablename</a>\n";
-			if ($row[2] == 't') {
+			if ($can_edit_tables && $row[1] == 't') {
 				echo "<a href=\"?remove=$u_tablename\">(remove)</a>\n";
 			}
 		}
@@ -82,7 +80,7 @@ if ($can_view_tables) {
 		}
 		if ($can_edit_tables) {
 ?>
-			<input type="text" name="add"/>
+			<input type="text" name="add" required/>
 			<input type="submit" value="(add as public)"/>
 			Write name as a string, e.g., table.
 <?php
@@ -92,7 +90,7 @@ if ($can_view_tables) {
 	Tables ordered by name ascending.<br/><br/>
 <?php
 }
-if (check_authorization('send messages')) {
+if (check_authorization('can_send_messages', 'send messages to nodes')) {
 	if (!empty($_GET['msgtosend']) && !empty($_GET['proto_id']) && !empty($_GET['imm_DST'])) {
 		$s_msgtosend = pgescapebytea($_GET['msgtosend']);
 		$h_msgtosend = 'X&apos;' . htmlspecialchars($_GET['msgtosend']) . '&apos;';
@@ -127,7 +125,7 @@ if (check_authorization('send messages')) {
 			write protocol as a string, e.g., tcp.<br/><br/>
 <?php
 }
-if (check_authorization('inject messages')) {
+if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
 	if (!empty($_GET['msgtoinject']) && !empty($_GET['proto_id']) && !empty($_GET['imm_SRC'])) {
 		$s_msgtoinject = pgescapebytea($_GET['msgtoinject']);
 		$h_msgtoinject = 'X&apos;' . htmlspecialchars($_GET['msgtoinject']) . '&apos;';
@@ -162,7 +160,7 @@ if (check_authorization('inject messages')) {
 			write protocol as a string, e.g., tcp.<br/><br/>
 <?php
 }
-if (check_authorization('send queries')) {
+if (check_authorization('can_send_queries', 'send queries to database')) {
 	if (!empty($_GET['query'])) {
 		$h_query = '&apos;' . htmlspecialchars($_GET['query']) . '&apos;';
 		if (!$_SESSION['is_root']) {
@@ -173,10 +171,11 @@ if (check_authorization('send queries')) {
 			if (!flock($flock, LOCK_EX)) {
 				exit('cannot flock');
 			}
-			pgconnect('postgres');
+			pg_connect('dbname=postgres user=postgres client_encoding=utf8');
 			pgquery("UPDATE current_username SET current_username = {$_SESSION['s_username']};");
 			pg_close();
-			pgconnect($_SESSION['is_administrator'] ? 'administrator' : 'local');
+			pg_connect('dbname=postgres user=' . ($_SESSION['is_administrator']
+					? 'administrator' : 'local') . 'client_encoding=utf8');
 		}
 		$result = pgquery($_GET['query']);
 		if (!$_SESSION['is_root']) {
@@ -189,7 +188,7 @@ if (check_authorization('send queries')) {
 				<tr>
 <?php
 					for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
-						echo '<th>', pg_field_name($result, $i), ' (',
+						echo '<th>', htmlspecialchars(pg_field_name($result, $i)), ' (',
 								pg_field_type_oid($result, $i), ")</th>\n";
 					}
 ?>
@@ -216,11 +215,13 @@ if (check_authorization('send queries')) {
 		You are authorized to send queries to read (write) all tables.
 <?php
 	} else if ($_SESSION['is_administrator']) {
-		echo "You are authorized to send queries to read (write) {$_SESSION['h2username']}-readable
-				(-owned) or non-administrator-readable (-owned) tables.\n";
+		echo "You are authorized to send queries to read (write)
+				username-{$_SESSION['h2username']}-readable (-owned)
+				or non-administrator-readable (-owned) tables.\n";
 	} else {
-		echo "You are authorized to send queries to read (write) {$_SESSION['h2username']}-readable
-				(-owned) or non-administrator-readable (-owned) tables.\n";
+		echo "You are authorized to send queries to read (write)
+				username-{$_SESSION['h2username']}-readable (-owned)
+				or non-administrator-readable (-owned) tables.\n";
 	}
 ?>
 	<form action="" method="GET">
@@ -234,10 +235,10 @@ if (check_authorization('send queries')) {
 	Write query as a string, e.g., SELECT a FROM b;.<br/><br/>
 <?php
 }
-if (check_authorization('execute rules')) {
+if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
 	if (!empty($_GET['username']) && !empty($_GET['id'])) {
 		$s_username = pg_escape_literal($_GET['username']);
-		$h_username = '&apos;' . htmlspecialchars($_GET['username']);
+		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 		$id = intval($_GET['id']);
 		if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
 				&& !is_administrator($s_username) || $_SESSION['is_root']) {
@@ -250,7 +251,7 @@ if (check_authorization('execute rules')) {
 		You are authorized to execute rules for all users.
 <?php
 	} else if ($_SESSION['is_administrator']) {
-		echo "You are authorized to execute rules for {$_SESSION['h2username']}
+		echo "You are authorized to execute rules for username {$_SESSION['h2username']}
 				or non-administrators.\n";
 	} else {
 		echo "You are authorized to execute rules for {$_SESSION['h1username']} or public.\n";
@@ -268,7 +269,7 @@ if (check_authorization('execute rules')) {
 	Write username and rule as a string and an integer, e.g., root and 11.<br/><br/>
 <?php
 }
-if (check_authorization('view rules')) {
+if (check_authorization('can_view_rules', 'view rules')) {
 ?>
 	<a href="view_rules.php">View rules</a><br/>
 <?php
@@ -278,17 +279,17 @@ if (check_authorization('view rules')) {
 <a href="view_users.php">View users</a><br/>
 <a href="view_adapters_and_underlying_protocols.php">View adapters and underlying protocols</a><br/>
 <?php
-if (check_authorization('view configuration')) {
+if (check_authorization('can_view_configuration', 'view configuration')) {
 ?>
 	<a href="view_configuration.php">View configuration</a><br/>
 <?php
 }
-if (check_authorization('view permissions')) {
+if (check_authorization('can_view_permissions', 'view permissions')) {
 ?>
 	<a href="view_permissions.php">View permissions</a><br/>
 <?php
 }
-if (check_authorization('view remotes')) {
+if (check_authorization('can_view_remotes', 'view remotes')) {
 ?>
 	<a href="view_remotes.php">View remotes</a><br/>
 <?php

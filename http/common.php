@@ -52,17 +52,15 @@ function can_view_table($s_tablename) {
 			ON table_owner.username = users.username WHERE table_owner.tablename = $s_tablename
 			AND (table_owner.username = {$_SESSION['s_username']} OR table_owner.username = 'public'
 			OR NOT users.is_administrator AND {$_SESSION['s_is_administrator']}
-			OR {$_SESSION['s_is_root']}) UNION SELECT TRUE FROM table_reader
+			OR {$_SESSION['s_is_root']}) UNION ALL SELECT TRUE FROM table_reader INNER JOIN users
 			ON table_reader.username = users.username WHERE table_reader.username = $s_tablename
 			AND (table_reader.username = {$_SESSION['s_username']}
 			OR table_reader.username = 'public' OR NOT users.is_administrator
 			AND {$_SESSION['s_is_administrator']} OR {$_SESSION['s_is_root']});")) != 0;
 }
 
-function pgconnect($username) {
-	if (!pg_connect("$username")) {
-		exit('Could not connect - ' . pg_last_error());
-	}
+function pgescapetimestamp($timestampvar) {
+	return 'TIMESTAMP ' . pg_escape_literal($timestampvar);
 }
 
 function postgresql_output_to_my_input($data, $oid) {
@@ -143,9 +141,9 @@ function is_administrator($s_username) {
 			WHERE username = $s_username AND is_administrator;")) != 0;
 }
 
-function check_authorization($text) {
-	if (pg_num_rows(pgquery("SELECT TRUE FROM users WHERE username = {$_SESSION['s_username']} 
-			AND can_" . strtr($text, ' ', '_') . ';')) == 0) {
+function check_authorization($field, $text) {
+	if (pg_num_rows(pgquery("SELECT TRUE FROM users
+			WHERE username = {$_SESSION['s_username']} AND $field;")) == 0) {
 		echo "&lt;You are not authorized to $text.&gt;<br/>\n";
 		return false;
 	}
