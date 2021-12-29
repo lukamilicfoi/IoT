@@ -10,8 +10,8 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 	$h1DST = htmlspecialchars($_GET['DST']);
 	$h2DST = "X&apos;$h1DST&apos;";
 	$u_DST = urlencode($_GET['DST']);
-	$can_view = check_authorization('view remotes') && can_view_table($s1SRC);
-	$can_edit = check_authorization('edit remotes') && can_edit_table($s1SRC);
+	$can_view = check_authorization('can_view_remotes', 'view remotes') && can_view_table($s1SRC);
+	$can_edit = check_authorization('can_edit_remotes', 'edit remotes') && can_edit_table($s1SRC);
 	if ($can_edit) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
@@ -27,7 +27,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 			}
 		} else if (!empty($_GET['ID']) && !empty($_GET['TWR'])) {
 			$id = intval($_GET['ID']);
-			$TWR = 'TIMESTAMP \'' . pg_escape_string($_GET['TWR']) . '\'';
+			$TWR = pgescapetimestamp($_GET['TWR']);
 			if (isset($_GET['insert'])) {
 				pgquery("INSERT INTO ID_TWR(SRC, DST, ID, TWR) VALUES($s2SRC, $s_DST, $id, $TWR);");
 				echo "Mapping $id for SRC $h2SRC and DST $h2DST inserted.<br/>\n";
@@ -37,7 +37,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 						WHERE SRC = $s2SRC AND DST = $s_DST AND ID = $key;");
 				echo "Mapping $key for SRC $h2SRC and DST $h2DST updated.<br/>\n";
 			}
-		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
+		} elseif (!empty($_GET['key']) && isset($_GET['delete'])) {
 			$key = intval($_GET['key']);
 			if (isset($_GET['confirm'])) {
 				pgquery("DELETE FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST AND ID = $key;");
@@ -159,7 +159,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 		</table>
 		Write the first column as an integer, e.g., 11.<br/>
 		Write the second column as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
-		You can edit something only if you have edit permissions on this remote.<br/>
+		You can edit something only if you have edit permissions on this remote.<br/><br/>
 <?php
 		echo "<a href=\"view_remote_details.php?addr=$u_SRC\">Done</a>\n";
 	}

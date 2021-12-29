@@ -1,7 +1,7 @@
 <?php
 require_once 'common.php';
-$can_view_remotes = check_authorization('view remotes');
-$can_edit_remotes = check_authorization('edit remotes');
+$can_view_remotes = check_authorization('can_view_remotes', 'view remotes');
+$can_edit_remotes = check_authorization('can_edit_remotes', 'edit remotes');
 if ($can_view_remotes && isset($_GET['load'])) {
 	pgquery('CALL load_store(TRUE);');
 	$_SESSION['loaded'] = true;
@@ -16,7 +16,7 @@ if ($can_edit_remotes) {
 ?>
 		Stored remotes to running program.<br/>
 <?php
-	} else if (!empty($_GET['add'])) {
+	} elseif (!empty($_GET['add'])) {
 		$s1add = pgescapename($_GET['add']);
 		$s2add = pgescapebytea($_GET['add']);
 		$h_add = 'X&apos;' . htmlspecialchars($_GET['add']) . '&apos;';
@@ -24,7 +24,7 @@ if ($can_edit_remotes) {
 			pgquery("INSERT INTO addr_oID(addr, out_ID) VALUES($s2add, " . rand(0, 255) . ');');
 			echo "Remote $h_add added.<br/>\n";
 		}
-	} else if (!empty($_GET['remove'])) {
+	} elseif (!empty($_GET['remove'])) {
 		$s1remove = pgescapename($_GET['remove']);
 		$s2remove = pgescapebytea($_GET['remove']);
 		$h_remove = 'X&apos;' . htmlspecialchars($_GET['remove']) . '&apos;';
@@ -54,26 +54,27 @@ if ($can_view_remotes) {
 			You are authorized to view (edit) all remotes.
 <?php
 		} else if ($_SESSION['is_administrator']) {
-			$result = pgquery("SELECT addr_oID.addr AS address, EXISTS(SELECT TRUE FROM table_owner
-					INNER JOIN users ON table_owner.username = users.username
-					WHERE table_owner.tablename = 't' || encode(address, 'hex')
+			$result = pgquery("SELECT DISTINCT addr_oID.addr AS b_address, EXISTS(SELECT TRUE
+					FROM table_owner INNER JOIN users ON table_owner.username = users.username
+					WHERE table_owner.tablename = 't' || encode(b_address, 'hex')
 					AND (table_owner.username = {$_SESSION['s_username']}
-					OR NOT users.is_administrator)) AS can_edit FROM addr_oID INNER JOIN table_reader
-					ON 't' || encode(address, 'hex') = table_reader.tablename WHERE can_edit
-					OR table_reader.username = {$_SESSION['s_username']}
-					OR NOT users.is_administrator ORDER BY address ASC;");
-			echo "You are authorized to view (edit) {$_SESSION['h2username']}-readable (-owned)
-					or non-administrator-readable (-owned) remotes.\n";
+					OR NOT users.is_administrator)) AS can_edit FROM addr_oID
+					INNER JOIN table_reader ON 't' || encode(b_address, 'hex')
+					= table_reader.tablename WHERE can_edit OR table_reader.username
+					= {$_SESSION['s_username']} OR NOT users.is_administrator
+					ORDER BY b_address ASC;");
+			echo "You are authorized to view (edit) username-{$_SESSION['h2username']}-readable
+					(-owned) or non-administrator-readable (-owned) remotes.\n";
 		} else {
-			$result = pgquery("SELECT addr_oID.addr AS address, EXISTS(SELECT TRUE FROM table_owner
-					WHERE tablename = 't' || encode(address, 'hex')
+			$result = pgquery("SELECT DISTINCT addr_oID.addr AS b_address, EXISTS(SELECT TRUE
+					FROM table_owner WHERE tablename = 't' || encode(b_address, 'hex')
 					AND (username = {$_SESSION['username']} OR username = 'public')) AS can_edit
 					FROM addr_oID.addr INNER JOIN table_reader
 					ON 't' || encode(address, 'hex') = table_reader.tablename WHERE can_edit
 					OR table_reader.username = {$_SESSION['s_username']}
-					OR table_reader.username = 'public' ORDER BY address ASC;");
-			echo "You are authorized to view (edit) {$_SESSION['h2username']}-readable (-owned)
-					or public-readable (-owned) remotes.\n";
+					OR table_reader.username = 'public' ORDER BY b_address ASC;");
+			echo "You are authorized to view (edit) username-{$_SESSION['h2username']}-readable
+					(-owned) or public-readable (-owned) remotes.\n";
 		}
 ?>
 		<form action="" method="GET">
@@ -119,6 +120,8 @@ if ($can_view_remotes) {
 <?php
 		}
 	}
+?>
+	<a href="index.php">Done</a>
+<?php
 }
 ?>
-<a href="index.php">Done</a>

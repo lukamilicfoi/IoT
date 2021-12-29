@@ -1,7 +1,7 @@
 <?php
 require_once 'common.php';
-$can_edit_rules = check_authorization('view rules')) {
-$can_edit_rules = check_authorization('edit rules');
+$can_edit_rules = check_authorization('can_view_rules', 'view rules')) {
+$can_edit_rules = check_authorization('can_edit_rules', 'edit rules');
 if ($can_edit_rules) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
@@ -15,7 +15,7 @@ if ($can_edit_rules) {
 <?php
 			exit(0);
 		}
-	} else if (!empty($_GET['username']) && !empty($_GET['id'])) {
+	} elseif (!empty($_GET['username']) && !empty($_GET['id'])) {
 		$s_username = pg_escape_literal($_GET['username']);
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 		$id = intval($_GET['id']);
@@ -47,7 +47,7 @@ if ($can_edit_rules) {
 						. ', ' . pgescapebool($_GET['is_active']) . ');');
 				echo "For username $h_username rule $id inserted.<br/>\n";
 			}
-		} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
+		} elseif (!empty($_GET['key1']) && !empty($_GET['key2'])) {
 			$s_key1 = pg_escape_literal($_GET['key1']);
 			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 			$key2 = intval($_GET['key2']);
@@ -82,7 +82,7 @@ if ($can_edit_rules) {
 				echo "For username $h_key1 rule $key2 updated.<br/>\n";
 			}
 		}
-	} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
+	} elseif (!empty($_GET['key1']) && !empty($_GET['key2'])) {
 		$s_key1 = pg_escape_literal($_GET['key1']);
 		$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 		$u_key1 = urlencode($_GET['key1']);
@@ -112,7 +112,7 @@ if ($can_view_rules) {
 ?>
 		You are authorized to view (edit) rules for all users.<br/>
 <?php
-	} else if ($_SESSION['is_administrator']) {
+	} elseif ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT rules.*, proto_name.proto FROM rules INNER JOIN users
 				ON rules.username = users.username INNER JOIN proto_name ON rules.proto_id
 				= proto_name.proto WHERE rules.username = {$_SESSION['s_username']}
@@ -166,16 +166,16 @@ if ($can_view_rules) {
 ?>
 				<tr>
 					<td nowrap="nowrap">
-						<input form="insert" type="text" name="username" size="10"/>
+						<input form="insert" type="text" name="username" size="10" required/>
 						,
 					</td>
 					<td nowrap="nowrap">
-						<input form="insert" type="text" name="id" size="10"/>
+						<input form="insert" type="text" name="id" size="10" required/>
 						.
 					</td>
 					<td nowrap="nowrap">
 						<input form="insert" type="radio" name="send_receive_seconds" value="0"
-								checked="checked"/>
+								checked/>
 						on sending when:<br/>
 						<input form="insert" type="radio" name="send_receive_seconds" value="1"/>
 						on receiving when:<br/>
@@ -188,7 +188,7 @@ if ($can_view_rules) {
 					</td>
 					<td nowrap="nowrap">
 						<input form="insert" type="radio" name="drop_modify_nothing" value="0"
-								checked="checked"/>
+								checked/>
 						drop message<br/>
 						<input form="insert" type="radio" name="drop_modify_nothing" value="1"/>
 						modify message with this:<br/>
@@ -201,7 +201,7 @@ if ($can_view_rules) {
 					</td>
 					<td nowrap="nowrap">
 						<input form="insert" type="radio" name="query_command_nothing" value="0"
-								checked="checked"/>
+								checked/>
 						SQL query:<br/>
 						<input form="insert" type="radio" name="query_command_nothing" value="1"/>
 						bash command:<br/>
@@ -214,7 +214,7 @@ if ($can_view_rules) {
 					</td>
 					<td nowrap="nowrap">
 						<input form="insert" type="radio" name="send_inject_query_command_nothing"
-								value="0" checked="checked"/>
+								value="0" checked/>
 						query and send it:<br/>
 						<input form="insert" type="radio" name="send_inject_query_command_nothing"
 								value="1"/>
@@ -306,17 +306,17 @@ if ($can_view_rules) {
 					<td>
 <?php
 						echo "<input form=$form type=\"radio\" name=\"send_receive_seconds\"
-								value=\"0\"", $row[2] == '0' ? ' checked="checked"' : '', "/>\n";
+								value=\"0\"", $row[2] == '0' ? ' checked' : '', "/>\n";
 ?>
 						on sending when:<br/>
 <?php
 						echo "<input form=$form type=\"radio\" name=\"send_receive_seconds\"
-								value=\"1\"", $row[2] == '1' ? ' checked="checked"' : '', "/>\n";
+								value=\"1\"", $row[2] == '1' ? ' checked' : '', "/>\n";
 ?>
 						on receiving when:<br/>
 <?php
 						echo "<input form=$form type=\"radio\" name=\"send_receive_seconds\"
-								value=\"2\"", $row[2] == '2' ? ' checked="checked"' : '', "/>\n";
+								value=\"2\"", $row[2] == '2' ? ' checked' : '', "/>\n";
 ?>
 						every this amount of seconds:
 					</td>
@@ -330,17 +330,17 @@ if ($can_view_rules) {
 					<td>
 <?php
 						echo "<input form=$form type=\"radio\" name=\"drop_modify_nothing\"
-								value=\"0\"", $row[4] == '0' ? ' checked="checked"' : '', "/>\n";
+								value=\"0\"", $row[4] == '0' ? ' checked' : '', "/>\n";
 ?>
 						drop message<br/>
 <?php
 						echo "<input form=$form type=\"radio\" name=\"drop_modify_nothing\"
-								value=\"1\"", $row[4] == '1' ? ' checked="checked"' : '', "/>\n";
+								value=\"1\"", $row[4] == '1' ? ' checked' : '', "/>\n";
 ?>
 						modify message with this:<br/>
 <?php
 						echo "<input form=$form type=\"radio\" name=\"drop_modify_nothing\"
-								value=\"2\"", $row[4] == '2' ? ' checked="checked"' : '', "/>\n";
+								value=\"2\"", $row[4] == '2' ? ' checked' : '', "/>\n";
 ?>
 						do nothing
 					</td>
@@ -355,17 +355,17 @@ if ($can_view_rules) {
 					<td>
 <?php
 						echo "<input form=$form type=\"radio\" name=\"query_command_nothing\"
-								value=\"0\"", $row[6] == '0' ? ' checked="checked"' : '', "/>\n";
+								value=\"0\"", $row[6] == '0' ? ' checked' : '', "/>\n";
 ?>
 						SQL query:<br/>
 <?php
 						echo "<input form=$form type=\"radio\" name=\"query_command_nothing\"
-								value=\"1\"", $row[6] == '1' ? ' checked="checked"' : '', "/>\n";
+								value=\"1\"", $row[6] == '1' ? ' checked' : '', "/>\n";
 ?>
 						bash command:<br/>
 <?php
 						echo "<input form=$form type=\"radio\" name=\"query_command_nothing\"
-								value=\"2\"", $row[6] == '2' ? ' checked="checked"' : '', "/>\n";
+								value=\"2\"", $row[6] == '2' ? ' checked' : '', "/>\n";
 ?>
 						(execute nothing)
 					</td>
@@ -381,31 +381,31 @@ if ($can_view_rules) {
 <?php
 						echo "<input form=$form type=\"radio\"
 								name=\"send_inject_query_command_nothing\" value=\"0\"",
-								$row[8] == '0' ? ' checked="checked"' : '', "/>\n";
+								$row[8] == '0' ? ' checked' : '', "/>\n";
 ?>
 						query and send it:<br/>
 <?php
 						echo "<input form=$form type=\"radio\"
 								name=\"send_inject_query_command_nothing\" value=\"1\"",
-								$row[8] == '1' ? ' checked="checked"' : '', "/>\n";
+								$row[8] == '1' ? ' checked' : '', "/>\n";
 ?>
 						command and send it:<br/>
 <?php
 						echo "<input form=$form type=\"radio\"
 								name=\"send_inject_query_command_nothing\" value=\"2\"",
-								$row[8] == '2' ? ' checked="checked"' : '', "/>\n";
+								$row[8] == '2' ? ' checked' : '', "/>\n";
 ?>
 						query and inject it:<br/>
 <?php
 						echo "<input form=$form type=\"radio\"
 								name=\"send_inject_query_command_nothing\" value=\"3\"",
-								$row[8] == '3' ? ' checked="checked"' : '', "/>\n";
+								$row[8] == '3' ? ' checked' : '', "/>\n";
 ?>
 						command and inject it:<br/>
 <?php
 						echo "<input form=$form type=\"radio\"
 								name=\"send_inject_query_command_nothing\" value=\"4\"",
-								$row[8] == '4' ? ' checked="checked"' : '', "/>\n";
+								$row[8] == '4' ? ' checked' : '', "/>\n";
 ?>
 						(form nothing)
 					</td>
@@ -432,25 +432,25 @@ if ($can_view_rules) {
 					<td>
 <?php
 						echo "<input form=$form type=\"checkbox\" name=\"CCF\"",
-								$row[12] == 't' ? ' checked="checked"' : '', "/>\n";
+								$row[12] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"checkbox\" name=\"ACF\"",
-								$row[13] == 't' ? ' checked="checked"' : '', "/>\n";
+								$row[13] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"checkbox\" name=\"broadcast\"",
-								$row[14] == 't' ? ' checked="checked"' : '', "/>\n";
+								$row[14] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"checkbox\" name=\"override_implicit_rules\"",
-								$row[15] == 't' ? ' checked="checked"' : '', "/>\n";
+								$row[15] == 't' ? ' checked' : '', "/>\n";
 ?>
 						.
 					</td>
@@ -471,7 +471,7 @@ if ($can_view_rules) {
 					<td>
 <?php
 						echo "<input form=$form type=\"checkbox\" name=\"is_active\"",
-								$row[18] == 't' ? ' checked="checked"' : '', "/>\n";
+								$row[18] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
 					<td>
@@ -525,8 +525,7 @@ if ($can_view_rules) {
 	When broadcasting a message any imm_DST is ignored.<br/>
 	On send and receive rules last_run is meaningless.<br/>
 	Strings are written without excess quotations, e.g., proto = 'tcp'.<br/>
-
+	<a href="index.php">Done</a>
 <?php
 }
 ?>
-<a href="index.php">Done</a>

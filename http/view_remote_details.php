@@ -6,29 +6,29 @@ if (!empty($_GET['addr'])) {
 	$h1addr = htmlspecialchars($_GET['addr']);
 	$h2addr = "X&apos;$h1addr&apos;";
 	$u_addr = urlencode($_GET['addr']);
-	$can_view = check_authorization('view remotes') && can_view_table($s1addr);
-	$can_edit = check_authorization('edit remotes') && can_edit_table($s1addr);
+	$can_view = check_authorization('can_view_remotes', 'view remotes') && can_view_table($s1addr);
+	$can_edit = check_authorization('can_edit_remotes', 'edit remotes') && can_edit_table($s1addr);
 	if ($can_edit) {
 		if (!empty($_GET['out_ID'])) {
 			$out_ID = intval($_GET['out_ID']);
 			pgquery("UPDATE addr_oID SET out_ID = $out_ID WHERE addr = $s2addr;");
 			echo "out_ID changed for DST $h2addr.<br/>\n";
-		} else if (isset($_GET['randomize'])) {
+		} elseif (isset($_GET['randomize'])) {
 			pg_free_result(pgquery('UPDATE addr_oID SET out_ID = ' . rand(0, 255)
 					. " WHERE addr = $s2addr;"));
 			echo "out_ID randomized for DST $h2addr.<br/>\n";
-		} else if (!empty($_GET['add_proto'])) {
+		} elseif (!empty($_GET['add_proto'])) {
 			$s_add_proto = pg_escape_literal($_GET['add_proto']);
 			$h_add_proto = '&apos;' . htmlspecialchars($_GET['add_proto']) . '&apos;';
 			pgquery("INSERT INTO SRC_proto(SRC, proto) VALUES($s2addr,
 					(SELECT proto FROM proto_name WHERE name = $s_add_proto));");
 			echo "proto $h_add_proto added for SRC $h2addr.<br/>\n";
-		} else if (!empty($_GET['add_DST'])) {
+		} elseif (!empty($_GET['add_DST'])) {
 			$s_add_DST = pgescapebytea($_GET['add_DST']);
 			$h_add_DST = 'X&apos;' . htmlspecialchars($_GET['add_DST']) . '&apos;';
 			pgquery("INSERT INTO SRC_DST(SRC, DST) VALUES($s2addr, $s_add_DST);");
 			echo "DST $h_add_DST added for SRC $h2addr.<br/>\n";
-		} else if (!empty($_GET['remove_proto'])) {
+		} elseif (!empty($_GET['remove_proto'])) {
 			$s_remove_proto = pg_escape_literal($_GET['remove_proto']);
 			$h_remove_proto = '&apos;' . htmlspecialchars($_GET['remove_proto']) . '&apos;';
 			$u_remove_proto = urlencode($_GET['remove_proto']);
@@ -45,7 +45,7 @@ if (!empty($_GET['addr'])) {
 				echo "<a href=\"?addr=$u_addr\">No</a>\n";
 				exit(0);
 			}
-		} else if (!empty($_GET['remove_DST'])) {
+		} elseif (!empty($_GET['remove_DST'])) {
 			$s_remove_DST = pgescapebytea($_GET['remove_DST']);
 			$h_remove_DST = 'X&apos;' . htmlspecialchars($_GET['remove_DST']) . '&apos;';
 			$u_remove_DST = urlencode($_GET['remove_DST']);
@@ -64,7 +64,8 @@ if (!empty($_GET['addr'])) {
 		}
 	}
 	if ($can_view) {
-		echo 'You are authorized to view ', $can_edit ? '(edit) ' : '', "everything here.\n";
+		echo 'You are authorized to view ', $can_edit ? '(edit) ' : '',
+				"everything here.<br/><br/>\n";
 ?>
 		<form action="" method="GET">
 			View destination:
@@ -114,8 +115,7 @@ if (!empty($_GET['addr'])) {
 <?php
 		}
 ?>
-		<br/><br/>
-		<form action="" method="GET">
+		<br/><br/><form action="" method="GET">
 			View protocol:
 <?php
 			$result = pgquery("SELECT proto_name.name FROM SRC_proto
@@ -143,7 +143,7 @@ if (!empty($_GET['addr'])) {
 			}
 ?>
 		</form>
-		Protocols ordered by name ascending.<br/>
+		Protocols ordered by name ascending.<br/><br/>
 		<a href="view_remotes.php">Done</a>
 <?php
 	}

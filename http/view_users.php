@@ -2,8 +2,8 @@
 require_once 'common.php';
 $user_fields_joined = implode(', ', $user_fields);
 $user_fields_length = count($user_fields);
-$can_view_users = check_authorization('view users');
-$can_edit_users = check_authorization('edit users');
+$can_view_users = check_authorization('can_view_users', 'view users');
+$can_edit_users = check_authorization('can_edit_users', 'edit users');
 if ($can_edit_users) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
@@ -20,7 +20,7 @@ if ($can_edit_users) {
 <?php
 			exit(0);
 		}
-	} else if (isset($_POST['username'])) {
+	} elseif (isset($_POST['username'])) {
 		if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
 				|| $_SESSION['is_root']) && isset($_POST['insert'])) {
 			$s_username = pg_escape_literal($_POST['username']);
@@ -39,7 +39,7 @@ if ($can_edit_users) {
 					use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone,
 					default_gateway FROM configuration WHERE username = 'root';");
 			echo "User $h_username inserted.<br/>\n";
-		} else if (isset($_POST['update1'])) {
+		} elseif (isset($_POST['update1'])) {
 			$s_username = pg_escape_literal($_POST['username']);
 			$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
 			if ($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
@@ -58,7 +58,7 @@ if ($can_edit_users) {
 				echo "User $h_username updated.<br/>\n";
 			}
 		}
-	} else if (isset($_GET['delete']) && isset($_GET['key'])) {
+	} elseif (isset($_GET['delete']) && isset($_GET['key'])) {
 		$s_key = pg_escape_literal($_GET['key']);
 		$h_key = '&apos;' . htmlspecialchars($_GET['key']) . '&apos;';
 		$u_key = urlencode($_GET['key']);
@@ -77,7 +77,7 @@ if ($can_edit_users) {
 				exit(0);
 			}
 		}
-	} else if (isset($_POST['update2']) && isset($_POST['password'])) {
+	} elseif (isset($_POST['update2']) && isset($_POST['password'])) {
 		pgquery('UPDATE users SET password = \'' . password_hash($_POST['password'],
 				PASSWORD_DEFAULT) . "' WHERE username = {$_SESSION['s_username']};");
 		echo "Password updated - for username $h2username.<br/>\n";
@@ -89,7 +89,7 @@ if ($can_view_users) {
 ?>
 		You are authorized to view (edit) all users.
 <?php
-	} else if ($_SESSION['is_administrator']) {
+	} elseif ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT username, TRUE, is_administrator, $user_fields_joined,
 				can_actually_login FROM users WHERE username = {$_SESSION['s_username']}
 				OR NOT is_administrator ORDER BY username ASC;");
@@ -110,7 +110,7 @@ if ($can_view_users) {
 				<th>New password?</th>
 				<th>Is administrator?</th>
 <?php
-				for ($user_fields as $field) {
+				foreach ($user_fields as $field) {
 					echo '<th>', ucfirst(strtr($field, '_', ' ')), "?</th>\n";
 				}
 ?>
@@ -140,7 +140,7 @@ if ($can_view_users) {
 ?>
 					</td>
 <?php
-					for ($user_fields as $field) {
+					foreach ($user_fields as $field) {
 ?>
 						<td>
 <?php
@@ -182,7 +182,7 @@ if ($can_view_users) {
 									disabled=\"disabled\"/>\n";
 							echo "<input form=\"update2\" type=\"hidden\" name=\"username\"
 									value=\"$username\"/>\n";
-						} else if ($can_edit_users) {
+						} elseif ($can_edit_users) {
 							echo "<input form=\"update1_$username\" type=\"text\" name=\"username\"
 									value=\"$username\"/>\n";
 						} else {
@@ -195,7 +195,7 @@ if ($can_view_users) {
 <?php
 						if ($username == $_SESSION['h1username']) {
 							echo "<input form=\"update2\" type=\"password\" name=\"password\"/>\n";
-						} else if ($can_edit_users) {
+						} elseif ($can_edit_users) {
 							echo "<input form=\"update1\" type=\"password\" name=\"password\"/>\n";
 						} else {
 							echo "<input type=\"password\" disabled=\"disabled\"/>\n";
@@ -249,7 +249,7 @@ if ($can_view_users) {
 								<input type="reset" value="reset"/>
 							</form>
 <?php
-						} else if ($can_edit_users) {
+						} elseif ($can_edit_users) {
 							echo "<form id=\"update1_$username\" action=\"\" method=\"POST\">\n";
 ?>
 								<input type="submit" name="update1" value="UPDATE"/><br/>

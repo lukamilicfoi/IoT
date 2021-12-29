@@ -1,7 +1,7 @@
 <?php
 require_once 'common.php';
-$can_view_permissions = check_authorization('view permissions');
-$can_edit_permissions = check_authorization('edit permissions');
+$can_view_permissions = check_authorization('can_view_permissions', 'view permissions');
+$can_edit_permissions = check_authorization('can_edit_permissions', 'edit permissions');
 if ($can_edit_permissions) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
@@ -15,7 +15,7 @@ if ($can_edit_permissions) {
 <?php
 			exit(0);
 		}
-	} else if (!empty($_GET['tablename']) && !empty($_GET['username'])) {
+	} elseif (!empty($_GET['tablename']) && !empty($_GET['username'])) {
 		$s_tablename = pg_escape_literal($_GET['tablename']);
 		$h_tablename = '&apos;' . htmlspecialchars($_GET['tablename']) . '&apos;';
 		$s_username = pg_escape_literal($_GET['username']);
@@ -32,7 +32,7 @@ if ($can_edit_permissions) {
 						VALUES($s_tablename, $s_username);");
 				echo "Reader ($h_tablename, $h_username) inserted.<br/>\n";
 			}
-		} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
+		} elseif (!empty($_GET['key1']) && !empty($_GET['key2'])) {
 			$s_key1 = pg_escape_literal($_GET['key1']);
 			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 			$key1_owner = find_owner($s_key1);
@@ -50,14 +50,14 @@ if ($can_edit_permissions) {
 				pgquery("UPDATE table_reader SET (tablename, username) = ($s_tablename, $s_username)
 						WHERE tablename = $s_key1 AND username = $s_key2;");
 				echo "Reader ($h_key1, $h_key2) updated to ($h_username, $h_tablename).<br/>\n";
-			} else if (($key1_owner_is_user_or_public || $_SESSION['is_administrator']
+			} elseif (($key1_owner_is_user_or_public || $_SESSION['is_administrator']
 					&& !$key1_owner_is_administrator || $_SESSION['is_root'])
 					&& isset($_GET['update2'])) {
 				pgquery("UPDATE table_owner SET username = $s_username WHERE tablename = $s_key1;");
 				echo "Owner ($h_key1, $h_key2) updated to ($h_key1, $h_username).<br/>\n";
 			}
 		}
-	} else if (!empty($_GET['key1']) && !empty($_GET['key2'])) {
+	} elseif (!empty($_GET['key1']) && !empty($_GET['key2'])) {
 		$s_key1 = pg_escape_literal($_GET['key1']);
 		$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 		$u_key1 = urlencode($_GET['key1']);
@@ -67,7 +67,7 @@ if ($can_edit_permissions) {
 		$u_key2 = urlencode($_GET['key2']);
 		if (($key1_owner == $_SESSION['username'] || $key1_owner == 'public'
 				|| $_SESSION['is_administrator'] && !is_administrator($key1_owner)
-				|| $_SESSION['is_root']) && isset($_GET['delete']) {
+				|| $_SESSION['is_root']) && isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
 				pgquery("DELETE FROM table_reader WHERE tablename = $s_key1
 						AND username = $s_key2;");
@@ -88,12 +88,12 @@ if ($can_edit_permissions) {
 if ($can_edit_permissions) {
 	if ($_SESSION['is_root']) {
 		$result = pgquery('SELECT *, TRUE, FALSE AS is_owner FROM table_reader
-				ORDER BY tablename ASC, username ASC UNION ALL SELECT *, TRUE, TRUE AS is_owner
-				FROM table_owner ORDER BY tablename ASC, username ASC;');
+				UNION ALL SELECT *, TRUE, TRUE AS is_owner FROM table_owner
+				ORDER BY is_owner ASC, tablename ASC, username ASC;');
 ?>
 		You are authorized to view (edit) permissions for all tables.<br/>
 <?php
-	} else if ($_SESSION['is_administrator']) {
+	} elseif ($_SESSION['is_administrator']) {
 		$can_view = "EXISTS(SELECT TRUE FROM table_reader INNER JOIN users
 				ON table_reader.username = users.username WHERE table_reader.tablename = table_name
 				AND (username = {$_SESSION['s_username']} OR NOT users.is_administrator))";
@@ -101,29 +101,32 @@ if ($can_edit_permissions) {
 				EXISTS(SELECT TRUE FROM table_owner INNER JOIN users ON table_owner.username
 				= users.username WHERE table_owner.tablename = table_name AND (table_owner.username
 				= {$_SESSION['s_username']} OR NOT users.is_administrator)) AS can_edit, FALSE
-				AS is_owner FROM table_reader WHERE can_edit OR $can_view ORDER BY table_name ASC,
-				table_reader.username ASC UNION ALL SELECT table_owner.tablename AS table_name,
-				table_reader.username = {$_SESSION['s_username']} OR NOT users.is_administrator
-				AS can_edit, TRUE FROM table_owner INNER JOIN users ON table_owner.username
-				= users.username WHERE can_edit OR $can_view ORDER BY table_name ASC,
+				AS is_owner FROM table_reader WHERE can_edit OR $can_view UNION ALL
+				SELECT table_owner.tablename AS table_name, table_reader.username
+				= {$_SESSION['s_username']} OR NOT users.is_administrator AS can_edit, TRUE
+				AS is_owner FROM table_owner INNER JOIN users ON table_owner.username
+				= users.username WHERE can_edit OR $can_view ORDER BY is_owner ASC, table_name ASC,
 				table_owner.username ASC;");
-		echo "You are authorized to view (edit) permissions for {$_SESSION['h2username']}-readable
-				(-owned) or non-administrator-readable (-owned) tables.<br/>\n";
+		echo "You are authorized to view (edit) permissions for
+				username-{$_SESSION['h2username']}-readable (-owned)
+				or non-administrator-readable (-owned) tables.<br/>\n";
 	} else {
 		$can_view = "EXISTS(SELECT TRUE FROM table_reader WHERE tablename = table_name
 				AND (username = {$_SESSION['s_username']} OR username = 'public'))";
 		$result = pgquery("SELECT tablename AS table_name, username, EXISTS(SELECT TRUE
 				FROM table_owner WHERE tablename = table_name AND (username
 				= {$_SESSION['s_username']} OR username = 'public')) AS can_edit, FALSE AS is_owner
-				FROM table_reader WHERE can_edit OR $can_view ORDER BY table_name ASC, username ASC
-				UNION ALL SELECT tablename AS table_name, username = {$_SESSION['s_username']}
-				OR NOT users.is_administrator AS can_edit, TRUE FROM table_owner WHERE can_edit
-				OR $can_view ORDER BY table_name ASC, username ASC;");
-		echo "You are authorized to view (edit) permissions for {$_SESSION['h2username']}-readable
-				(-owned) or public-readable tables.<br/>\n";
+				FROM table_reader WHERE can_edit OR $can_view UNION ALL SELECT tablename
+				AS table_name, username = {$_SESSION['s_username']} OR NOT users.is_administrator
+				AS can_edit, TRUE AS is_owner FROM table_owner WHERE can_edit OR $can_view
+				ORDER BY is_owner ASC, table_name ASC, username ASC;");
+		echo "You are authorized to view (edit) permissions for
+				username-{$_SESSION['h2username']}-readable (-owned)
+				or public-readable tables.<br/>\n";
 	}
 ?>
-	Viewing table &quot;table_user&quot;, table owners shown first.<br/>
+	Viewing tables &quot;table_reader&quot; and &quot;table_owner&quot;,
+			table readers shown first.<br/>
 	Tables ordered by tablename ascending and username ascending.
 	<table border="1">
 		<tbody>
@@ -177,7 +180,7 @@ if ($can_edit_permissions) {
 						$form = "\"update_{$tablename}_$username\"";
 						echo "<input form=$form type=\"text\" name=\"tablename\"
 								value=\"$h_tablename\"",
-								$row[2] == 't' ? ' disabled="disabled"' : '', "/>\n";
+								$row[2] == 't' ? ' readonly' : '', "/>\n";
 ?>
 					</td>
 					<td>
@@ -188,7 +191,7 @@ if ($can_edit_permissions) {
 					</td>
 					<td>
 <?php
-					if ($can_edit_permissions && $row[2] == 't') {
+					if ($can_edit_permissions) {
 ?>
 						<td>
 <?php
@@ -196,20 +199,27 @@ if ($can_edit_permissions) {
 								echo "<input type=\"hidden\" name=\"key1\"
 										value=\"$h_tablename\"/>\n";
 								echo "<input type=\"hidden\" name=\"key2\" value=\"$username\"/>\n";
+								echo '<input type="submit" name="update', $row[2] != 't'
+										? '1" value="UPDATE reader' : '2" value="UPDATE owner',
+										"\"/>\n";
 ?>
-								<input type="submit" name="update" value="UPDATE"/>
 								<input type="reset" value="reset"/>
 <?php
 							echo "</form>\n";
+							if ($row[2] != 't') {
 ?>
-							<form action="" method="GET">
+								<form action="" method="GET">
 <?php
-								echo "<input type=\"hidden\" name=\"key1\"
-										value=\"$h_tablename\"/>\n";
-								echo "<input type=\"hidden\" name=\"key2\" value=\"$username\"/>\n";
+									echo "<input type=\"hidden\" name=\"key1\"
+											value=\"$h_tablename\"/>\n";
+									echo "<input type=\"hidden\" name=\"key2\"
+											value=\"$username\"/>\n";
 ?>
-								<input type="submit" name="delete" value="DELETE"/>
-							</form>
+									<input type="submit" name="delete" value="DELETE"/>
+								</form>
+<?php
+							}
+?>
 						</td>
 <?php
 					}

@@ -6,8 +6,10 @@ if (!empty($_GET['tablename'])) {
 	$h1tablename = htmlspecialchars($_GET['tablename']);
 	$h2tablename = "&quot;$h1tablename&quot;";
 	$u_tablename = urlencode($_GET['tablename']);
-	$can_view = check_authorization('view tables') && can_view_table($s1tablename);
-	$can_edit = check_authorization('edit tables') && can_edit_table($s1tablename);
+	$can_view = check_authorization('can_view_tables', 'view tables')
+			&& can_view_table($s1tablename);
+	$can_edit = check_authorization('can_edit_tables', 'edit tables')
+			&& can_edit_table($s1tablename);
 	if ($can_edit) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
@@ -21,13 +23,13 @@ if (!empty($_GET['tablename'])) {
 				echo "<a href=\"?tablename=$u_tablename\">No</a>";
 				exit(0);
 			}
-		} else if (!empty($_GET['t'])) {
+		} elseif (!empty($_GET['t'])) {
 			if (isset($_GET['insert'])) {
-				$t = 'TIMESTAMP &apos;' . htmlspecialchars($_GET['t']) . '&apos;';
+				$t = htmlspecialchars(pgescapetimestamp($_GET['t']));
 				$result = pgquery("SELECT * FROM $s2tablename WHERE FALSE;");
 				$query = "INSERT INTO $s2tablename(";
 				for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
-					$query .= pg_field_name($result, $i) . ', ';
+					$query .= pg_escape_identifier(pg_field_name($result, $i)) . ', ';
 				}
 				$query = substr($query, 0, -2) . ') VALUES(';
 				for ($i = 0; $i < $j; $i++) {
@@ -36,13 +38,13 @@ if (!empty($_GET['tablename'])) {
 				}
 				pgquery(substr($query, 0, -2) . ');');
 				echo "Row $t inserted.<br/>\n";
-			} else if (!empty($_GET['key']) && isset($_GET['update'])) {
-				$s_key = 'TIMESTAMP \'' . pg_escape_string($_GET['key']) . '\'';
-				$h_key = 'TIMESTAMP &apos;' . htmlspecialchars($_GET['key']) . '&apos;';
+			} elseif (!empty($_GET['key']) && isset($_GET['update'])) {
+				$s_key = pgescapetimestamp($_GET['key']);
+				$h_key = htmlspecialchars($s_key);
 				$result = pgquery("SELECT * FROM $s2tablename WHERE FALSE;");
 				$query = "UPDATE $s2tablename SET (";
 				for ($i = 0, $j = pg_num_fields($result); $i < $j; $i++) {
-					$query .= pg_field_name($result, $i) . ', ';
+					$query .= pg_escape_identifier(pg_field_name($result, $i)) . ', ';
 				}
 				$query = substr($query, 0, -2) . ') = ROW (';
 				for ($i = 0; $i < $j; $i++) {
@@ -52,9 +54,9 @@ if (!empty($_GET['tablename'])) {
 				pgquery(substr($query, 0, -2) . ") WHERE t = $s_key;");
 				echo "Row $h_key updated.<br/>\n";
 			}
-		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
-			$s_key = 'TIMESTAMP \'' . pg_escape_string($_GET['key']) . '\'';
-			$h_key = 'TIMESTAMP &apos;' . htmlspecialchars($_GET['key']) . '&apos;';
+		} elseif (!empty($_GET['key']) && isset($_GET['delete'])) {
+			$s_key = pgescapetimestamp($_GET['key']);
+			$h_key = htmlspecialchars($s_key);
 			$u_key = urlencode($_GET['key']);
 			if (isset($_GET['confirm'])) {
 				pgquery("DELETE FROM $s2tablename WHERE t = $s_key;");
@@ -100,7 +102,7 @@ if (!empty($_GET['tablename'])) {
 							<td>
 <?php
 								echo '<input form="insert" type="text" name="',
-										pg_field_name($result, $i), "\"/>\n";
+										htmlspecialchars(pg_field_name($result, $i)), "\"/>\n";
 ?>
 							</td>
 <?php
@@ -176,7 +178,7 @@ if (!empty($_GET['tablename'])) {
 				}
 ?>
 			</tbody>
-		</table>
+		</table><br/>
 		<a href="index.php">Done</a>
 <?php
 	}

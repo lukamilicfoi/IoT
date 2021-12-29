@@ -10,8 +10,8 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 	$h1proto = htmlspecialchars($_GET['proto']);
 	$h2proto = "&apos;$h1proto&apos;";
 	$u_proto = urlencode($_GET['proto']);
-	$can_view = check_authorization('view remotes');
-	$can_edit = check_authorization('edit remotes');
+	$can_view = check_authorization('can_view_remotes', 'view remotes') && can_view_table($s1SRC);
+	$can_edit = check_authorization('can_edit_remotes', 'edit remotes') && can_edit_table($s1SRC);
 	if ($can_edit) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
@@ -31,7 +31,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 		} else if (!empty($_GET['imm_SRC']) && !empty($_GET['TWR'])) {
 			$s_imm_SRC = pgescapebytea($_GET['imm_SRC']);
 			$h_imm_SRC = 'X&apos;' . htmlspecialchars($_GET['imm_SRC']) . '&apos;';
-			$TWR = 'TIMESTAMP \'' . pg_escape_string($_GET['TWR']) . '\'';
+			$TWR = pgescapetimestamp($_GET['TWR']);
 			if (isset($_GET['insert'])) {
 				pgquery("INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR) VALUES($s2SRC,
 						(SELECT proto FROM proto_name WHERE name = $s_proto), $s_imm_SRC, $TWR);");
@@ -44,7 +44,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 						WHERE name = $s_proto) AND imm_SRC = $s_imm_SRC;");
 				echo "Mapping $h_key for SRC $h2SRC and proto $h2proto updated.<br/>\n";
 			}
-		} else if (!empty($_GET['key']) && isset($_GET['delete'])) {
+		} elseif (!empty($_GET['key']) && isset($_GET['delete'])) {
 			$s_key = pgescapebytea($_GET['key']);
 			$h_key = 'X&apos;' . htmlspecialchars($_GET['key']) . '&apos;';
 			$u_key = urlencode($_GET['key']);
@@ -172,7 +172,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 		</table>
 		Write the first column as a binary string, e.g., abababababababab.<br/>
 		Write the second column as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
-		You can edit something only if you have edit permissions on this remote.<br/>
+		You can edit something only if you have edit permissions on this remote.<br/><br/>
 <?php
 		echo "<a href=\"view_remote_details.php?addr=$u_SRC\">Done</a>\n";
 	}
