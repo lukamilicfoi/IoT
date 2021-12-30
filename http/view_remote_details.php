@@ -33,8 +33,8 @@ if (!empty($_GET['addr'])) {
 			$h_remove_proto = '&apos;' . htmlspecialchars($_GET['remove_proto']) . '&apos;';
 			$u_remove_proto = urlencode($_GET['remove_proto']);
 			if (isset($_GET['confirm'])) {
-				pgquery("DELETE FROM SRC_proto WHERE SRC = $s2addr AND proto
-						= (SELECT proto FROM proto_name WHERE name = $s_remove_proto);");
+				pgquery("DELETE FROM SRC_proto WHERE SRC = $s2addr
+						AND proto = (SELECT proto FROM proto_name WHERE name = $s_remove_proto);");
 				echo "proto $h_remove_proto removed for SRC $h2addr.<br/>\n";
 			} else {
 ?>
@@ -109,9 +109,9 @@ if (!empty($_GET['addr'])) {
 			echo "<input form=\"random\" type=\"hidden\" name=\"addr\" value=\"$h1addr\"/>\n";
 ?>
 			<input form="random" type="submit" name="randomize" value="randomize"/>
+			Write id as an integer, e.g., 11.
 			<form id="change" action="" method="GET"></form>
 			<form id="random" action="" method="GET"></form>
-			Write id as an integer, e.g., 11.
 <?php
 		}
 ?>

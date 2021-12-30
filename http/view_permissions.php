@@ -11,7 +11,7 @@ if ($can_edit_permissions) {
 ?>
 			Are you sure?
 			<a href="?truncate&amp;confirm">Yes</a>
-			<a href="">No</a>
+			<a href="?">No</a>
 <?php
 			exit(0);
 		}
@@ -78,7 +78,7 @@ if ($can_edit_permissions) {
 <?php
 				echo "<a href=\"?key1=$u_key1&amp;key2=$u_key2&amp;delete&amp;confirm\">Yes</a>\n";
 ?>
-				<a href="">No</a>
+				<a href="?">No</a>
 <?php
 				exit(0);
 			}
@@ -146,21 +146,21 @@ if ($can_edit_permissions) {
 ?>
 				<tr>
 					<td>
-						<input form="insert" type="text" name="tablename"/>
+						<input form="insert" type="text" name="tablename" required/>
 					</td>
 					<td>
-						<input form="insert" type="text" name="username"/>
+						<input form="insert" type="text" name="username" required/>
 					</td>
 					<td>
 						<form id="insert" action="" method="GET">
-							<input type="submit" name="insert" value="INSERT"/><br/>
+							<input type="submit" name="insert" value="INSERT reader"/><br/>
 							<input type="reset" value="reset"/>
 						</form>
 <?php
 						if ($_SESSION['is_root']) {
 ?>
 							<form action="" method="GET">
-								<input type="submit" name="truncate" value="TRUNCATE"/>
+								<input type="submit" name="truncate" value="TRUNCATE readers"/>
 							</form>
 <?php
 						}
@@ -180,18 +180,18 @@ if ($can_edit_permissions) {
 						$form = "\"update_{$tablename}_$username\"";
 						echo "<input form=$form type=\"text\" name=\"tablename\"
 								value=\"$h_tablename\"",
-								$row[2] == 't' ? ' readonly' : '', "/>\n";
+								$row[2] == 't' ? ' readonly' : ' required', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"username\"
-								value=\"$username\"/>\n";
+								value=\"$username\" required/>\n";
 ?>
 					</td>
 					<td>
 <?php
-					if ($can_edit_permissions) {
+					if ($can_edit_permissions && $row[2] == 't') {
 ?>
 						<td>
 <?php
@@ -199,14 +199,14 @@ if ($can_edit_permissions) {
 								echo "<input type=\"hidden\" name=\"key1\"
 										value=\"$h_tablename\"/>\n";
 								echo "<input type=\"hidden\" name=\"key2\" value=\"$username\"/>\n";
-								echo '<input type="submit" name="update', $row[2] != 't'
+								echo '<input type="submit" name="update', $row[3] != 't'
 										? '1" value="UPDATE reader' : '2" value="UPDATE owner',
-										"\"/>\n";
+										"\"/><br/>\n";
 ?>
 								<input type="reset" value="reset"/>
 <?php
 							echo "</form>\n";
-							if ($row[2] != 't') {
+							if ($row[3] != 't') {
 ?>
 								<form action="" method="GET">
 <?php

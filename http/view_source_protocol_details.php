@@ -28,7 +28,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 				echo "<a href=\"?SRC=$u_SRC&amp;proto=$u_proto\">No</a>\n";
 				exit(0);
 			}
-		} else if (!empty($_GET['imm_SRC']) && !empty($_GET['TWR'])) {
+		} elseif (!empty($_GET['imm_SRC']) && !empty($_GET['TWR'])) {
 			$s_imm_SRC = pgescapebytea($_GET['imm_SRC']);
 			$h_imm_SRC = 'X&apos;' . htmlspecialchars($_GET['imm_SRC']) . '&apos;';
 			$TWR = pgescapetimestamp($_GET['TWR']);

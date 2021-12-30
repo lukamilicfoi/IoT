@@ -36,8 +36,8 @@ if ($can_edit_rules) {
 						. intval($_GET['send_inject_query_command_nothing']) . ', '
 						. (!empty($_GET['query_command_2'])
 						? pg_escape_literal($_GET['query_command_2']) : 'NULL') . ', '
-						. (!empty($_GET['proto_id']) ? '(SELECT proto FROM proto_name WHERE name = '
-						. pg_escape_literal($_GET['proto_id']) : 'NULL') . ', '
+						. (!empty($_GET['proto_name']) ? '(SELECT proto FROM proto_name
+						WHERE name = ' . pg_escape_literal($_GET['proto_id']) : 'NULL') . ', '
 						. (!empty($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL')
 						. ', ' . pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF'])
 						. ', ' . pgescapebool($_GET['broadcast']) . ', '
@@ -69,8 +69,8 @@ if ($can_edit_rules) {
 						. intval($_GET['send_inject_query_command_nothing']) . ', '
 						. (!empty($_GET['query_command_2'])
 						? pg_escape_literal($_GET['query_command_2']) : 'NULL') . ', '
-						. (!empty($_GET['proto_id']) ? '(SELECT proto FROM proto_name WHERE name = '
-						. pg_escape_literal($_GET['proto_id']) : 'NULL') . ', '
+						. (!empty($_GET['proto_name']) ? '(SELECT proto FROM proto_name
+						WHERE name = ' . pg_escape_literal($_GET['proto_name']) : 'NULL') . ', '
 						. (!empty($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL')
 						. ', ' . pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF'])
 						. ', ' . pgescapebool($_GET['broadcast']) . ', '
@@ -107,24 +107,24 @@ if ($can_edit_rules) {
 }
 if ($can_view_rules) {
 	if ($_SESSION['is_root']) {
-		$result = pgquery('SELECT rules.*, proto_name.proto FROM rules INNER JOIN proto_name
+		$result = pgquery('SELECT rules.*, proto_name.name FROM rules INNER JOIN proto_name
 				ON rules.proto_id = proto_name.proto ORDER BY rules.username ASC, rules.id ASC;');
 ?>
 		You are authorized to view (edit) rules for all users.<br/>
 <?php
 	} elseif ($_SESSION['is_administrator']) {
-		$result = pgquery("SELECT rules.*, proto_name.proto FROM rules INNER JOIN users
+		$result = pgquery("SELECT rules.*, proto_name.name FROM rules INNER JOIN users
 				ON rules.username = users.username INNER JOIN proto_name ON rules.proto_id
 				= proto_name.proto WHERE rules.username = {$_SESSION['s_username']}
 				OR NOT users.is_administrator ORDER BY rules.username ASC, rules.id ASC;");
-		echo "You are authorized to view (edit) rules for {$_SESSION['h2username']}
+		echo "You are authorized to view (edit) rules for username {$_SESSION['h2username']}
 				or non-administrators.<br/>\n";
 	} else {
-		$result = pgquery("SELECT rules.*, proto_name.proto FROM rules
+		$result = pgquery("SELECT rules.*, proto_name.name FROM rules
 				INNER JOIN proto_name ON rules.proto_id = proto_name.proto
 				WHERE rules.username = {$_SESSION['s_username']}
 				OR rules.username = 'public' ORDER BY rules.username ASC, rules.id ASC;");
-		echo "You are authorized to view (edit) rules for {$_SESSION['h2username']}
+		echo "You are authorized to view (edit) rules for username {$_SESSION['h2username']}
 				or public.<br/>\n";
 	}
 ?>
@@ -292,14 +292,14 @@ if ($can_view_rules) {
 						$username = htmlspecialchars($row[0]);
 						$form = "\"update_{$username}_{$row[1]}\"";
 						echo "<input form=$form type=\"text\" name=\"username\"
-									value=\"$username\" size=\"10\"/>\n";
+									value=\"$username\" size=\"10\" required/>\n";
 ?>
 						,
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"id\", value=\"{$row[1]}\"
-								size=\"10\"/>\n";
+								size=\"10\" required/>\n";
 ?>
 						.
 					</td>
@@ -524,7 +524,7 @@ if ($can_view_rules) {
 	Id must be unique. Smaller value indicates bigger priority.<br/>
 	When broadcasting a message any imm_DST is ignored.<br/>
 	On send and receive rules last_run is meaningless.<br/>
-	Strings are written without excess quotations, e.g., proto = 'tcp'.<br/>
+	Strings are written without excess quotations, e.g., proto = &apos;tcp&apos;.<br/>
 	<a href="index.php">Done</a>
 <?php
 }

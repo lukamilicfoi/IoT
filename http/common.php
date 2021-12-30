@@ -16,7 +16,7 @@ if ($needs_login && !isset($_SESSION['username'])) {
 		if (isset($_SESSION['is_root']) && $_SESSION['is_root']) {
 			$trail = ' as root';
 			$username = 'postgres';
-		} else if (isset($_SESSION['is_administrator']) && $_SESSION['is_administrator']) {
+		} elseif (isset($_SESSION['is_administrator']) && $_SESSION['is_administrator']) {
 			$trail = ' as administrator';
 			$username = 'administrator';
 		} else {

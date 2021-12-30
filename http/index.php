@@ -8,7 +8,7 @@ if ($can_edit_tables) {
 		$s2add = pg_escape_literal($_GET['add']);
 		pgquery("CREATE TABLE $s1add(t TIMESTAMP(4) WITHOUT TIME ZONE);");
 		pgquery("INSERT INTO table_owner(tablename, username) VALUES($s2add, 'public');");
-	} else if (!empty($_GET['remove'])) {
+	} elseif (!empty($_GET['remove'])) {
 		$s1remove = pg_escape_identifier($_GET['remove']);
 		$s2remove = pg_escape_literal($_GET['remove']);
 		$u_remove = urlencode($_GET['remove']);
@@ -37,7 +37,7 @@ if ($can_view_tables) {
 ?>
 		You are authorized to view (edit) all tables.
 <?php
-	} else if ($_SESSION['is_administrator']) {
+	} elseif ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT table_owner.tablename AS table_name, table_owner.username
 				= {$_SESSION['s_username']} OR NOT users.is_administrator AS can_edit,
 				table_name LIKE 't________________' AND table_name <> 'table_constraints'
@@ -94,10 +94,10 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 	if (!empty($_GET['msgtosend']) && !empty($_GET['proto_id']) && !empty($_GET['imm_DST'])) {
 		$s_msgtosend = pgescapebytea($_GET['msgtosend']);
 		$h_msgtosend = 'X&apos;' . htmlspecialchars($_GET['msgtosend']) . '&apos;';
-		$proto_id = pg_escape_literal($_GET['proto_id']);
+		$proto_name = pg_escape_literal($_GET['proto_name']);
 		$imm_DST = pgescapebytea($_GET['imm_DST']);
 		pgquery("SELECT send_inject(TRUE, $s_msgtosend, (SELECT proto FROM proto_name
-				WHERE name = $proto_id), $imm_DST, " . pgescapebool($_GET['CCF']) . ', '
+				WHERE name = $proto_name), $imm_DST, " . pgescapebool($_GET['CCF']) . ', '
 				. pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast']) . ', '
 				. pgescapebool($_GET['override_implicit_rules']) . ');');
 		echo "Message $h_msgtosend sent.\n";
@@ -105,11 +105,11 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 ?>
 	<form action="" method="GET">
 		Send message
-		<input type="text" name="msgtosend"/>
+		<input type="text" name="msgtosend" required/>
 		using protocol
-		<input type="text" name="proto_id"/>
+		<input type="text" name="proto_name" required/>
 		and imm_DST
-		<input type="text" name="imm_DST"/><br/>
+		<input type="text" name="imm_DST" required/><br/>
 		using CCF
 		<input type="checkbox" name="CCF"/>
 		and ACF
@@ -126,13 +126,13 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 <?php
 }
 if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
-	if (!empty($_GET['msgtoinject']) && !empty($_GET['proto_id']) && !empty($_GET['imm_SRC'])) {
+	if (!empty($_GET['msgtoinject']) && !empty($_GET['proto_name']) && !empty($_GET['imm_SRC'])) {
 		$s_msgtoinject = pgescapebytea($_GET['msgtoinject']);
 		$h_msgtoinject = 'X&apos;' . htmlspecialchars($_GET['msgtoinject']) . '&apos;';
-		$proto_id = pg_escape_literal($_GET['proto_id']);
+		$proto_name = pg_escape_literal($_GET['proto_name']);
 		$imm_SRC = pgescapebytea($_GET['imm_SRC']);
 		pgquery("SELECT send_inject(FALSE, $s_msgtoinject, (SELECT proto FROM proto_name
-				WHERE name = $proto_id), $imm_SRC, " . pgescapebool($_GET['CCF']) . ', '
+				WHERE name = $proto_name), $imm_SRC, " . pgescapebool($_GET['CCF']) . ', '
 				. pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast']) . ', '
 				. pgescapebool($_GET['override_implicit_rules']) . ');');
 		echo "Message $h_msgtoinject injected.\n";
@@ -140,11 +140,11 @@ if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
 ?>
 	<form action="" method="GET">
 		Inject message
-		<input type="text" name="msgtoinject"/>
+		<input type="text" name="msgtoinject" required/>
 		using protocol
-		<input type="text" name="proto_id"/>
+		<input type="text" name="proto_name" required/>
 		and imm_SRC
-		<input type="text" name="imm_SRC"/><br/>
+		<input type="text" name="imm_SRC" required/><br/>
 		using CCF
 		<input type="checkbox" name="CCF"/>
 		and ACF
@@ -171,13 +171,15 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 			if (!flock($flock, LOCK_EX)) {
 				exit('cannot flock');
 			}
-			pg_connect('dbname=postgres user=postgres client_encoding=utf8');
+			pg_connect('host=localhost dbname=postgres user=postgres client_encoding=utf8');
 			pgquery("UPDATE current_username SET current_username = {$_SESSION['s_username']};");
 			pg_close();
-			pg_connect('dbname=postgres user=' . ($_SESSION['is_administrator']
+			pg_connect('host=localhost dbname=postgres user=' . ($_SESSION['is_administrator']
 					? 'administrator' : 'local') . 'client_encoding=utf8');
 		}
+		//check
 		$result = pgquery($_GET['query']);
+		//current username?
 		if (!$_SESSION['is_root']) {
 			fclose($flock);
 		}
@@ -214,7 +216,7 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 ?>
 		You are authorized to send queries to read (write) all tables.
 <?php
-	} else if ($_SESSION['is_administrator']) {
+	} elseif ($_SESSION['is_administrator']) {
 		echo "You are authorized to send queries to read (write)
 				username-{$_SESSION['h2username']}-readable (-owned)
 				or non-administrator-readable (-owned) tables.\n";
@@ -228,7 +230,7 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 <?php
 		echo 'Send query to database (PostgreSQL ', pg_version()['client'], ")\n";
 ?>
-		<input type="text" name="query"/>
+		<input type="text" name="query" required/>
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
@@ -250,7 +252,7 @@ if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
 ?>
 		You are authorized to execute rules for all users.
 <?php
-	} else if ($_SESSION['is_administrator']) {
+	} elseif ($_SESSION['is_administrator']) {
 		echo "You are authorized to execute rules for username {$_SESSION['h2username']}
 				or non-administrators.\n";
 	} else {
@@ -259,9 +261,9 @@ if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
 ?>
 	<form action="" method="GET">
 		For username
-		<input type="text" name="username"/>
+		<input type="text" name="username" required/>
 		manually execute timed rule
-		<input type="text" name="id"/>
+		<input type="text" name="id" required/>
 		right now
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
@@ -276,7 +278,13 @@ if (check_authorization('can_view_rules', 'view rules')) {
 }
 ?>
 <a href="view_certificates_and_private_keys.php">View certificates and private keys</a><br/>
-<a href="view_users.php">View users</a><br/>
+<?php
+if (check_authorization('can_view_users', 'view users')) {
+?>
+	<a href="view_users.php">View users</a><br/>
+<?php
+}
+?>
 <a href="view_adapters_and_underlying_protocols.php">View adapters and underlying protocols</a><br/>
 <?php
 if (check_authorization('can_view_configuration', 'view configuration')) {
@@ -295,4 +303,4 @@ if (check_authorization('can_view_remotes', 'view remotes')) {
 <?php
 }
 ?>
-<a href="login.php?logout">Logout</a>
+<br/><a href="login.php?logout">Logout</a>

@@ -25,7 +25,7 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 				echo "<a href=\"?SRC=$u_SRC&amp;DST=$u_DST\">No</a>\n";
 				exit(0);
 			}
-		} else if (!empty($_GET['ID']) && !empty($_GET['TWR'])) {
+		} elseif (!empty($_GET['ID']) && !empty($_GET['TWR'])) {
 			$id = intval($_GET['ID']);
 			$TWR = pgescapetimestamp($_GET['TWR']);
 			if (isset($_GET['insert'])) {

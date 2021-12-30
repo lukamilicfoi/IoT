@@ -76,7 +76,7 @@ if (!empty($_GET['tablename'])) {
 		$result = pgquery("TABLE $s2tablename ORDER BY t DESC;");
 		echo "Viewing table $h2tablename.<br/>\n";
 ?>
-		Table ordered by &quot;t&quot; descending.
+		Table ordered by timestamp descending.
 		<table border="1">
 			<tbody>
 				<tr>
@@ -87,7 +87,7 @@ if (!empty($_GET['tablename'])) {
 					}
 					if ($can_edit) {
 ?>
-						<th>Actions</th>
+						<th>(actions)</th>
 <?php
 					}
 ?>
@@ -178,8 +178,8 @@ if (!empty($_GET['tablename'])) {
 				}
 ?>
 			</tbody>
-		</table><br/>
-		<a href="index.php">Done</a>
+		</table>
+		<br/><a href="index.php">Done</a>
 <?php
 	}
 }

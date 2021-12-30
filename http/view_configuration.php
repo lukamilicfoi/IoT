@@ -6,7 +6,7 @@ if ($can_edit_configuration && isset($_GET['update']) && !empty($_GET['username'
 	$s_username = pg_escape_literal($_GET['username']);
 	$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 	if ($_GET['username'] == $_SESSION['username'] || $_GET['username'] == 'public'
-			|| $_SESSION['is_administrator'] && !is_administrator($s_username)
+			|| !is_administrator($s_username) && $_SESSION['is_administrator']
 			|| $_SESSION['is_root']) {
 		pgquery('UPDATE configuration SET (forward_messages, use_internet_switch_algorithm,
 				nsecs_id, nsecs_src, trust_everyone, default_gateway) = ('
@@ -25,7 +25,7 @@ if ($can_view_configuration) {
 ?>
 		You are authorized to view (edit) configuration for all users.<br/>
 <?php
-	} else if ($_SESSION['is_administrator']) {
+	} elseif ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT configuration.* FROM configuration
 				INNER JOIN users ON configuration.username = users.username
 				WHERE configuration.username = {$_SESSION['s_username']}
@@ -34,7 +34,7 @@ if ($can_view_configuration) {
 				or non-administrators.<br/>\n";
 	} else {
 		$result = pgquery("SELECT * FROM configuration WHERE username = {$_SESSION['s_username']}
-				OR username = 'public' ORDER BY configuration.username ASC;");
+				OR username = 'public' ORDER BY username ASC;");
 		echo "You are authorized to view (edit) configuration for username {$_SESSION['h2username']}
 				or public.<br/>\n";
 	}
@@ -106,8 +106,7 @@ if ($can_view_configuration) {
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\"
-								name=\"default_gateway\" value=\"",
-								substr($row[6], 2), "\"/>\n";
+								name=\"default_gateway\" value=\"", substr($row[6], 2), "\"/>\n";
 ?>
 					</td>
 <?php

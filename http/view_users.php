@@ -26,10 +26,9 @@ if ($can_edit_users) {
 			$s_username = pg_escape_literal($_POST['username']);
 			$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
 			$query = "INSERT INTO users(username, password, is_administrator, $user_fields_joined,
-					can_actually_login) VALUES($s_username, '"
-					. password_hash($_POST['password'], PASSWORD_DEFAULT) . '\', '
-					. pgescapebool($_POST['is_administrator']);
-			for ($user_fields as $field) {
+					can_actually_login) VALUES($s_username, '" . password_hash($_POST['password'],
+					PASSWORD_DEFAULT) . '\', ' . pgescapebool($_POST['is_administrator']);
+			foreach ($user_fields as $field) {
 				$query .= ', ' . pgescapebool($_POST[$field]);
 			}
 			pgquery($query . ', ' . pgescapebool($_POST['can_actually_login']) . ');');
@@ -46,11 +45,11 @@ if ($can_edit_users) {
 					&& !is_administrator($s_username) || $_SESSION['is_root']) {
 				$query = 'UPDATE users SET (' . (!empty($_POST['password']) ? 'password, ' : '')
 						. ($_SESSION['is_root'] ? 'is_administrator, ' : '')
-						"$user_fields_joined) = (" . (!empty($_POST['password'])
-						? '\'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\', ' : '')
+						. "$user_fields_joined) = (" . (!empty($_POST['password']) ? '\''
+						. password_hash($_POST['password'], PASSWORD_DEFAULT) . '\', ' : '')
 						. ($_SESSION['is_root'] ? pgescapebool($_POST['is_administrator']) : '')
 						.', ';
-				for ($user_fields as $field) {
+				foreach ($user_fields as $field) {
 					$query .= pgescapebool($_POST[$field]) . ', ';
 				}
 				pgquery($query . pgescapebool($_POST['can_actually_login'])
@@ -93,12 +92,13 @@ if ($can_view_users) {
 		$result = pgquery("SELECT username, TRUE, is_administrator, $user_fields_joined,
 				can_actually_login FROM users WHERE username = {$_SESSION['s_username']}
 				OR NOT is_administrator ORDER BY username ASC;");
-		echo "You are authorized to view (edit) {$_SESSION['h2username']} or non-administrators.\n";
+		echo "You are authorized to view (edit) username {$_SESSION['h2username']}
+				or non-administrators.\n";
 	} else {
 		$result = pgquery("SELECT username, TRUE, is_administrator, $user_fields_joined,
 				can_actually_login FROM users WHERE username = {$_SESSION['s_username']}
 				OR username = 'public' ORDER BY username ASC;");
-		echo "You are authorized to view (edit) {$_SESSION['h2username']} or public.\n";
+		echo "You are authorized to view (edit) username {$_SESSION['h2username']} or public.\n";
 	}
 ?>
 	Viewing table &quot;users&quot;.<br/>
@@ -121,10 +121,10 @@ if ($can_view_users) {
 ?>
 				<tr>
 					<td>
-						<input form="insert" type="text" name="username"/>
+						<input form="insert" type="text" name="username" required/>
 					</td>
 					<td>
-						<input form="insert" type="password" name="password"/>
+						<input form="insert" type="password" name="password" required/>
 					</td>
 					<td>
 <?php
@@ -179,7 +179,7 @@ if ($can_view_users) {
 						$username = htmlspecialchars($row[0]);
 						if ($username == $_SESSION['h1username']) {
 							echo "<input type=\"text\" value=\"$username\"
-									disabled=\"disabled\"/>\n";
+									disabled/>\n";
 							echo "<input form=\"update2\" type=\"hidden\" name=\"username\"
 									value=\"$username\"/>\n";
 						} elseif ($can_edit_users) {
@@ -187,7 +187,7 @@ if ($can_view_users) {
 									value=\"$username\"/>\n";
 						} else {
 							echo "<input type=\"text\" value=\"$username\"
-									disabled=\"disabled\"/>\n";
+									disabled/>\n";
 						}
 ?>
 					</td>
@@ -198,7 +198,7 @@ if ($can_view_users) {
 						} elseif ($can_edit_users) {
 							echo "<input form=\"update1\" type=\"password\" name=\"password\"/>\n";
 						} else {
-							echo "<input type=\"password\" disabled=\"disabled\"/>\n";
+							echo "<input type=\"password\" disabled/>\n";
 						}
 ?>
 					</td>
@@ -206,10 +206,10 @@ if ($can_view_users) {
 <?php
 						if ($_SESSION['is_root'] && $username != 'root') {
 							echo "<input form=\"update1_$username\" type=\"checkbox\"",
-									$row[2] == 't' ? ' checked="checked"' : '', "/>\n";
+									$row[2] == 't' ? ' checked' : '', "/>\n";
 						} else {
-							echo '<input type="checkbox"', $row[2] == 't' ? ' checked="checked"'
-									: '', " disabled=\"disabled\"/>\n";
+							echo '<input type="checkbox"', $row[2] == 't' ? ' checked'
+									: '', " disabled/>\n";
 							echo "<input form=\"update1_$username\" type=\"hidden\"
 									name=\"is_administrator\"", $row[2] == 't' ? ' value="true"'
 									: '', "/>\n";
@@ -223,9 +223,9 @@ if ($can_view_users) {
 <?php
 							echo "<input form=\"update1_$username\" type=\"checkbox\"
 									name=\"{$user_fields[$i]}\"",
-									$row[$i + 3] == 't' ? ' checked="checked"' : '',
+									$row[$i + 3] == 't' ? ' checked' : '',
 									$can_edit_users && $username != $_SESSION['h1username']
-									? '' : ' disabled="disabled"', "/>\n";
+									? '' : ' disabled', "/>\n";
 ?>
 						</td>
 <?php
@@ -235,14 +235,14 @@ if ($can_view_users) {
 <?php
 						echo "<input form=\"update1_$username\" type=\"checkbox\"
 								name=\"can_actually_login\"",
-								$row[$user_fields_length + 4] == 't' ? ' checked="checked"' : '',
+								$row[$user_fields_length + 4] == 't' ? ' checked' : '',
 								$can_edit_users && $username != $_SESSION['h1username']
-								? '' : ' disabled="disabled"', "/>\n";
+								? '' : ' disabled', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						if ($username = $_SESSION['h1username']) {
+						if ($username == $_SESSION['h1username']) {
 ?>
 							<form id="update2" action="" method="POST">
 								<input type="submit" name="update2" value="UPDATE"/><br/>

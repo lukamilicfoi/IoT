@@ -14,7 +14,7 @@ if (!empty($_POST['username']) && !empty($_POST['password'])) {
 		$_SESSION['is_administrator'] = $row[1] == 't';
 		$_SESSION['s_is_administrator'] = $_SESSION['is_administrator'] ? 'TRUE' : 'FALSE';
 	}
-} else if (isset($_GET['logout'])) {
+} elseif (isset($_GET['logout'])) {
 	unset($_SESSION['username']);
 }
 if (isset($_SESSION['username'])) {

@@ -53,7 +53,7 @@ if ($can_view_remotes) {
 ?>
 			You are authorized to view (edit) all remotes.
 <?php
-		} else if ($_SESSION['is_administrator']) {
+		} elseif ($_SESSION['is_administrator']) {
 			$result = pgquery("SELECT DISTINCT addr_oID.addr AS b_address, EXISTS(SELECT TRUE
 					FROM table_owner INNER JOIN users ON table_owner.username = users.username
 					WHERE table_owner.tablename = 't' || encode(b_address, 'hex')
@@ -69,10 +69,10 @@ if ($can_view_remotes) {
 			$result = pgquery("SELECT DISTINCT addr_oID.addr AS b_address, EXISTS(SELECT TRUE
 					FROM table_owner WHERE tablename = 't' || encode(b_address, 'hex')
 					AND (username = {$_SESSION['username']} OR username = 'public')) AS can_edit
-					FROM addr_oID.addr INNER JOIN table_reader
-					ON 't' || encode(address, 'hex') = table_reader.tablename WHERE can_edit
-					OR table_reader.username = {$_SESSION['s_username']}
-					OR table_reader.username = 'public' ORDER BY b_address ASC;");
+					FROM addr_oID.addr INNER JOIN table_reader ON 't' || encode(address, 'hex')
+					= table_reader.tablename WHERE can_edit OR table_reader.username
+					= {$_SESSION['s_username']} OR table_reader.username = 'public'
+					ORDER BY b_address ASC;");
 			echo "You are authorized to view (edit) username-{$_SESSION['h2username']}-readable
 					(-owned) or public-readable (-owned) remotes.\n";
 		}
@@ -95,7 +95,7 @@ if ($can_view_remotes) {
 			}
 			if ($can_edit_remotes) {
 ?>
-				<input type="text" name="add"/>
+				<input type="text" name="add" required/>
 				<input type="submit" value="(add if permitted)"/>
 				Write remote as a binary string, e.g., abababababababab.
 <?php
