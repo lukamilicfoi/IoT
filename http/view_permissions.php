@@ -1,7 +1,9 @@
 <?php
 require_once 'common.php';
-$can_view_permissions = check_authorization('can_view_permissions', 'view permissions');
-$can_edit_permissions = check_authorization('can_edit_permissions', 'edit permissions');
+$can_view_permissions = check_authorization('can_view_permissions',
+		'view reader or owner permissions');
+$can_edit_permissions = check_authorization('can_edit_permissions',
+		'edit reader or owner permissions');
 if ($can_edit_permissions) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
@@ -25,13 +27,12 @@ if ($can_edit_permissions) {
 		$tablename_owner_is_user = $tablename_owner == $_SESSION['username'];
 		$tablename_owner_is_user_or_public = $tablename_owner_is_user
 				|| $tablename_owner == 'public';
-		if (isset($_GET['insert'])) {
-			if ($tablename_owner_is_user_or_public || $_SESSION['is_administrator']
-					&& !$tablename_owner_is_administrator || $_SESSION['is_root']) {
-				pgquery("INSERT INTO table_reader(tablename, username)
-						VALUES($s_tablename, $s_username);");
-				echo "Reader ($h_tablename, $h_username) inserted.<br/>\n";
-			}
+		if (($tablename_owner_is_user_or_public || $_SESSION['is_administrator']
+				&& !$tablename_owner_is_administrator || $_SESSION['is_root'])
+				&& isset($_GET['insert']) {
+			pgquery("INSERT INTO table_reader(tablename, username)
+					VALUES($s_tablename, $s_username);");
+			echo "Reader ($h_tablename, $h_username) inserted.<br/>\n";
 		} elseif (!empty($_GET['key1']) && !empty($_GET['key2'])) {
 			$s_key1 = pg_escape_literal($_GET['key1']);
 			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
@@ -122,7 +123,7 @@ if ($can_edit_permissions) {
 				ORDER BY is_owner ASC, table_name ASC, username ASC;");
 		echo "You are authorized to view (edit) permissions for
 				username-{$_SESSION['h2username']}-readable (-owned)
-				or public-readable tables.<br/>\n";
+				or public-user-readable tables.<br/>\n";
 	}
 ?>
 	Viewing tables &quot;table_reader&quot; and &quot;table_owner&quot;,
@@ -230,7 +231,7 @@ if ($can_edit_permissions) {
 ?>
 		</tbody>
 	</table>
-	Write tablename and username as a string, e.g., tabababababababab and root.<br/>
+	Write tablename and username as a string, e.g., table and root.<br/>
 	<a href="index.php">Done</a>
 <?php
 }

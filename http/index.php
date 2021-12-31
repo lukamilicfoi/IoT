@@ -7,7 +7,7 @@ if ($can_edit_tables) {
 		$s1add = pg_escape_identifier($_GET['add']);
 		$s2add = pg_escape_literal($_GET['add']);
 		pgquery("CREATE TABLE $s1add(t TIMESTAMP(4) WITHOUT TIME ZONE);");
-		pgquery("INSERT INTO table_owner(tablename, username) VALUES($s2add, 'public');");
+		pgquery("INSERT INTO table_owner(tablename, username) VALUES($s2add, $s_username);");
 	} elseif (!empty($_GET['remove'])) {
 		$s1remove = pg_escape_identifier($_GET['remove']);
 		$s2remove = pg_escape_literal($_GET['remove']);
@@ -58,11 +58,11 @@ if ($can_view_tables) {
 				WHERE tablename = table_name AND (username = {$_SESSION['s_username']}
 				OR username = 'public')) ORDER BY is_device ASC, table_name ASC;");
 		echo "You are authorized to view (edit) username-{$_SESSION['h2username']}-readable (-owned)
-				or public-readable (-owned) tables.\n";
+				or public-user-readable (-owned) tables.\n";
 	}
 ?>
 	<form action="" method="GET">
-		View table, device tables shown first:
+		View table, regular tables shown first:
 <?php
 		for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 			$u_tablename = urlencode($row[0]);
@@ -81,7 +81,7 @@ if ($can_view_tables) {
 		if ($can_edit_tables) {
 ?>
 			<input type="text" name="add" required/>
-			<input type="submit" value="(add as public)"/>
+			<input type="submit" value="(add as mine)"/>
 			Write name as a string, e.g., table.
 <?php
 		}
@@ -91,7 +91,7 @@ if ($can_view_tables) {
 <?php
 }
 if (check_authorization('can_send_messages', 'send messages to nodes')) {
-	if (!empty($_GET['msgtosend']) && !empty($_GET['proto_id']) && !empty($_GET['imm_DST'])) {
+	if (!empty($_GET['msgtosend']) && !empty($_GET['proto_name']) && !empty($_GET['imm_DST'])) {
 		$s_msgtosend = pgescapebytea($_GET['msgtosend']);
 		$h_msgtosend = 'X&apos;' . htmlspecialchars($_GET['msgtosend']) . '&apos;';
 		$proto_name = pg_escape_literal($_GET['proto_name']);
@@ -171,15 +171,13 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 			if (!flock($flock, LOCK_EX)) {
 				exit('cannot flock');
 			}
-			pg_connect('host=localhost dbname=postgres user=postgres client_encoding=utf8');
+			pg_connect('host=localhost dbname=postgres user=postgres client_encoding=UTF8');
 			pgquery("UPDATE current_username SET current_username = {$_SESSION['s_username']};");
 			pg_close();
 			pg_connect('host=localhost dbname=postgres user=' . ($_SESSION['is_administrator']
-					? 'administrator' : 'local') . 'client_encoding=utf8');
+					? 'administrator' : 'local') . 'client_encoding=UTF8');
 		}
-		//check
 		$result = pgquery($_GET['query']);
-		//current username?
 		if (!$_SESSION['is_root']) {
 			fclose($flock);
 		}
@@ -223,7 +221,7 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 	} else {
 		echo "You are authorized to send queries to read (write)
 				username-{$_SESSION['h2username']}-readable (-owned)
-				or non-administrator-readable (-owned) tables.\n";
+				or public-user-readable (-owned) tables.\n";
 	}
 ?>
 	<form action="" method="GET">
@@ -256,7 +254,8 @@ if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
 		echo "You are authorized to execute rules for username {$_SESSION['h2username']}
 				or non-administrators.\n";
 	} else {
-		echo "You are authorized to execute rules for {$_SESSION['h1username']} or public.\n";
+		echo "You are authorized to execute rules for {$_SESSION['h1username']}
+				or public user.\n";
 	}
 ?>
 	<form action="" method="GET">
@@ -268,7 +267,7 @@ if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write username and rule as a string and an integer, e.g., root and 11.<br/><br/>
+	Write username and rule as a string and a positive integer, e.g., root and 11.<br/><br/>
 <?php
 }
 if (check_authorization('can_view_rules', 'view rules')) {

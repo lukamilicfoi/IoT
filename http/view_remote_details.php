@@ -68,7 +68,7 @@ if (!empty($_GET['addr'])) {
 				"everything here.<br/><br/>\n";
 ?>
 		<form action="" method="GET">
-			View destination:
+			View destination for this SRC:
 <?php
 			$result = pgquery("SELECT DST FROM SRC_DST WHERE SRC = $s2addr ORDER BY DST ASC;");
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
@@ -87,7 +87,7 @@ if (!empty($_GET['addr'])) {
 			if ($can_edit) {
 				echo "<input type=\"hidden\" name=\"addr\" value=\"$h1addr\"/>\n";
 ?>
-				<input type="text" name="add_DST"/>
+				<input type="text" name="add_DST" required/>
 				<input type="submit" value="(add)"/>
 				Write destination as a binary string, e.g., abababababababab.
 <?php
@@ -95,7 +95,7 @@ if (!empty($_GET['addr'])) {
 ?>
 		</form>
 		Destinations ordered by address ascending.<br/><br/>
-		Outgoing ID:
+		Outgoing ID for this SRC:
 <?php
 		$result = pgquery("SELECT out_ID FROM addr_oID WHERE addr = $s2addr;");
 		echo "<input form=\"change\" type=\"hidden\" name=\"addr\" value=\"$h1addr\"/>\n";
@@ -103,20 +103,20 @@ if (!empty($_GET['addr'])) {
 				"\"/>\n";
 		if ($can_edit) {
 ?>
-			<input form="change" type="submit" value="change"/>
+			<input form="change" type="submit" value="change" required/>
 			<input form="change" type="reset" value="reset"/>
 <?php
 			echo "<input form=\"random\" type=\"hidden\" name=\"addr\" value=\"$h1addr\"/>\n";
 ?>
 			<input form="random" type="submit" name="randomize" value="randomize"/>
-			Write id as an integer, e.g., 11.
+			Write id as a positive integer, e.g., 11.
 			<form id="change" action="" method="GET"></form>
 			<form id="random" action="" method="GET"></form>
 <?php
 		}
 ?>
 		<br/><br/><form action="" method="GET">
-			View protocol:
+			View protocol for this SRC:
 <?php
 			$result = pgquery("SELECT proto_name.name FROM SRC_proto
 					INNER JOIN proto_name ON SRC_proto.proto = proto_name.proto
@@ -136,7 +136,7 @@ if (!empty($_GET['addr'])) {
 			if ($can_edit) {
 				echo "<input type=\"hidden\" name=\"addr\" value=\"$h1addr\"/>\n";
 ?>
-				<input type="text" name="add_proto"/>
+				<input type="text" name="add_proto" required/>
 				<input type="submit" value="(add)"/>
 				Write protocol as a string, e.g., tcp.
 <?php

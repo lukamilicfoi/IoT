@@ -8,11 +8,11 @@ if (!empty($_POST['username']) && !empty($_POST['password'])) {
 	$row = pg_fetch_row(pgquery("SELECT password, is_administrator FROM users
 			WHERE username = {$_SESSION['s_username']} AND can_actually_login;"));
 	if ($row && password_verify($_POST['password'], $row[0])) {
-		$_SESSION['username'] = $_POST['username'];
 		$_SESSION['is_root'] = $_POST['username'] == 'root';
 		$_SESSION['s_is_root'] = $_SESSION['is_root'] ? 'TRUE' : 'FALSE';
 		$_SESSION['is_administrator'] = $row[1] == 't';
 		$_SESSION['s_is_administrator'] = $_SESSION['is_administrator'] ? 'TRUE' : 'FALSE';
+		$_SESSION['username'] = $_POST['username'];
 	}
 } elseif (isset($_GET['logout'])) {
 	unset($_SESSION['username']);
@@ -22,9 +22,9 @@ if (isset($_SESSION['username'])) {
 } else {
 ?>
 	<form action="" method="POST">
-		User:
+		Username:
 		<input type="text" name="username" required/>
-		Pass:
+		Password:
 		<input type="password" name="password" required/>
 		Actions:
 		<input type="submit" value="login"/>

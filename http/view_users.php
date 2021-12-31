@@ -36,7 +36,8 @@ if ($can_edit_users) {
 					use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone,
 					default_gateway) SELECT $s_username, forward_messages,
 					use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone,
-					default_gateway FROM configuration WHERE username = 'root';");
+					default_gateway FROM configuration
+					WHERE username = {$_SESSION['s_username']};");
 			echo "User $h_username inserted.<br/>\n";
 		} elseif (isset($_POST['update1'])) {
 			$s_username = pg_escape_literal($_POST['username']);
@@ -98,7 +99,8 @@ if ($can_view_users) {
 		$result = pgquery("SELECT username, TRUE, is_administrator, $user_fields_joined,
 				can_actually_login FROM users WHERE username = {$_SESSION['s_username']}
 				OR username = 'public' ORDER BY username ASC;");
-		echo "You are authorized to view (edit) username {$_SESSION['h2username']} or public.\n";
+		echo "You are authorized to view (edit) username {$_SESSION['h2username']}
+				or public user.\n";
 	}
 ?>
 	Viewing table &quot;users&quot;.<br/>
@@ -134,7 +136,7 @@ if ($can_view_users) {
 <?php
 						} else {
 ?>
-							<input type="checkbox" disabled="disabled"/>
+							<input type="checkbox" disabled/>
 <?php
 						}
 ?>
@@ -178,16 +180,13 @@ if ($can_view_users) {
 <?php
 						$username = htmlspecialchars($row[0]);
 						if ($username == $_SESSION['h1username']) {
-							echo "<input type=\"text\" value=\"$username\"
-									disabled/>\n";
-							echo "<input form=\"update2\" type=\"hidden\" name=\"username\"
-									value=\"$username\"/>\n";
+							echo "<input form=\"update2\" type=\"text\" name=\"username\"
+									value=\"$username\" readonly/>\n";
 						} elseif ($can_edit_users) {
 							echo "<input form=\"update1_$username\" type=\"text\" name=\"username\"
-									value=\"$username\"/>\n";
+									value=\"$username\" required/>\n";
 						} else {
-							echo "<input type=\"text\" value=\"$username\"
-									disabled/>\n";
+							echo "<input type=\"text\" value=\"$username\" disabled/>\n";
 						}
 ?>
 					</td>
@@ -208,11 +207,9 @@ if ($can_view_users) {
 							echo "<input form=\"update1_$username\" type=\"checkbox\"",
 									$row[2] == 't' ? ' checked' : '', "/>\n";
 						} else {
-							echo '<input type="checkbox"', $row[2] == 't' ? ' checked'
-									: '', " disabled/>\n";
-							echo "<input form=\"update1_$username\" type=\"hidden\"
-									name=\"is_administrator\"", $row[2] == 't' ? ' value="true"'
-									: '', "/>\n";
+							echo "<input form=\"update1_$username\" type=\"checkbox\"
+									name=\"is_administrator\"", $row[2] == 't' ? ' checked'
+									: '', " readonly/>\n";
 						}
 ?>
 					</td>
@@ -222,10 +219,9 @@ if ($can_view_users) {
 						<td>
 <?php
 							echo "<input form=\"update1_$username\" type=\"checkbox\"
-									name=\"{$user_fields[$i]}\"",
-									$row[$i + 3] == 't' ? ' checked' : '',
-									$can_edit_users && $username != $_SESSION['h1username']
-									? '' : ' disabled', "/>\n";
+									name=\"{$user_fields[$i]}\"", $row[$i + 3] == 't'
+									? ' checked' : '', $can_edit_users && $username
+									!= $_SESSION['h1username'] ? '' : ' disabled', "/>\n";
 ?>
 						</td>
 <?php
@@ -234,17 +230,16 @@ if ($can_view_users) {
 					<td>
 <?php
 						echo "<input form=\"update1_$username\" type=\"checkbox\"
-								name=\"can_actually_login\"",
-								$row[$user_fields_length + 4] == 't' ? ' checked' : '',
-								$can_edit_users && $username != $_SESSION['h1username']
-								? '' : ' disabled', "/>\n";
+								name=\"can_actually_login\"", $row[$user_fields_length + 4] == 't'
+								? ' checked' : '', $can_edit_users && $username
+								!= $_SESSION['h1username'] ? '' : ' disabled', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						if ($username == $_SESSION['h1username']) {
 ?>
-							<form id="update2" action="" method="POST">
+							<form id="update2" action="?" method="POST">
 								<input type="submit" name="update2" value="UPDATE"/><br/>
 								<input type="reset" value="reset"/>
 							</form>
@@ -257,7 +252,7 @@ if ($can_view_users) {
 <?php
 							echo "</form>\n";
 ?>
-							<form action="" method="GET">
+							<form action="?" method="GET">
 <?php
 								echo "<input type=\"hidden\" name=\"key\" value=\"$username\"/>\n";
 ?>
@@ -273,7 +268,7 @@ if ($can_view_users) {
 ?>
 		</tbody>
 	</table>
-	Write username as a string, e.g., root.<br/>
+	Write username as a string, e.g., root.<br/><br/>
 	<a href="index.php">Done</a>
 <?php
 }

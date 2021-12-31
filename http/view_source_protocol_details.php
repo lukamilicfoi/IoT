@@ -87,10 +87,10 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 ?>
 					<tr>
 						<td>
-							<input form="insert" type="text" name="imm_SRC"/>
+							<input form="insert" type="text" name="imm_SRC" required/>
 						</td>
 						<td>
-							<input form="insert" type="text" name="TWR"/>
+							<input form="insert" type="text" name="TWR" required/>
 						</td>
 						<td>
 							<form id="insert" action="" method="GET">
@@ -122,13 +122,13 @@ if (!empty($_GET['SRC']) && !empty($_GET['proto'])) {
 <?php
 							$str = substr($row[0], 2);
 							echo "<input form=\"update$str\" type=\"text\" name=\"imm_SRC\"
-									value=\"$str\"/>\n";
+									value=\"$str\" required/>\n";
 ?>
 						</td>
 						<td>
 <?php
 							echo "<input form=\"update$str\" type=\"text\" name=\"TWR\"
-									value=\"{$row[1]}\"/>\n";
+									value=\"{$row[1]}\" required/>\n";
 ?>
 						</td>
 <?php

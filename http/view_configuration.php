@@ -2,11 +2,11 @@
 require_once 'common.php';
 $can_view_configuration = check_authorization('can_view_configuration', 'view configuration');
 $can_edit_configuration = check_authorization('can_edit_configuration', 'edit configuration');
-if ($can_edit_configuration && isset($_GET['update']) && !empty($_GET['username'])) {
+if ($can_edit_configuration && !empty($_GET['username']) && isset($_GET['update'])) {
 	$s_username = pg_escape_literal($_GET['username']);
 	$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 	if ($_GET['username'] == $_SESSION['username'] || $_GET['username'] == 'public'
-			|| !is_administrator($s_username) && $_SESSION['is_administrator']
+			|| $_SESSION['is_administrator'] && !is_administrator($s_username)
 			|| $_SESSION['is_root']) {
 		pgquery('UPDATE configuration SET (forward_messages, use_internet_switch_algorithm,
 				nsecs_id, nsecs_src, trust_everyone, default_gateway) = ('
@@ -26,8 +26,8 @@ if ($can_view_configuration) {
 		You are authorized to view (edit) configuration for all users.<br/>
 <?php
 	} elseif ($_SESSION['is_administrator']) {
-		$result = pgquery("SELECT configuration.* FROM configuration
-				INNER JOIN users ON configuration.username = users.username
+		$result = pgquery("SELECT configuration.* FROM configuration INNER JOIN users
+				ON configuration.username = users.username
 				WHERE configuration.username = {$_SESSION['s_username']}
 				OR NOT users.is_administrator ORDER BY configuration.username ASC;");
 		echo "You are authorized to view (edit) configuration for username {$_SESSION['h2username']}
@@ -36,7 +36,7 @@ if ($can_view_configuration) {
 		$result = pgquery("SELECT * FROM configuration WHERE username = {$_SESSION['s_username']}
 				OR username = 'public' ORDER BY username ASC;");
 		echo "You are authorized to view (edit) configuration for username {$_SESSION['h2username']}
-				or public.<br/>\n";
+				or public user.<br/>\n";
 	}
 ?>
 	Viewing table &quot;configuration&quot;.<br/>
@@ -99,8 +99,7 @@ if ($can_view_configuration) {
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"checkbox\"
-								name=\"trust_everyone\"",
-								$row[5] == 't' ? ' checked' : '', "/>\n";
+								name=\"trust_everyone\"", $row[5] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
 					<td>
@@ -131,7 +130,7 @@ if ($can_view_configuration) {
 ?>
 		</tbody>
 	</table>
-	Write default gateway as a binary string, e.g., abababababababab.<br/>
+	Write default gateway as a binary string, e.g., abababababababab.<br/><br/>
 	<a href="index.php">Done</a>
 <?php
 }

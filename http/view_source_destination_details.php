@@ -77,10 +77,10 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 ?>
 					<tr>
 						<td>
-							<input form="insert" type="text" name="ID"/>
+							<input form="insert" type="text" name="ID" required/>
 						</td>
 						<td>
-							<input form="insert" type="text" name="TWR"/>
+							<input form="insert" type="text" name="TWR" required/>
 						</td>
 						<td>
 							<form id="insert" action="" method="GET">
@@ -110,13 +110,13 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 						<td>
 <?php
 							echo "<input form=\"update{$row[0]}\" type=\"text\" name=\"ID\"
-									value=\"{$row[0]}\"/>\n";
+									value=\"{$row[0]}\" required/>\n";
 ?>
 						</td>
 						<td>
 <?php
 							echo "<input form=\"update{$row[0]}\" type=\"text\" name=\"TWR\"
-									value=\"{$row[1]}\"/>\n";
+									value=\"{$row[1]}\" required/>\n";
 ?>
 						</td>
 <?php

@@ -13,10 +13,10 @@ if ($needs_login && !isset($_SESSION['username'])) {
 	<head>
 
 <?php
-		if (isset($_SESSION['is_root']) && $_SESSION['is_root']) {
+		if (!empty($_SESSION['is_root'])) {
 			$trail = ' as root';
 			$username = 'postgres';
-		} elseif (isset($_SESSION['is_administrator']) && $_SESSION['is_administrator']) {
+		} elseif (!empty($_SESSION['is_administrator'])) {
 			$trail = ' as administrator';
 			$username = 'administrator';
 		} else {
@@ -31,9 +31,6 @@ if ($needs_login && !isset($_SESSION['username'])) {
 	<body>
 
 <?php
-		if (!pg_connect("host=localhost dbname=postgres user=$username client_encoding=UTF8")) {
-			exit('Could not connect - ' . pg_last_error());
-		}
 		register_shutdown_function(function() {
 ?>
 
@@ -41,7 +38,10 @@ if ($needs_login && !isset($_SESSION['username'])) {
 </html>
 
 <?php
-});
+);
+if (!pg_connect("host=localhost dbname=postgres user=$username client_encoding=UTF8")) {
+	exit('Could not connect - ' . pg_last_error());
+}
 
 function pgescapebool(&$boolvar) {
 	return $boolvar !== null ? 'TRUE' : 'FALSE';
@@ -51,12 +51,12 @@ function can_view_table($s_tablename) {
 	return pg_num_rows(pgquery("SELECT TRUE FROM table_owner INNER JOIN users
 			ON table_owner.username = users.username WHERE table_owner.tablename = $s_tablename
 			AND (table_owner.username = {$_SESSION['s_username']} OR table_owner.username = 'public'
-			OR NOT users.is_administrator AND {$_SESSION['s_is_administrator']}
+			OR {$_SESSION['is_administrator']} AND NOT users.is_administrator
 			OR {$_SESSION['s_is_root']}) UNION ALL SELECT TRUE FROM table_reader INNER JOIN users
 			ON table_reader.username = users.username WHERE table_reader.username = $s_tablename
 			AND (table_reader.username = {$_SESSION['s_username']}
-			OR table_reader.username = 'public' OR NOT users.is_administrator
-			AND {$_SESSION['s_is_administrator']} OR {$_SESSION['s_is_root']});")) != 0;
+			OR table_reader.username = 'public' OR {$_SESSION['is_administrator']}
+			AND NOT users.is_administrator OR {$_SESSION['s_is_root']});")) != 0;
 }
 
 function pgescapetimestamp($timestampvar) {
@@ -104,7 +104,7 @@ function can_edit_table($s_tablename) {
 	return pg_num_rows(pgquery("SELECT TRUE FROM table_owner INNER JOIN users
 			ON table_owner.username = users.username WHERE table_owner.tablename = $s_tablename
 			AND (table_owner.username = {$_SESSION['s_username']} OR table_owner.username = 'public'
-			OR NOT users.is_administrator AND {$_SESSION['s_is_administrator']}
+			OR {$_SESSION['s_is_administrator']} AND NOT users.is_administrator
 			OR {$_SESSION['s_is_root']});")) != 0;
 }
 

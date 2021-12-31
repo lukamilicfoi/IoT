@@ -73,10 +73,10 @@ if (!empty($_GET['tablename'])) {
 		}
 	}
 	if ($can_view) {
-		$result = pgquery("TABLE $s2tablename ORDER BY t DESC;");
+		$result = pgquery("TABLE $s2tablename ORDER BY t ASC;");
 		echo "Viewing table $h2tablename.<br/>\n";
 ?>
-		Table ordered by timestamp descending.
+		Table ordered by timestamp ascending.
 		<table border="1">
 			<tbody>
 				<tr>
@@ -151,7 +151,7 @@ if (!empty($_GET['tablename'])) {
 <?php
 								echo "<form id=\"update{$row[$t]}\" action=\"\" method=\"GET\">\n";
 									echo "<input type=\"hidden\" name=\"key\"
-											value="{$row[$t]}\"/>\n";
+											value=\"{$row[$t]}\"/>\n";
 									echo "<input type=\"hidden\" name=\"tablename\"
 											value=\"$h1tablename\"/>\n";
 ?>
@@ -163,7 +163,7 @@ if (!empty($_GET['tablename'])) {
 								<form action="" method="GET">
 <?php
 									echo "<input type=\"hidden\" name=\"key\"
-											value="{$row[$t]}\"/>\n";
+											value=\"{$row[$t]}\"/>\n";
 									echo "<input type=\"hidden\" name=\"tablename\"
 											value=\"$h1tablename\"/>\n";
 ?>

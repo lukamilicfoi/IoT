@@ -19,34 +19,33 @@ if ($can_edit_rules) {
 		$s_username = pg_escape_literal($_GET['username']);
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 		$id = intval($_GET['id']);
-		if (isset($_GET['insert'])) {
-			if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
-					&& !is_administrator($s_username) || $_SESSION['is_root']) {
-				pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter,
-						drop_modify_nothing, modification, query_command_nothing, query_command_1,
-						send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF,
-						ACF, broadcast, override_implicit_rules, activate, deactivate, is_active)
-						VALUES($s_username, $id, " . intval($_GET['send_receive_seconds']) . ', '
-						. pg_escape_literal($_GET['filter']) . ', '
-						. intval($_GET['drop_modify_nothing']) . ', '
-						. (!empty($_GET['modification']) ? pg_escape_literal($_GET['modification'])
-						: 'NULL') . ', ' . intval($_GET['query_command_nothing']) . ', '
-						. (!empty($_GET['query_command_1'])
-						? pg_escape_literal($_GET['query_command_1']) : 'NULL') . ', '
-						. intval($_GET['send_inject_query_command_nothing']) . ', '
-						. (!empty($_GET['query_command_2'])
-						? pg_escape_literal($_GET['query_command_2']) : 'NULL') . ', '
-						. (!empty($_GET['proto_name']) ? '(SELECT proto FROM proto_name
-						WHERE name = ' . pg_escape_literal($_GET['proto_id']) : 'NULL') . ', '
-						. (!empty($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL')
-						. ', ' . pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF'])
-						. ', ' . pgescapebool($_GET['broadcast']) . ', '
-						. pgescapebool($_GET['override_implicit_rules']) . ', '
-						. (!empty($_GET['activate']) ? intval($_GET['activate']) : 'NULL') . ', '
-						. (!empty($_GET['deactivate']) ? intval($_GET['deactivate']) : 'NULL')
-						. ', ' . pgescapebool($_GET['is_active']) . ');');
-				echo "For username $h_username rule $id inserted.<br/>\n";
-			}
+		if (($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
+				&& !is_administrator($s_username) || $_SESSION['is_root'])
+				&& isset($_GET['insert'])) {
+			pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter,
+					drop_modify_nothing, modification, query_command_nothing, query_command_1,
+					send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF,
+					ACF, broadcast, override_implicit_rules, activate, deactivate, is_active)
+					VALUES($s_username, $id, " . intval($_GET['send_receive_seconds']) . ', '
+					. pg_escape_literal($_GET['filter']) . ', '
+					. intval($_GET['drop_modify_nothing']) . ', ' . (!empty($_GET['modification'])
+					? pg_escape_literal($_GET['modification']) : 'NULL') . ', '
+					. intval($_GET['query_command_nothing']) . ', '
+					. (!empty($_GET['query_command_1'])
+					? pg_escape_literal($_GET['query_command_1']) : 'NULL') . ', '
+					. intval($_GET['send_inject_query_command_nothing']) . ', '
+					. (!empty($_GET['query_command_2'])
+					? pg_escape_literal($_GET['query_command_2']) : 'NULL') . ', '
+					. (!empty($_GET['proto_name']) ? '(SELECT proto FROM proto_name WHERE name = '
+					. pg_escape_literal($_GET['proto_id']) : 'NULL') . ', '
+					. (!empty($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL') . ', '
+					. pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF']) . ', '
+					. pgescapebool($_GET['broadcast']) . ', '
+					. pgescapebool($_GET['override_implicit_rules']) . ', '
+					. (!empty($_GET['activate']) ? intval($_GET['activate']) : 'NULL') . ', '
+					. (!empty($_GET['deactivate']) ? intval($_GET['deactivate']) : 'NULL') . ', '
+					. pgescapebool($_GET['is_active']) . ');');
+			echo "For username $h_username rule $id inserted.<br/>\n";
 		} elseif (!empty($_GET['key1']) && !empty($_GET['key2'])) {
 			$s_key1 = pg_escape_literal($_GET['key1']);
 			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
@@ -125,7 +124,7 @@ if ($can_view_rules) {
 				WHERE rules.username = {$_SESSION['s_username']}
 				OR rules.username = 'public' ORDER BY rules.username ASC, rules.id ASC;");
 		echo "You are authorized to view (edit) rules for username {$_SESSION['h2username']}
-				or public.<br/>\n";
+				or public user.<br/>\n";
 	}
 ?>
 	Viewing table &quot;rules&quot;<br/>
@@ -264,7 +263,7 @@ if ($can_view_rules) {
 					</td>
 					<td>
 						<input form="insert" type="text" name="last_run" value="LOCALTIMESTAMP(0)"
-								disabled="disabled"/>
+								disabled/>
 					</td>
 					<td>
 						<form id="insert" action="" method="GET">
@@ -521,9 +520,9 @@ if ($can_view_rules) {
 	Filter can be either a number or a string.<br/>
 	Leaving a field empty indicates null value.<br/>
 	Deactivating a rule deletes its timer. Changing a period does not.<br/>
-	Id must be unique. Smaller value indicates bigger priority.<br/>
-	When broadcasting a message any imm_DST is ignored.<br/>
-	On send and receive rules last_run is meaningless.<br/>
+	Id must be unique positive integer. Smaller value indicates bigger priority.<br/>
+	When broadcasting a message any &quot;imm_DST&quot; is ignored.<br/>
+	On send and receive rules &quot;last_run&quot; is meaningless.<br/>
 	Strings are written without excess quotations, e.g., proto = &apos;tcp&apos;.<br/>
 	<a href="index.php">Done</a>
 <?php
