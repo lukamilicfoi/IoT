@@ -412,7 +412,9 @@ map<string, configuration *> username_configuration;
 
 my_time_point beginning;
 
-multimap<string, pair<string, bool>> table_user_isreadonly;
+map<string, string> table_owner;
+
+multimap<string, string> table_reader;
 
 PGconn *conn;
 
@@ -2518,16 +2520,14 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS raw_message_for_query_command("
 			"message BYTEA)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS tables(tablename NAME PRIMARY KEY)"));
-	PQclear(execcheckreturn("DELETE FROM tables WHERE tablename IN (SELECT tablename FROM tables "
-			"EXCEPT SELECT tablename FROM tables)"));
-	PQclear(execcheckreturn("INSERT INTO tables SELECT relname FROM pg_class "
-			"EXCEPT SELECT relname FROM pg_class"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_user(tablename NAME, username TEXT, "
-			"is_read_only BOOLEAN NOT NULL, PRIMARY KEY(tablename, username), "
-			"FOREIGN KEY(tablename) REFERENCES tables(tablename) "
-			"ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY(username) REFERENCES users(username) "
-			"ON UPDATE CASCADE ON DELETE CASCADE)"));
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_owner(tablename NAME, "
+			"username TEXT, PRIMARY KEY(tablename), FOREIGN KEY(username)"
+			"REFERENCES users(username) ON UPDATE CASCADE ON DELETE CASCADE)"));
+	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_reader(tablename NAME, "
+			"username TEXT, PRIMARY KEY(tablename, username), FOREIGN KEY(tablename) "
+			"REFERENCES table_owner(tablename) ON UPDATE CASCADE ON DELETE CASCADE, "
+			"FOREIGN KEY(username) REFERENCES users(username) ON UPDATE CASCADE "
+			"ON DELETE CASCADE)"));
 	PQclear(execcheckreturn("CREATE PROCEDURE ext(addr_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'ext\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE send_inject(send BOOLEAN, message BYTEA, "
