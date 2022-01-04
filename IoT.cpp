@@ -633,7 +633,9 @@ protocol *find_protocol_by_id(const char *id);
 
 protocol *find_protocol_by_name(const char *name);
 
-bool check_permissions(string tablename, BYTE8 address, bool isreadonly) noexcept;
+bool check_query(string query) noexcept;
+
+bool check_permissions(string tablename, BYTE8 address, bool read) noexcept;
 
 class protocol {
 
@@ -2361,6 +2363,9 @@ int main(int argc, char *argv[]) {
 			"can_edit_configuration BOOLEAN NOT NULL, can_view_permissions BOOLEAN NOT NULL, "
 			"can_edit_permissions BOOLEAN NOT NULL, can_view_remotes BOOLEAN NOT NULL, "
 			"can_edit_remotes BOOLEAN NOT NULL, can_execute_rules BOOLEAN NOT NULL, "
+			"can_view_yourself BOOLEAN NOT NULL, can_edit_yourself BOOLEAN NOT NULL, "
+			"can_view_others BOOLEAN NOT NULL, can_edit_others BOOLEAN NOT NULL, "
+			"can_view_as_others BOOLEAN NOT NULL, can_edit_as_others BOOLEAN NOT NULL, "
 			"can_actually_login BOOLEAN NOT NULL, PRIMARY KEY(username))"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS rules(username TEXT, id INTEGER, "
 			"send_receive_seconds SMALLINT NOT NULL, filter TEXT, "
@@ -2501,6 +2506,7 @@ int main(int argc, char *argv[]) {
 			"forward_messages BOOLEAN NOT NULL, use_internet_switch_algorithm BOOLEAN NOT NULL, "
 			"nsecs_id INTEGER NOT NULL, nsecs_src INTEGER NOT NULL, "
 			"trust_everyone BOOLEAN NOT NULL, default_gateway BYTEA NOT NULL, "
+			"insecure_port INTEGER NOT NULL, secure_port INTEGER NOT NULL, "
 			"PRIMARY KEY(username), FOREIGN KEY(username) REFERENCES users(username) "
 			"ON DELETE CASCADE ON UPDATE CASCADE)"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS current_username(current_username TEXT)"));
@@ -2613,6 +2619,7 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("SELECT refresh_next_timed_rule_time(("
 			"SELECT MIN(next_run) FROM rules))"));
 	PQclear(execcheckreturn("CALL config()"));
+	PQclear(execcheckreturn("CALL update_permissions()"));
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
 	main_loop();
 
@@ -3297,13 +3304,17 @@ void refresh_next_timed_rule_time2(const refresh_next_timed_rule_time_struct &rn
 }
 
 void update_permissions2() {
-	PGresult *res = execcheckreturn("TABLE table_user ORDER BY tablename DESC, username DESC");
+	PGresult *res = execcheckreturn("TABLE table_owner ORDER BY tablename DESC");
 	int i = PQntuples(res);
 
-	table_user_isreadonly.clear();
+	table_owner.clear();
 	while (--i >= 0) {
-		table_user_isreadonly.insert(make_pair(PQgetvalue(res, i, 0),
-				make_pair(PQgetvalue(res, i, 1), *PQgetvalue(res, i, 2) == 't')));
+		table_owner.insert(make_pair(PQgetvalue(res, i, 0), PQgetvalue(res, i, 1)));
+	}
+	PQclear(res);
+	res = execcheckreturn("TABLE table_reader ORDER BY tablename DESC, username DESC");
+	for (i = PQntuples(res); i >= 0; i--) {
+		table_reader.insert(make_pair(PQgetvalue(res, i, 0), PQgetvalue(res, i, 1)));
 	}
 	PQclear(res);
 }
@@ -3485,11 +3496,10 @@ ostream &operator<<(ostream &os, const my_time_point &point) noexcept {
 }
 
 string find_owner(string tablename) noexcept {
-	for (auto t_u_i = table_user_isreadonly.find(tablename);
-			t_u_i != table_user_isreadonly.cend() && t_u_i->first == tablename; t_u_i++) {
-		if (t_u_i->second.second) {
-			return t_u_i->second.first;
-		}
+	auto t_u_i = table_owner.find(tablename);
+
+	if (t_u_i != table_owner.cend()) {
+		return t_u_i->second;
 	}
 	return is_address_table(tablename) ? "root" : "public";
 }
@@ -3545,9 +3555,9 @@ void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 }
 
 bool is_reader(string tablename, string username) noexcept {
-	for (auto t_u_i = table_user_isreadonly.find(tablename);
-			t_u_i != table_user_isreadonly.cend() && t_u_i->first == tablename; t_u_i++) {
-		if (t_u_i->second.first == username) {
+	for (auto t_u_i = table_owner.find(tablename);
+			t_u_i != table_owner.cend() && t_u_i->first == tablename; t_u_i++) {
+		if (t_u_i->second == username) {
 			return true;
 		}
 	}
@@ -3871,12 +3881,16 @@ raw_message *receive_raw_message() {
 }
 #endif /* OFFLINE */
 
-bool check_permissions(string tablename, BYTE8 address, bool isreadonly) noexcept {
+bool check_query(string query) {
+	return true;
+}
+
+bool check_permissions(string tablename, BYTE8 address, bool read) noexcept {
 	string tablename_owner = find_owner(tablename),
 			address_owner = find_owner(address_to_table(address));
 
 	return tablename_owner == "public" || tablename_owner == address_owner
-			|| (isreadonly && is_reader(tablename, address_owner));
+			|| (read && is_reader(tablename, address_owner));
 }
 
 void encode_bytes_to_stream(ostream &stream, const BYTE *bytes, size_t len) {
