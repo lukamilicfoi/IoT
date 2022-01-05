@@ -406,6 +406,8 @@ struct configuration {
 	int nsecs_src;
 	bool trust_everyone;
 	BYTE8 default_gateway;
+	int insecure_port;
+	int secure_port;
 };
 
 map<string, configuration *> username_configuration;
@@ -556,8 +558,6 @@ void *memcpy_reverse(void *dst, const void *src, size_t size) noexcept;
 
 string find_owner(string tablename) noexcept;
 
-bool is_address_table(string tablename) noexcept;
-
 void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg);
 
 BYTE4 givecrc32c(const BYTE *msg, BYTE2 len) noexcept;
@@ -565,8 +565,6 @@ BYTE4 givecrc32c(const BYTE *msg, BYTE2 len) noexcept;
 ostream &operator<<(ostream &os, const formatted_message &fmsg) noexcept;
 
 bool is_reader(string tablename, string username) noexcept;
-
-string address_to_table(BYTE8 address) noexcept;
 
 void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg);
 
@@ -1630,7 +1628,7 @@ void tcp::send_once(raw_message *rmsg) {
 		sa.sin_addr.s_addr = INADDR_ANY;
 		THR(bind(new_sock, reinterpret_cast<sockaddr *>(&sa), sizeof(sockaddr)) < 0,
 				network_exception("cannot bind new_sock"));
-		sa.sin_port = htons(security ? TLS_PORT : TCP_PORT);
+		sa.sin_port = htons(security ?);
 		sa.sin_addr = BYTE8_to_ia(rmsg->imm_addr);
 		THR(connect(new_sock, reinterpret_cast<sockaddr *>(&sa), sizeof(sockaddr)) < 0,
 				network_exception("cannot connect new_sock"));
@@ -2024,7 +2022,7 @@ void udp::send_once(raw_message *rmsg) {
 		sa.sin_addr.s_addr = INADDR_ANY;
 		THR(bind(new_sock, reinterpret_cast<sockaddr *>(&sa), sizeof(sockaddr)) < 0,
 				network_exception("cannot bind new_sock"));
-		sa.sin_port = htons(security ? DTLS_PORT : UDP_PORT);
+		sa.sin_port = htons(security ?);
 		sa.sin_addr = BYTE8_to_ia(rmsg->imm_addr);
 		THR(connect(new_sock, reinterpret_cast<sockaddr *>(&sa), sizeof(sockaddr)) < 0,
 				network_exception("cannot connect new_sock"));
@@ -2621,6 +2619,8 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CALL config()"));
 	PQclear(execcheckreturn("CALL update_permissions()"));
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
+	PQclear(execcheckreturn("INSERT INTO table_owner(tablename, username) "
+			"VALUES(\'t"s + BYTE8_to_c17charp(local_addr) + "\', \'public\')"));
 	main_loop();
 
 	destroy_vars();
@@ -3264,6 +3264,12 @@ void config2() {
 		iss.clear();
 		c->trust_everyone = *PQgetvalue(res, i, 5) == 't';
 		c->default_gateway = c17charp_to_BYTE8(PQgetvalue(res, i, 6) + 2);
+		iss.str(PQgetvalue(res, i, 7));
+		iss >> c->insecure_port;
+		iss.clear();
+		iss.str(PQgetvalue(res, i, 8));
+		iss >> c->secure_port;
+		iss.clear();
 		username_configuration.insert(make_pair(PQgetvalue(res, i, 0), c));
 	}
 	PQclear(res);
@@ -3504,10 +3510,6 @@ string find_owner(string tablename) noexcept {
 	return is_address_table(tablename) ? "root" : "public";
 }
 
-bool is_address_table(string tablename) noexcept {
-	return tablename.front() == 't' && tablename.length() == 17 && tablename != "table_constraints";
-}
-
 void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg) {
 	if (username_configuration[find_owner(address_to_table(fmsg.DST))]->trust_everyone) {
 		LOG_CPP("trusting everyone for sending" << endl);
@@ -3562,10 +3564,6 @@ bool is_reader(string tablename, string username) noexcept {
 		}
 	}
 	return is_address_table(tablename);
-}
-
-string address_to_table(BYTE8 address) noexcept {
-	return "t"s + BYTE8_to_c17charp(address);
 }
 
 void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg) {
@@ -5518,6 +5516,8 @@ void create_table(string address, vector<string> &columns, vector<string> &types
 	}
 	PQclear(execcheckreturn("CREATE TABLE " + address + coltyp
 			+ "t TIMESTAMP(4) WITHOUT TIME ZONE, PRIMARY KEY(t))"));//strlen("4294967296") = 10
+	PQclear(execcheckreturn("INSERT INTO table_owner(tablename, username) "
+			"VALUES(\'" + address + "\', \'public\')"));
 }
 
 //if the final character of a member of var "columns" is inverted, the column needs altering
