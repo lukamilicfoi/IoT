@@ -353,6 +353,8 @@ struct remote {
 struct send_inject_struct {
 	char proto_id[13];//strlen("my4294967296")=12
 	BYTE imm_addr[8];
+	int insecure_port;
+	int secure_port;
 	bool CCF;
 	bool ACF;
 	bool send;
@@ -502,7 +504,8 @@ void execute_semicolon_separated_commands(const char *preamble, formatted_messag
 void decode_bytes_from_stream(istream &stream, BYTE *bytes, size_t len);
 
 void send_inject_from_rule(const char *message, const char *proto_id, const char *imm_addr,
-		bool CCF, bool ACF, bool broadcast, bool override_implicit_rules, bool send);
+		int insecure_port, int secure_port, bool CCF, bool ACF, bool broadcast,
+		bool override_implicit_rules, bool send);
 
 void apply_rule_beginning(PGresult *res_rules, int &current_id, int i, const char *type,
 		string &current_username);
@@ -973,7 +976,8 @@ void formatted_message::sign() {
 formatted_message::formatted_message(BYTE2 LEN) : CRC(), HD(), ID(), LEN(LEN), DST(), SRC() { }
 
 send_inject_struct::send_inject_struct(int message_length) : CCF(), ACF(), send(),
-		broadcast(), override_implicit_rules(), message_length(message_length) { }
+		insecure_port(), secure_port(), broadcast(), override_implicit_rules(),
+		message_length(message_length) { }
 
 void formatted_message::verify() {
 	EVP_PKEY *senders_public_key = get_public_key(DST);
@@ -3968,7 +3972,8 @@ void decode_bytes_from_stream(istream &stream, BYTE *bytes, size_t len) {
 }
 
 void send_inject_from_rule(const char *message, const char *proto_id, const char *imm_addr,
-		bool CCF, bool ACF, bool broadcast, bool override_implicit_rules, bool send) {
+		int insecure_port, int secure_port, bool CCF, bool ACF, bool broadcast,
+		bool override_implicit_rules, bool send) {
 	istringstream iss(message);
 	int message_length = iss.str().length() >> 1;
 	send_inject_struct *sis = new(message_length) send_inject_struct(message_length);
