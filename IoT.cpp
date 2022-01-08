@@ -559,7 +559,7 @@ ostream &operator<<(ostream &os, const protocol &proto) noexcept;
 
 void *memcpy_reverse(void *dst, const void *src, size_t size) noexcept;
 
-string find_owner(string tablename) noexcept;
+string find_owner(string tablename);
 
 void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg);
 
@@ -567,7 +567,7 @@ BYTE4 givecrc32c(const BYTE *msg, BYTE2 len) noexcept;
 
 ostream &operator<<(ostream &os, const formatted_message &fmsg) noexcept;
 
-bool is_reader(string tablename, string username) noexcept;
+bool is_reader(string tablename, string username);
 
 void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg);
 
@@ -3512,7 +3512,7 @@ ostream &operator<<(ostream &os, const my_time_point &point) noexcept {
 	return os << put_time(localtime(&t), "%Y-%m-%d %H:%M:%S");
 }
 
-string find_owner(string tablename) noexcept {
+string find_owner(string tablename) {
 	auto t_u_i = table_owner.find(tablename);
 
 	if (t_u_i != table_owner.cend()) {
@@ -3567,7 +3567,7 @@ void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 	send_formatted_message(fmsg.release());
 }
 
-bool is_reader(string tablename, string username) noexcept {
+bool is_reader(string tablename, string username) {
 	for (auto t_u_i = table_owner.find(tablename);
 			t_u_i != table_owner.cend() && t_u_i->first == tablename; t_u_i++) {
 		if (t_u_i->second == username) {
