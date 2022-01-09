@@ -286,6 +286,8 @@ struct raw_message {
 	BYTE2 TML;//Total Message Length
 	my_time_point TWR;//Time When Received
 	protocol *proto;//the encapsulating protocol
+	int insecure_port;
+	int secure_port;
 	bool CCF;//Confidential Channel Flag
 	bool ACF;//Authentic Channel Flag
 	BYTE *msg;//physical message
@@ -298,7 +300,7 @@ struct raw_message {
 };
 
 raw_message::raw_message(BYTE *msg) : imm_addr(), TML(), TWR(), proto(), CCF(), ACF(), msg(msg),
-		broadcast(), override_implicit_rules() { }
+		insecure_port(), secure_port(), broadcast(), override_implicit_rules() { }
 
 raw_message::~raw_message() {
 	delete[] msg;
@@ -2511,8 +2513,6 @@ int main(int argc, char *argv[]) {
 			"insecure_port INTEGER NOT NULL, secure_port INTEGER NOT NULL, "
 			"PRIMARY KEY(username), FOREIGN KEY(username) REFERENCES users(username) "
 			"ON DELETE CASCADE ON UPDATE CASCADE)"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS current_username(current_username TEXT)"));
-	PQclear(execcheckreturn("TRUNCATE TABLE current_username"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS ext(addr_id TEXT) CASCADE"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS send_inject(send BOOLEAN, message BYTEA, "
 			"proto_id TEXT, imm_addr BYTEA, insecure_port INTEGER, secure_port INTEGER, "
@@ -2524,7 +2524,6 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS update_permissions()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS manually_execute_timed_rule(username TEXT, "
 			"id INTEGER)"));
-	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_username() CASCADE"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS raw_message_for_query_command("
 			"message BYTEA)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
@@ -2554,37 +2553,11 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE PROCEDURE manually_execute_timed_rule(username TEXT, "
 			"id INTEGER) AS\'"s + cwd + "/libIoT\', \'manually_execute_timed_rule\' "
 			"LANGUAGE C"));
-	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_username_update() CASCADE"));
-	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_username_delete() CASCADE"));
-	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS current_username_insert() CASCADE"));
 	/*
 	 * in SQL standard only RETURNS NULL ON NULL INPUT function specifier exists
 	 *
 	 * also, other function specifiers exist in standard SQL
 	 */
-	PQclear(execcheckreturn("CREATE FUNCTION current_username_update() RETURNS trigger AS \'BEGIN "
-			"IF EXISTS (TABLE current_username) "
-			"AND ((SELECT current_username FROM current_username) <> NEW.username "
-			"OR OLD.username <> NEW.username) AND (OLD.is_administrator OR NEW.is_administrator "
-			"OR (SELECT NOT users.is_administrator FROM users INNER JOIN current_username "
-			"ON users.username = current_username.current_username)) THEN RETURN NULL; "
-			"ELSE RETURN NEW; END IF; END;\' LANGUAGE PLPGSQL"));
-	PQclear(execcheckreturn("CREATE TRIGGER current_username_update BEFORE UPDATE ON users "
-			"FOR ROW EXECUTE PROCEDURE current_username_update()"));
-	PQclear(execcheckreturn("CREATE FUNCTION current_username_delete() RETURNS trigger AS \'BEGIN "
-			"IF EXISTS (TABLE current_username) AND (OLD.is_administrator "
-			"OR (SELECT NOT users.is_administrator FROM users "
-			"INNER JOIN current_username ON users.username = current_username.current_username)) "
-			"THEN RETURN NULL; ELSE RETURN OLD; END IF; END;\' LANGUAGE PLPGSQL"));
-	PQclear(execcheckreturn("CREATE TRIGGER current_username_delete BEFORE DELETE ON users "
-			"FOR ROW EXECUTE PROCEDURE current_username_delete()"));
-	PQclear(execcheckreturn("CREATE FUNCTION current_username_insert() RETURNS trigger AS \'BEGIN "
-			"IF EXISTS (TABLE current_username) AND (NEW.is_administrator "
-			"OR (SELECT NOT users.is_administrator FROM users "
-			"INNER JOIN current_username ON users.username = current_username.current_username)) "
-			"THEN RETURN NULL; ELSE RETURN NEW; END IF; END;\' LANGUAGE PLPGSQL"));
-	PQclear(execcheckreturn("CREATE TRIGGER current_username_insert BEFORE INSERT ON users "
-			"FOR ROW EXECUTE PROCEDURE current_username_insert()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS insert_timer() CASCADE"));
 	PQclear(execcheckreturn("CREATE FUNCTION insert_timer() RETURNS trigger AS \'DECLARE "
 			"lastrun TIMESTAMP(0) WITH TIME ZONE; runperiod INTERVAL SECOND(0); BEGIN "
@@ -3903,15 +3876,9 @@ raw_message *receive_raw_message() {
 #endif /* OFFLINE */
 
 bool check_query(string query) {
-	return true;
 }
 
 bool check_permissions(string tablename, BYTE8 address, bool read) noexcept {
-	string tablename_owner = find_owner(tablename),
-			address_owner = find_owner(address_to_table(address));
-
-	return tablename_owner == "public" || tablename_owner == address_owner
-			|| (read && is_reader(tablename, address_owner));
 }
 
 void encode_bytes_to_stream(ostream &stream, const BYTE *bytes, size_t len) {
