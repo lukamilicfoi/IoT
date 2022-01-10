@@ -420,8 +420,6 @@ my_time_point beginning;
 
 map<string, string> table_owner;
 
-multimap<string, string> table_reader;
-
 PGconn *conn;
 
 string local_FROM(" FROM t");
@@ -561,15 +559,13 @@ ostream &operator<<(ostream &os, const protocol &proto) noexcept;
 
 void *memcpy_reverse(void *dst, const void *src, size_t size) noexcept;
 
-string find_owner(string tablename);
+string find_owner(BYTE8 address) noexcept;
 
 void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg);
 
 BYTE4 givecrc32c(const BYTE *msg, BYTE2 len) noexcept;
 
 ostream &operator<<(ostream &os, const formatted_message &fmsg) noexcept;
-
-bool is_reader(string tablename, string username);
 
 void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg);
 
@@ -635,10 +631,6 @@ BYTE8 ia_to_BYTE8(in_addr ia) noexcept;
 protocol *find_protocol_by_id(const char *id);
 
 protocol *find_protocol_by_name(const char *name);
-
-bool check_query(string query) noexcept;
-
-bool check_permissions(string tablename, BYTE8 address, bool read) noexcept;
 
 class protocol {
 
@@ -802,9 +794,9 @@ struct opensock {
 	SSL *ssl;
 };
 
-#define TCP_PORT 44000
+int tcp_port = 44000;
 
-#define TLS_PORT 44001
+int tls_port = 44001;
 
 #define TCP_BACKLOG 10
 
@@ -1887,7 +1879,7 @@ void tcp::start() {
 	THR(tcp_sock < 0, network_exception("cannot socket tcp_sock"));
 	check_sock(tcp_sock);
 	sa.sin_family = AF_INET;
-	sa.sin_port = htons(TCP_PORT);
+	sa.sin_port = htons(tcp_port);
 	sa.sin_addr.s_addr = INADDR_ANY;
 	THR(bind(tcp_sock, reinterpret_cast<sockaddr *>(&sa), sizeof(sockaddr)) < 0,
 			network_exception("cannot bind tcp_sock"));
@@ -1897,7 +1889,7 @@ void tcp::start() {
 	tls_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	THR(tls_sock < 0, network_exception("cannot socket tls_sock"));
 	check_sock(tls_sock);
-	sa.sin_port = htons(TLS_PORT);
+	sa.sin_port = htons(tls_port);
 	THR(bind(tls_sock, reinterpret_cast<sockaddr *>(&sa), sizeof(sockaddr)) < 0,
 			network_exception("cannot bind tls_sock"));
 	THR(listen(tls_sock, TLS_BACKLOG) < 0, network_exception("cannot listen tls_sock"));
@@ -1933,9 +1925,9 @@ void tcp::stop() {
 
 #define MAX_DEVICE_INDEX 10
 
-#define UDP_PORT 44000
+int udp_port = 44000;
 
-#define DTLS_PORT 44001
+int dtls_port = 44001;
 
 #define PRLIMIT 16777216
 
@@ -2248,7 +2240,7 @@ void udp::start() {
 	THR(udp_sock < 0, network_exception("cannot socket udp_sock"));
 	check_sock(udp_sock);
 	sa.sin_family = AF_INET;
-	sa.sin_port = htons(UDP_PORT);
+	sa.sin_port = htons(udp_port);
 	sa.sin_addr.s_addr = INADDR_ANY;
 	THR(setsockopt(udp_sock, SOL_SOCKET, SO_REUSEPORT, &a, sizeof(a)) < 0,
 			network_exception("cannot SO_REUSEPORT udp_sock"));
@@ -2259,7 +2251,7 @@ void udp::start() {
 	dtls_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	THR(dtls_sock < 0, network_exception("cannot socket dtls_sock"));
 	check_sock(dtls_sock);
-	sa.sin_port = htons(DTLS_PORT);
+	sa.sin_port = htons(dtls_port);
 	THR(bind(dtls_sock, reinterpret_cast<sockaddr *>(&sa), sizeof(sockaddr)) < 0,
 			network_exception("cannot bind dtls_sock"));
 	FD_SET(dtls_sock, &socks);
@@ -2269,7 +2261,7 @@ void udp::start() {
 	check_sock(broadcast_sock);
 	THR(setsockopt(broadcast_sock, SOL_SOCKET, SO_BROADCAST, &a, sizeof(a)) < 0,
 			network_exception("cannot setsockopt broadcast_sock"));
-	sa.sin_port = htons(UDP_PORT);
+	sa.sin_port = htons(udp_port);
 	sa.sin_addr.s_addr = INADDR_BROADCAST;
 	THR(setsockopt(broadcast_sock, SOL_SOCKET, SO_REUSEPORT, &a, sizeof(a)) < 0,
 			network_exception("cannot SO_REUSEPORT broadcast_sock"));
@@ -3302,11 +3294,6 @@ void update_permissions2() {
 		table_owner.insert(make_pair(PQgetvalue(res, i, 0), PQgetvalue(res, i, 1)));
 	}
 	PQclear(res);
-	res = execcheckreturn("TABLE table_reader ORDER BY tablename DESC, username DESC");
-	for (i = PQntuples(res); i >= 0; i--) {
-		table_reader.insert(make_pair(PQgetvalue(res, i, 0), PQgetvalue(res, i, 1)));
-	}
-	PQclear(res);
 }
 
 void decode_message(raw_message &rmsg, formatted_message &fmsg) {
@@ -3485,17 +3472,17 @@ ostream &operator<<(ostream &os, const my_time_point &point) noexcept {
 	return os << put_time(localtime(&t), "%Y-%m-%d %H:%M:%S");
 }
 
-string find_owner(string tablename) {
-	auto t_u_i = table_owner.find(tablename);
+string find_owner(BYTE8 address) noexcept {
+	auto t_u_i = table_owner.find("t"s + BYTE8_to_c17charp(address));
 
 	if (t_u_i != table_owner.cend()) {
 		return t_u_i->second;
 	}
-	throw message_exception("cannot find owner");
+	return "public";
 }
 
 void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg) {
-	if (username_configuration[find_owner(address_to_table(fmsg.DST))]->trust_everyone) {
+	if (username_configuration[find_owner(fmsg.DST)]->trust_everyone) {
 		LOG_CPP("trusting everyone for sending" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding rules for sending" << endl);
@@ -3540,18 +3527,8 @@ void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 	send_formatted_message(fmsg.release());
 }
 
-bool is_reader(string tablename, string username) {
-	for (auto t_u_i = table_owner.find(tablename);
-			t_u_i != table_owner.cend() && t_u_i->first == tablename; t_u_i++) {
-		if (t_u_i->second == username) {
-			return true;
-		}
-	}
-	return false;
-}
-
 void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg) {
-	if (username_configuration[find_owner(address_to_table(fmsg.SRC))]->trust_everyone) {
+	if (username_configuration[find_owner(fmsg.SRC)]->trust_everyone) {
 		LOG_CPP("trusting everyone for receiving" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding checks for receiving" << endl);
@@ -3582,7 +3559,7 @@ formatted_message *receive_formatted_message() {
 				r = new remote;
 				r->out_ID = uid(dre);
 			}
-			c = username_configuration[find_owner(address_to_table(fmsg->DST))];
+			c = username_configuration[find_owner(fmsg->DST)];
 			if (c->use_internet_switch_algorithm) {
 				map<BYTE8, my_time_point> *&iT = r->proto_iSRC_TWR[rmsg->proto];
 				if (iT == nullptr) {
@@ -3875,12 +3852,6 @@ raw_message *receive_raw_message() {
 }
 #endif /* OFFLINE */
 
-bool check_query(string query) {
-}
-
-bool check_permissions(string tablename, BYTE8 address, bool read) noexcept {
-}
-
 void encode_bytes_to_stream(ostream &stream, const BYTE *bytes, size_t len) {
 	int i = -1;
 
@@ -3998,7 +3969,7 @@ void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
 }
 
 formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool send) {
-	string current_username(find_owner(address_to_table(send ? fmsg->DST : fmsg->SRC))), select((send
+	string current_username(find_owner(send ? fmsg->DST : fmsg->SRC)), select((send
 			? "SELECT username, id, send_receive_seconds, filter, drop_modify_nothing, "
 			"modification, query_command_nothing, query_command_1, "
 			"send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, "
@@ -4714,8 +4685,6 @@ void unsub(string _id, BYTE8 address) {
  * - SQL encoding
  */
 void sel(string query, BYTE8 address) {
-	regex re("(?:FROM|JOIN) +([a-z0-9]+)", regex_constants::icase);//must ignore case for security
-
 	/*
 	 * is not SELECT if doesn't start with "SELECT\\b",
 	 * "WITH\\b", "TABLE\\b", or '('s before those
@@ -4726,11 +4695,6 @@ void sel(string query, BYTE8 address) {
 	 * multi-queries, SELECT INTO, or SELECT FOR
 	 */
 	THR(!clean_select(query), error_exception("error in SELECT"));
-	for (sti iter_begin(query.begin(), query.end(), re, 1), iter_end; iter_begin != iter_end;
-			iter_begin++) {
-		THR(!check_permissions(iter_begin->str(), address, true),
-				error_exception("unauthorized"));
-	}
 	PQclear(formatsendreturn(execcheckreturn(query), address));
 }
 
@@ -4856,7 +4820,7 @@ void send_formatted_message(formatted_message *fmsg) {
 	istringstream iss;
 	chrono::system_clock::rep dt;
 	unique_ptr<formatted_message> copy, dummy_f(fmsg);
-	configuration *c = username_configuration[find_owner(address_to_table(fmsg->SRC))];
+	configuration *c = username_configuration[find_owner(fmsg->SRC)];
 
 	THR(iter_DST_destination == addr_remote.end(), message_exception("DST does not exist"));
 	for (iter_proto_iDST_TWR = iter_DST_destination->second->proto_iSRC_TWR.begin();
@@ -5525,7 +5489,7 @@ void create_table(string address, vector<string> &columns, vector<string> &types
 	PQclear(execcheckreturn("INSERT INTO table_owner(tablename, username) "
 			"VALUES(\'" + address + "\', \'public\')"));
 }
-
+//todo 4 stvori sigurati u apply_rule_end, 1 u sel, 1 u sub, username escapeati u man_ex, appl_r i rec_r_m, unda
 //if the final character of a member of var "columns" is inverted, the column needs altering
 void alter_table(string address, vector<string> &columns, const vector<string> &types) {
 	int i = -1, j = columns.size();
@@ -5541,7 +5505,7 @@ void alter_table(string address, vector<string> &columns, const vector<string> &
 		}
 	}
 }
-
+//todo escapeati cwd i urediti prava u mainu, urediti prava u create table, urediti u apply rules poziv send_inj, urediti u mainu config tls_port i sl...
 BYTE8 EUI48_to_EUI64(BYTE8 EUI48) noexcept {
 	return (EUI48 << 16 & 0xFFFFFF00'00000000) | 0x000000FF'FE000000 | (EUI48 & 0x00000'00FFFFFF);
 }
