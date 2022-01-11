@@ -1,7 +1,7 @@
 <?php
 ob_start();
 require_once 'common.php';
-if (!empty($_POST['username']) && !empty($_POST['password'])) {
+if (!Empty($_POST['username']) && !Empty($_POST['password'])) {
 	$_SESSION['s_username'] = pg_escape_literal($_POST['username']);
 	$_SESSION['h1username'] = htmlspecialchars($_POST['username']);
 	$_SESSION['h2username'] = "&apos;{$_SESSION['h1username']}&apos;";

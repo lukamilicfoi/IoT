@@ -7,7 +7,9 @@ if ($can_edit_tables) {
 		$s1add = pg_escape_identifier($_GET['add']);
 		$s2add = pg_escape_literal($_GET['add']);
 		pgquery("CREATE TABLE $s1add(t TIMESTAMP(4) WITHOUT TIME ZONE);");
-		pgquery("INSERT INTO table_owner(tablename, username) VALUES($s2add, $s_username);");
+		pgquery("ALTER TABLE $s1add OWNER TO {$_SESSION['s_username']};");
+		pgquery("INSERT INTO table_owner(tablename, username) VALUES($s2add,
+				{$_SESSION['s_username']});");
 	} elseif (!empty($_GET['remove'])) {
 		$s1remove = pg_escape_identifier($_GET['remove']);
 		$s2remove = pg_escape_literal($_GET['remove']);
@@ -97,7 +99,9 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 		$proto_name = pg_escape_literal($_GET['proto_name']);
 		$imm_DST = pgescapebytea($_GET['imm_DST']);
 		pgquery("SELECT send_inject(TRUE, $s_msgtosend, (SELECT proto FROM proto_name
-				WHERE name = $proto_name), $imm_DST, " . pgescapebool($_GET['CCF']) . ', '
+				WHERE name = $proto_name), $imm_DST, " . (!empty($_GET['insecure_port']) ?
+				intval($_GET['insecure_port']) : 'NULL') . ', ' . (!empty($_GET['secure_port']) ?
+				intval($_GET['secure_port']) : 'NULL') . ', ' . pgescapebool($_GET['CCF']) . ', '
 				. pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast']) . ', '
 				. pgescapebool($_GET['override_implicit_rules']) . ');');
 		echo "Message $h_msgtosend sent.\n";
@@ -109,7 +113,11 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 		using protocol
 		<input type="text" name="proto_name" required/>
 		and imm_DST
-		<input type="text" name="imm_DST" required/><br/>
+		<input type="text" name="imm_DST" required/>
+		using insecure port
+		<input type="text" name="insecure_port"/><br/>
+		and secure port
+		<input type="text" name="secure_port"/>
 		using CCF
 		<input type="checkbox" name="CCF"/>
 		and ACF
@@ -121,8 +129,8 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write message and imm_DST as a binary string, e.g., abababababababab;
-			write protocol as a string, e.g., tcp.<br/><br/>
+	Write message and imm_DST as a binary string, e.g., abababababababab; write protocol
+			as a string, e.g., tcp; write ports as integers, e.g. 44000 and 44001.<br/><br/>
 <?php
 }
 if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
@@ -132,7 +140,9 @@ if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
 		$proto_name = pg_escape_literal($_GET['proto_name']);
 		$imm_SRC = pgescapebytea($_GET['imm_SRC']);
 		pgquery("SELECT send_inject(FALSE, $s_msgtoinject, (SELECT proto FROM proto_name
-				WHERE name = $proto_name), $imm_SRC, " . pgescapebool($_GET['CCF']) . ', '
+				WHERE name = $proto_name), $imm_SRC, " . (!empty($_GET['insecure_port']) ?
+				intval($_GET['insecure_port']) : 'NULL') . ', ' . (!empty($_GET['secure_port']) ?
+				intval($_GET['secure_port']) : 'NULL') . ', ' . pgescapebool($_GET['CCF']) . ', '
 				. pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast']) . ', '
 				. pgescapebool($_GET['override_implicit_rules']) . ');');
 		echo "Message $h_msgtoinject injected.\n";
@@ -144,7 +154,11 @@ if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
 		using protocol
 		<input type="text" name="proto_name" required/>
 		and imm_SRC
-		<input type="text" name="imm_SRC" required/><br/>
+		<input type="text" name="imm_SRC" required/>
+		using insecure port
+		<input type="text" name="insecure_port"/><br/>
+		and secure port
+		<input type="text" name="secure_port"/>
 		using CCF
 		<input type="checkbox" name="CCF"/>
 		and ACF
@@ -156,8 +170,8 @@ if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write message and imm_SRC as a binary string, e.g., abababababababab;
-			write protocol as a string, e.g., tcp.<br/><br/>
+	Write message and imm_SRC as a binary string, e.g., abababababababab; write protocol
+			as a string, e.g., tcp; write ports as integers, e.g., 44000 and 44001.<br/><br/>
 <?php
 }
 if (check_authorization('can_send_queries', 'send queries to database')) {
@@ -171,14 +185,11 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 			if (!flock($flock, LOCK_EX)) {
 				exit('cannot flock');
 			}
-			pg_connect('host=localhost dbname=postgres user=postgres client_encoding=UTF8');
-			pgquery("UPDATE current_username SET current_username = {$_SESSION['s_username']};");
-			pg_close();
-			pg_connect('host=localhost dbname=postgres user=' . ($_SESSION['is_administrator']
-					? 'administrator' : 'local') . 'client_encoding=UTF8');
+			pgquery("SET ROLE = {$_SESSION['s_username']};");
 		}
 		$result = pgquery($_GET['query']);
 		if (!$_SESSION['is_root']) {
+			pgquery('RESET ROLE;');
 			fclose($flock);
 		}
 		echo "Query $h_query sent to database (PostgreSQL ", pg_version()['client'], ").\n";

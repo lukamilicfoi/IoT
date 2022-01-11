@@ -18,9 +18,9 @@ if ($needs_login && !isset($_SESSION['username'])) {
 			$username = 'postgres';
 		} elseif (!empty($_SESSION['is_administrator'])) {
 			$trail = ' as administrator';
-			$username = 'administrator';
+			$username = 'postgres';
 		} else {
-			$username = $needs_login ? 'local' : 'login';
+			$username = $needs_login ? 'postgres' : 'login';
 			$trail = '';
 		}
 		echo '<title>', $page_name, $trail, "</title>\n";

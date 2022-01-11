@@ -2,18 +2,22 @@
 require_once 'common.php';
 $can_view_configuration = check_authorization('can_view_configuration', 'view configuration');
 $can_edit_configuration = check_authorization('can_edit_configuration', 'edit configuration');
+$can_view_as_others = check_authorization('can view others\' configuration', 'can_view_as_others');
+$can_edit_as_others = check_authorization('can edit others\' configuration', 'can_edit_as_others');
 if ($can_edit_configuration && !empty($_GET['username']) && isset($_GET['update'])) {
 	$s_username = pg_escape_literal($_GET['username']);
 	$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 	if ($_GET['username'] == $_SESSION['username'] || $_GET['username'] == 'public'
 			|| $_SESSION['is_administrator'] && !is_administrator($s_username)
-			|| $_SESSION['is_root']) {
+			&& $can_edit_as_others || $_SESSION['is_root']) {
 		pgquery('UPDATE configuration SET (forward_messages, use_internet_switch_algorithm,
-				nsecs_id, nsecs_src, trust_everyone, default_gateway) = ('
-				. pgescapebool($_GET['forward_messages']) . ', '
+				nsecs_id, nsecs_src, trust_everyone, default_gateway, insecure_port, 
+				secure_port) = (' . pgescapebool($_GET['forward_messages']) . ', '
 				. pgescapebool($_GET['use_internet_switch_algorithm']) . ', '
 				. intval($_GET['nsecs_id']) . ', '. intval($_GET['nsecs_src']) . ', '
-		   		. pgescapebool($_GET['trust_everyone']) . ', '
+		   		. pgescapeinteger($_GET['insecure_port']) . ', '
+				. pgescapeinteger($_GET['secure_port']) . ', '
+				. pgescapebool($_GET['trust_everyone']) . ', '
 		   		. pgescapebytea($_GET['default_gateway']) . ") WHERE username = $s_username;");
 		pgquery('CALL config();');
 		echo "Configuration updated for username $h_username.<br/>\n";
@@ -29,12 +33,13 @@ if ($can_view_configuration) {
 		$result = pgquery("SELECT configuration.* FROM configuration INNER JOIN users
 				ON configuration.username = users.username
 				WHERE configuration.username = {$_SESSION['s_username']}
-				OR NOT users.is_administrator ORDER BY configuration.username ASC;");
+				OR NOT users.is_administrator AND $can_view_as_others
+				ORDER BY configuration.username ASC;");
 		echo "You are authorized to view (edit) configuration for username {$_SESSION['h2username']}
 				or non-administrators.<br/>\n";
 	} else {
 		$result = pgquery("SELECT * FROM configuration WHERE username = {$_SESSION['s_username']}
-				OR username = 'public' ORDER BY username ASC;");
+				OR username = 'public' AND $can_view_as_others ORDER BY username ASC;");
 		echo "You are authorized to view (edit) configuration for username {$_SESSION['h2username']}
 				or public user.<br/>\n";
 	}
