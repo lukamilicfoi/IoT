@@ -1,6 +1,6 @@
 <?php
 require_once 'common.php';
-if (!empty($_GET['tablename'])) {
+if (!Empty($_GET['tablename'])) {
 	$s1tablename = pg_escape_literal($_GET['tablename']);
 	$s2tablename = pg_escape_identifier($_GET['tablename']);
 	$h1tablename = htmlspecialchars($_GET['tablename']);
@@ -23,7 +23,7 @@ if (!empty($_GET['tablename'])) {
 				echo "<a href=\"?tablename=$u_tablename\">No</a>";
 				exit(0);
 			}
-		} elseif (!empty($_GET['t'])) {
+		} elseif (!Empty($_GET['t'])) {
 			if (isset($_GET['insert'])) {
 				$t = htmlspecialchars(pgescapetimestamp($_GET['t']));
 				$result = pgquery("SELECT * FROM $s2tablename WHERE FALSE;");
@@ -38,7 +38,7 @@ if (!empty($_GET['tablename'])) {
 				}
 				pgquery(substr($query, 0, -2) . ');');
 				echo "Row $t inserted.<br/>\n";
-			} elseif (!empty($_GET['key']) && isset($_GET['update'])) {
+			} elseif (!Empty($_GET['key']) && isset($_GET['update'])) {
 				$s_key = pgescapetimestamp($_GET['key']);
 				$h_key = htmlspecialchars($s_key);
 				$result = pgquery("SELECT * FROM $s2tablename WHERE FALSE;");
@@ -54,7 +54,7 @@ if (!empty($_GET['tablename'])) {
 				pgquery(substr($query, 0, -2) . ") WHERE t = $s_key;");
 				echo "Row $h_key updated.<br/>\n";
 			}
-		} elseif (!empty($_GET['key']) && isset($_GET['delete'])) {
+		} elseif (!mpty($_GET['key']) && isset($_GET['delete'])) {
 			$s_key = pgescapetimestamp($_GET['key']);
 			$h_key = htmlspecialchars($s_key);
 			$u_key = urlencode($_GET['key']);

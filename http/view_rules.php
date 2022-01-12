@@ -1,7 +1,9 @@
 <?php
 require_once 'common.php';
-$can_edit_rules = check_authorization('can_view_rules', 'view rules')) {
+$can_edit_rules = check_authorization('can_view_rules', 'view rules');
 $can_edit_rules = check_authorization('can_edit_rules', 'edit rules');
+$can_view_as_others = check_authorization('can_view_as_others', 'can view others\' rules');
+$can_edit_as_others = check_authorization('can_edit_as_others', 'can edit others\' rules');
 if ($can_edit_rules) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
@@ -15,7 +17,7 @@ if ($can_edit_rules) {
 <?php
 			exit(0);
 		}
-	} elseif (!empty($_GET['username']) && !empty($_GET['id'])) {
+	} elseif (!Empty($_GET['username']) && !Empty($_GET['id'])) {
 		$s_username = pg_escape_literal($_GET['username']);
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 		$id = intval($_GET['id']);
@@ -24,21 +26,24 @@ if ($can_edit_rules) {
 				&& isset($_GET['insert'])) {
 			pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter,
 					drop_modify_nothing, modification, query_command_nothing, query_command_1,
-					send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF,
-					ACF, broadcast, override_implicit_rules, activate, deactivate, is_active)
-					VALUES($s_username, $id, " . intval($_GET['send_receive_seconds']) . ', '
+					send_inject_query_command_nothing, query_command_2, proto_id, imm_addr,
+					insecure_port, secure_port, CCF, ACF, broadcast, override_implicit_rules,
+					activate, deactivate, is_active) VALUES($s_username, $id, "
+					. intval($_GET['send_receive_seconds']) . ', '
 					. pg_escape_literal($_GET['filter']) . ', '
-					. intval($_GET['drop_modify_nothing']) . ', ' . (!empty($_GET['modification'])
+					. intval($_GET['drop_modify_nothing']) . ', ' . (!Empty($_GET['modification'])
 					? pg_escape_literal($_GET['modification']) : 'NULL') . ', '
 					. intval($_GET['query_command_nothing']) . ', '
-					. (!empty($_GET['query_command_1'])
+					. (!Empty($_GET['query_command_1'])
 					? pg_escape_literal($_GET['query_command_1']) : 'NULL') . ', '
 					. intval($_GET['send_inject_query_command_nothing']) . ', '
-					. (!empty($_GET['query_command_2'])
+					. (!Empty($_GET['query_command_2'])
 					? pg_escape_literal($_GET['query_command_2']) : 'NULL') . ', '
-					. (!empty($_GET['proto_name']) ? '(SELECT proto FROM proto_name WHERE name = '
+					. (!Empty($_GET['proto_name']) ? '(SELECT proto FROM proto_name WHERE name = '
 					. pg_escape_literal($_GET['proto_id']) : 'NULL') . ', '
-					. (!empty($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL') . ', '
+					. (!Empty($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL') . ', '
+					. pgescapeinteger($_GET['insecure_port']) . ', '
+					. pgescapeinteger($_GET['secure_port']) . ', '
 					. pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF']) . ', '
 					. pgescapebool($_GET['broadcast']) . ', '
 					. pgescapebool($_GET['override_implicit_rules']) . ', '
@@ -46,7 +51,7 @@ if ($can_edit_rules) {
 					. (!empty($_GET['deactivate']) ? intval($_GET['deactivate']) : 'NULL') . ', '
 					. pgescapebool($_GET['is_active']) . ');');
 			echo "For username $h_username rule $id inserted.<br/>\n";
-		} elseif (!empty($_GET['key1']) && !empty($_GET['key2'])) {
+		} elseif (!Empty($_GET['key1']) && !Empty($_GET['key2'])) {
 			$s_key1 = pg_escape_literal($_GET['key1']);
 			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 			$key2 = intval($_GET['key2']);
@@ -56,9 +61,10 @@ if ($can_edit_rules) {
 					&& isset($_GET['update'])) {
 				pgquery("UPDATE rules SET (username, id, send_receive_seconds, filter,
 						drop_modify_nothing, modification, query_command_nothing, query_command_1,
-						send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, CCF,
-						ACF, broadcast, override_implicit_rules, activate, deactivate, is_active)
-						= ($s_username, $id, " . intval($_GET['send_receive_seconds']) . ', '
+						send_inject_query_command_nothing, query_command_2, proto_id, imm_addr,
+						insecure_port, secure_port, CCF, ACF, broadcast, override_implicit_rules,
+						activate, deactivate, is_active) = ($s_username, $id, "
+						. intval($_GET['send_receive_seconds']) . ', '
 						. pg_escape_literal($_GET['filter']) . ', '
 						. intval($_GET['drop_modify_nothing']) . ', '
 						. (!empty($_GET['modification']) ? pg_escape_literal($_GET['modification'])
@@ -71,9 +77,10 @@ if ($can_edit_rules) {
 						. (!empty($_GET['proto_name']) ? '(SELECT proto FROM proto_name
 						WHERE name = ' . pg_escape_literal($_GET['proto_name']) : 'NULL') . ', '
 						. (!empty($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL')
-						. ', ' . pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF'])
-						. ', ' . pgescapebool($_GET['broadcast']) . ', '
-						. pgescapebool($_GET['override_implicit_rules']) . ', '
+						. ', ' . pgescapeinteger($_GET['insecure_port']) . ', '
+						. pgescapeinteger($_GET['secure_port']) . pgescapebool($_GET['CCF']) . ', '
+						. pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast'])
+						. ', ' . pgescapebool($_GET['override_implicit_rules']) . ', '
 						. (!empty($_GET['activate']) ? intval($_GET['activate']) : 'NULL') . ', '
 						. (!empty($_GET['deactivate']) ? intval($_GET['deactivate']) : 'NULL')
 						. ', ' . pgescapebool($_GET['is_active'])
@@ -115,16 +122,18 @@ if ($can_view_rules) {
 		$result = pgquery("SELECT rules.*, proto_name.name FROM rules INNER JOIN users
 				ON rules.username = users.username INNER JOIN proto_name ON rules.proto_id
 				= proto_name.proto WHERE rules.username = {$_SESSION['s_username']}
-				OR NOT users.is_administrator ORDER BY rules.username ASC, rules.id ASC;");
-		echo "You are authorized to view (edit) rules for username {$_SESSION['h2username']}
-				or non-administrators.<br/>\n";
+				OR NOT users.is_administrator AND $can_view_as_others
+				ORDER BY rules.username ASC, rules.id ASC;");
+		echo "You are authorized to view (edit) rules for username {$_SESSION['h2username']}",
+				$can_view_as_others ? ' or non-administrators' : '', ".<br/>\n";
 	} else {
 		$result = pgquery("SELECT rules.*, proto_name.name FROM rules
 				INNER JOIN proto_name ON rules.proto_id = proto_name.proto
 				WHERE rules.username = {$_SESSION['s_username']}
-				OR rules.username = 'public' ORDER BY rules.username ASC, rules.id ASC;");
-		echo "You are authorized to view (edit) rules for username {$_SESSION['h2username']}
-				or public user.<br/>\n";
+				OR rules.username = 'public' AND $can_view_as_others
+				ORDER BY rules.username ASC, rules.id ASC;");
+		echo "You are authorized to view (edit) rules for username {$_SESSION['h2username']}",
+				$can_view_as_others ? ' or public user' : '', ".<br/>\n";
 	}
 ?>
 	Viewing table &quot;rules&quot;<br/>
@@ -144,6 +153,8 @@ if ($can_view_rules) {
 				<th>(query/command 2)</th>
 				<th>using protocol</th>
 				<th>and immediate address</th>
+				<th>using insecure port</th>
+				<th>and secure port</th>
 				<th>using also CCF</th>
 				<th>and also ACF</th>
 				<th>using broadcast</th>
@@ -236,6 +247,12 @@ if ($can_view_rules) {
 					</td>
 					<td>
 						<input form="insert" type="text" name="imm_addr" size="10"/>
+					</td>
+					<td>
+						<input form="insert" type="text" name="insecure_port" size="10"/>
+					</td>
+					<td>
+						<input form="insert" type="text" name="secure_port" size="10"/>
 					</td>
 					<td>
 						<input form="insert" type="checkbox" name="CCF"/>
@@ -431,46 +448,46 @@ if ($can_view_rules) {
 					<td>
 <?php
 						echo "<input form=$form type=\"checkbox\" name=\"CCF\"",
-								$row[12] == 't' ? ' checked' : '', "/>\n";
-?>
-					</td>
-					<td>
-<?php
-						echo "<input form=$form type=\"checkbox\" name=\"ACF\"",
 								$row[13] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"checkbox\" name=\"broadcast\"",
+						echo "<input form=$form type=\"checkbox\" name=\"ACF\"",
 								$row[14] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"checkbox\" name=\"override_implicit_rules\"",
+						echo "<input form=$form type=\"checkbox\" name=\"broadcast\"",
 								$row[15] == 't' ? ' checked' : '', "/>\n";
+?>
+					</td>
+					<td>
+<?php
+						echo "<input form=$form type=\"checkbox\" name=\"override_implicit_rules\"",
+								$row[16] == 't' ? ' checked' : '', "/>\n";
 ?>
 						.
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"activate\" value=\"",
-								$row[16] === null ? '' : $row[16], "\"/>\n";
+								$row[17] === null ? '' : $row[16], "\"/>\n";
 ?>
 						.
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"deactivate\" value=\"",
-								$row[17] === null ? '' : $row[17], "\"/>\n";
+								$row[18] === null ? '' : $row[17], "\"/>\n";
 ?>
 						.
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"checkbox\" name=\"is_active\"",
-								$row[18] == 't' ? ' checked' : '', "/>\n";
+								$row[19] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
 					<td>

@@ -2,9 +2,11 @@
 require_once 'common.php';
 $user_fields_joined = implode(', ', $user_fields);
 $user_fields_length = count($user_fields);
-$can_view_users = check_authorization('can_view_users', 'view users');
-$can_edit_users = check_authorization('can_edit_users', 'edit users');
-if ($can_edit_users) {
+$can_view_yourself = check_authorization('can_view_yourself', 'can view yourself');
+$can_edit_yourself = check_authorization('can_edit_yourself', 'can edit yourself');
+$can_view_others = check_authorization('can_view_others', 'view others');
+$can_edit_others = check_authorization('can_edit_others', 'edit others');
+if ($can_edit_others) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
 			pgquery('DELETE FROM users WHERE username <> \'root\' AND username <> \'public\';'));
@@ -38,6 +40,7 @@ if ($can_edit_users) {
 					use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone,
 					default_gateway FROM configuration
 					WHERE username = {$_SESSION['s_username']};");
+			pgquery("CREATE ROLE $s_username;");
 			echo "User $h_username inserted.<br/>\n";
 		} elseif (isset($_POST['update1'])) {
 			$s_username = pg_escape_literal($_POST['username']);
@@ -65,6 +68,8 @@ if ($can_edit_users) {
 		if ($_SESSION['is_administrator'] && !is_administrator($s_key) || $_SESSION['is_root']) {
 			if (isset($_GET['confirm'])) {
 				pgquery("DELETE FROM users WHERE username = $s_key;");
+				pgquery("DROP OWNED BY $s_key;");
+				pgquery("DROP ROLE $s_key;");
 				echo "User $h_key deleted.<br/>\n";
 			} else {
 ?>
@@ -77,13 +82,14 @@ if ($can_edit_users) {
 				exit(0);
 			}
 		}
-	} elseif (isset($_POST['update2']) && isset($_POST['password'])) {
-		pgquery('UPDATE users SET password = \'' . password_hash($_POST['password'],
-				PASSWORD_DEFAULT) . "' WHERE username = {$_SESSION['s_username']};");
-		echo "Password updated - for username $h2username.<br/>\n";
 	}
 }
-if ($can_view_users) {
+if ($can_edit_yourself && isset($_POST['update2']) && isset($_POST['password'])) {
+	pgquery('UPDATE users SET password = \'' . password_hash($_POST['password'],
+			PASSWORD_DEFAULT) . "' WHERE username = {$_SESSION['s_username']};");
+	echo "Password updated - for username $h2username.<br/>\n";
+}
+if ($can_view_others) {
 	if ($_SESSION['is_root']) {
 		$result = pgquery("SELECT * FROM users ORDER BY username ASC;");
 ?>
@@ -182,7 +188,7 @@ if ($can_view_users) {
 						if ($username == $_SESSION['h1username']) {
 							echo "<input form=\"update2\" type=\"text\" name=\"username\"
 									value=\"$username\" readonly/>\n";
-						} elseif ($can_edit_users) {
+						} elseif ($can_edit_others) {
 							echo "<input form=\"update1_$username\" type=\"text\" name=\"username\"
 									value=\"$username\" required/>\n";
 						} else {
@@ -194,7 +200,7 @@ if ($can_view_users) {
 <?php
 						if ($username == $_SESSION['h1username']) {
 							echo "<input form=\"update2\" type=\"password\" name=\"password\"/>\n";
-						} elseif ($can_edit_users) {
+						} elseif ($can_edit_others) {
 							echo "<input form=\"update1\" type=\"password\" name=\"password\"/>\n";
 						} else {
 							echo "<input type=\"password\" disabled/>\n";
@@ -220,7 +226,7 @@ if ($can_view_users) {
 <?php
 							echo "<input form=\"update1_$username\" type=\"checkbox\"
 									name=\"{$user_fields[$i]}\"", $row[$i + 3] == 't'
-									? ' checked' : '', $can_edit_users && $username
+									? ' checked' : '', $can_edit_others && $username
 									!= $_SESSION['h1username'] ? '' : ' disabled', "/>\n";
 ?>
 						</td>
@@ -231,7 +237,7 @@ if ($can_view_users) {
 <?php
 						echo "<input form=\"update1_$username\" type=\"checkbox\"
 								name=\"can_actually_login\"", $row[$user_fields_length + 4] == 't'
-								? ' checked' : '', $can_edit_users && $username
+								? ' checked' : '', $can_edit_others && $username
 								!= $_SESSION['h1username'] ? '' : ' disabled', "/>\n";
 ?>
 					</td>
@@ -244,7 +250,7 @@ if ($can_view_users) {
 								<input type="reset" value="reset"/>
 							</form>
 <?php
-						} elseif ($can_edit_users) {
+						} elseif ($can_edit_others) {
 							echo "<form id=\"update1_$username\" action=\"\" method=\"POST\">\n";
 ?>
 								<input type="submit" name="update1" value="UPDATE"/><br/>

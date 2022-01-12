@@ -2,6 +2,8 @@
 require_once 'common.php';
 $can_view_remotes = check_authorization('can_view_remotes', 'view remotes');
 $can_edit_remotes = check_authorization('can_edit_remotes', 'edit remotes');
+$can_view_as_others = check_authorization('can_view_as_others', 'view others\' remotes');
+$can_edit_as_others = check_authorization('can_edit_as_others', 'edit others\' remotes');
 if ($can_view_remotes && isset($_GET['load'])) {
 	pgquery('CALL load_store(TRUE);');
 	$_SESSION['loaded'] = true;
@@ -58,23 +60,26 @@ if ($can_view_remotes) {
 					FROM table_owner INNER JOIN users ON table_owner.username = users.username
 					WHERE table_owner.tablename = 't' || encode(b_address, 'hex')
 					AND (table_owner.username = {$_SESSION['s_username']}
-					OR NOT users.is_administrator)) AS can_edit FROM addr_oID
+					OR NOT users.is_administrator AND $can_view_others)) AS can_edit FROM addr_oID
 					INNER JOIN table_reader ON 't' || encode(b_address, 'hex')
 					= table_reader.tablename WHERE can_edit OR table_reader.username
-					= {$_SESSION['s_username']} OR NOT users.is_administrator
+					= {$_SESSION['s_username']} OR NOT users.is_administrator AND $can_view_others
 					ORDER BY b_address ASC;");
 			echo "You are authorized to view (edit) username-{$_SESSION['h2username']}-readable
-					(-owned) or non-administrator-readable (-owned) remotes.\n";
+					(-owned)", $can_view_others ? ' or non-administrator-readable (-owned)' : '',
+					" remotes.\n";
 		} else {
 			$result = pgquery("SELECT DISTINCT addr_oID.addr AS b_address, EXISTS(SELECT TRUE
 					FROM table_owner WHERE tablename = 't' || encode(b_address, 'hex')
-					AND (username = {$_SESSION['username']} OR username = 'public')) AS can_edit
-					FROM addr_oID.addr INNER JOIN table_reader ON 't' || encode(address, 'hex')
-					= table_reader.tablename WHERE can_edit OR table_reader.username
-					= {$_SESSION['s_username']} OR table_reader.username = 'public'
+					AND (username = {$_SESSION['username']} OR username = 'public')
+					AND $can_view_others) AS can_edit FROM addr_oID.addr INNER JOIN table_reader
+					ON 't' || encode(address, 'hex') = table_reader.tablename WHERE can_edit
+					OR table_reader.username = {$_SESSION['s_username']}
+					OR table_reader.username = 'public' AND $can_view_others
 					ORDER BY b_address ASC;");
 			echo "You are authorized to view (edit) username-{$_SESSION['h2username']}-readable
-					(-owned) or public-readable (-owned) remotes.\n";
+					(-owned)", $can_view_others ? ' or public-readable (-owned)' : '',
+					" remotes.\n";
 		}
 ?>
 		<form action="" method="GET">

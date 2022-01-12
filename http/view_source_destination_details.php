@@ -1,6 +1,6 @@
 <?php
 require_once 'common.php';
-if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
+if (!Empty($_GET['SRC']) && !Empty($_GET['DST'])) {
 	$s1SRC = pgescapename($_GET['SRC']);
 	$s2SRC = pgescapebytea($_GET['SRC']);
 	$h1SRC = htmlspecialchars($_GET['SRC']);
@@ -25,13 +25,13 @@ if (!empty($_GET['SRC']) && !empty($_GET['DST'])) {
 				echo "<a href=\"?SRC=$u_SRC&amp;DST=$u_DST\">No</a>\n";
 				exit(0);
 			}
-		} elseif (!empty($_GET['ID']) && !empty($_GET['TWR'])) {
+		} elseif (!Empty($_GET['ID']) && !Empty($_GET['TWR'])) {
 			$id = intval($_GET['ID']);
 			$TWR = pgescapetimestamp($_GET['TWR']);
 			if (isset($_GET['insert'])) {
 				pgquery("INSERT INTO ID_TWR(SRC, DST, ID, TWR) VALUES($s2SRC, $s_DST, $id, $TWR);");
 				echo "Mapping $id for SRC $h2SRC and DST $h2DST inserted.<br/>\n";
-			} else if (!empty($_GET['key']) && isset($_GET['update'])) {
+			} else if (!Empty($_GET['key']) && isset($_GET['update'])) {
 				$key = intval($_GET['key']);
 				pgquery("UPDATE ID_TWR SET(ID, TWR) = ($id, $TWR)
 						WHERE SRC = $s2SRC AND DST = $s_DST AND ID = $key;");
