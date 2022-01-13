@@ -3,14 +3,14 @@ require_once 'common.php';
 $can_view_tables = check_authorization('can_view_tables', 'view device or regular tables');
 $can_edit_tables = check_authorization('can_edit_tables', 'edit device or regular tables');
 if ($can_edit_tables) {
-	if (!empty($_GET['add'])) {
+	if (!Empty($_GET['add'])) {
 		$s1add = pg_escape_identifier($_GET['add']);
 		$s2add = pg_escape_literal($_GET['add']);
 		pgquery("CREATE TABLE $s1add(t TIMESTAMP(4) WITHOUT TIME ZONE);");
 		pgquery("ALTER TABLE $s1add OWNER TO {$_SESSION['s_username']};");
 		pgquery("INSERT INTO table_owner(tablename, username) VALUES($s2add,
 				{$_SESSION['s_username']});");
-	} elseif (!empty($_GET['remove'])) {
+	} elseif (!Empty($_GET['remove'])) {
 		$s1remove = pg_escape_identifier($_GET['remove']);
 		$s2remove = pg_escape_literal($_GET['remove']);
 		$u_remove = urlencode($_GET['remove']);
@@ -41,26 +41,35 @@ if ($can_view_tables) {
 <?php
 	} elseif ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT table_owner.tablename AS table_name, table_owner.username
-				= {$_SESSION['s_username']} OR NOT users.is_administrator AS can_edit,
+				= {$_SESSION['s_username']} OR NOT users.is_administrator
+				AND {$_SESSION['can_edit_as_others']} AS can_edit,
 				table_name LIKE 't________________' AND table_name <> 'table_constraints'
 				AS is_device FROM table_owner INNER JOIN users ON table_owner.username
 				= users.username WHERE can_edit OR EXISTS(SELECT TRUE FROM table_reader
 				INNER JOIN users ON table_reader.username = users.username
 				WHERE table_reader.tablename = table_name
-				AND (table_reader.username = {$_SESSION['s_username']}
-				OR NOT users.is_administrator)) ORDER BY is_device ASC, table_name ASC;");
-		echo "You are authorized to view (edit) username-{$_SESSION['h2username']}-readable (-owned)
-				or non-administrator-readable (-owned) tables.\n";
+				AND (table_reader.username = {$_SESSION['s_username']} OR NOT users.is_administrator
+				AND {$_SESSION['can_view_as_others']})) ORDER BY is_device ASC, table_name ASC;");
+		echo 'You are authorized to view', $can_edit_tables ? ' (edit)' : '',
+				" username-{$_SESSION['h2username']}-readable", $can_edit_tables ? ' (-owned)'
+				: '', $_SESSION['can_view_as_others'] ? ' or non-administrator-readable' : '',
+				$_SESSION['can_edit_as_others'] && $can_edit_tables ? ' (-owned)' : '',
+				" tables.\n";
 	} else {
 		$result = pgquery("SELECT table_owner.tablename AS table_name, table_owner.username
-				= {$_SESSION['s_username']} OR table_owner.username = 'public' AS can_edit,
+				= {$_SESSION['s_username']} OR table_owner.username = 'public'
+				AND {$_SESSION['can_edit_as_others']} AS can_edit,
 				table_name LIKE 't________________' AND table_name <> 'table_constraints'
 				AS is_device FROM table_owner INNER JOIN users ON table_owner.username
 				= users.username WHERE can_edit OR EXISTS(SELECT TRUE FROM table_reader
 				WHERE tablename = table_name AND (username = {$_SESSION['s_username']}
-				OR username = 'public')) ORDER BY is_device ASC, table_name ASC;");
-		echo "You are authorized to view (edit) username-{$_SESSION['h2username']}-readable (-owned)
-				or public-user-readable (-owned) tables.\n";
+				OR username = 'public' AND {$_SESSION['can_view_as_others']}))
+				ORDER BY is_device ASC, table_name ASC;");
+		echo 'You are authorized to view', $can_edit_tables ? ' (edit)' : '',
+				" username-{$_SESSION['h2username']}-readable", $can_edit_tables ? ' (-owned)'
+				: '', $_SESSION['can_view_as_others'] ? ' or public-user-readable' : '',
+				$_SESSION['can_edit_as_others'] && $can_edit_tables ? ' (-owned)' : '',
+				" tables.\n";
 	}
 ?>
 	<form action="" method="GET">
@@ -99,10 +108,9 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 		$proto_name = pg_escape_literal($_GET['proto_name']);
 		$imm_DST = pgescapebytea($_GET['imm_DST']);
 		pgquery("SELECT send_inject(TRUE, $s_msgtosend, (SELECT proto FROM proto_name
-				WHERE name = $proto_name), $imm_DST, " . (!empty($_GET['insecure_port']) ?
-				intval($_GET['insecure_port']) : 'NULL') . ', ' . (!empty($_GET['secure_port']) ?
-				intval($_GET['secure_port']) : 'NULL') . ', ' . pgescapebool($_GET['CCF']) . ', '
-				. pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast']) . ', '
+				WHERE name = $proto_name), $imm_DST, " . pgescapeinteger($_GET['insecure_port'])
+				. ', ' . pgescapeinteger($_GET['secure_port']) . ', ' . pgescapebool($_GET['CCF'])
+				. ', ' . pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast']) . ', '
 				. pgescapebool($_GET['override_implicit_rules']) . ');');
 		echo "Message $h_msgtosend sent.\n";
 	}
@@ -140,10 +148,9 @@ if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
 		$proto_name = pg_escape_literal($_GET['proto_name']);
 		$imm_SRC = pgescapebytea($_GET['imm_SRC']);
 		pgquery("SELECT send_inject(FALSE, $s_msgtoinject, (SELECT proto FROM proto_name
-				WHERE name = $proto_name), $imm_SRC, " . (!empty($_GET['insecure_port']) ?
-				intval($_GET['insecure_port']) : 'NULL') . ', ' . (!empty($_GET['secure_port']) ?
-				intval($_GET['secure_port']) : 'NULL') . ', ' . pgescapebool($_GET['CCF']) . ', '
-				. pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast']) . ', '
+				WHERE name = $proto_name), $imm_SRC, " . pgescapeinteger($_GET['insecure_port'])
+				. ', ' . pgescapeinteger($_GET['secure_port']) . ', ' . pgescapebool($_GET['CCF'])
+				. ', ' . pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast']) . ', '
 				. pgescapebool($_GET['override_implicit_rules']) . ');');
 		echo "Message $h_msgtoinject injected.\n";
 	}
@@ -185,11 +192,11 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 			if (!flock($flock, LOCK_EX)) {
 				exit('cannot flock');
 			}
-			pgquery("SET ROLE = {$_SESSION['s_username']};");
+			pgquery("SET ROLE {$_SESSION['s_username']};");
 		}
 		$result = pgquery($_GET['query']);
 		if (!$_SESSION['is_root']) {
-			pgquery('RESET ROLE;');
+			pgquery('SET ROLE NONE;');
 			fclose($flock);
 		}
 		echo "Query $h_query sent to database (PostgreSQL ", pg_version()['client'], ").\n";
@@ -226,13 +233,17 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 		You are authorized to send queries to read (write) all tables.
 <?php
 	} elseif ($_SESSION['is_administrator']) {
-		echo "You are authorized to send queries to read (write)
-				username-{$_SESSION['h2username']}-readable (-owned)
-				or non-administrator-readable (-owned) tables.\n";
+		echo 'You are authorized to send queries to read', $can_edit_tables ? ' (write)' : '',
+				"username-{$_SESSION['h2username']}-readable", $can_edit_tables ? ' (-owned)' : '',
+				$_SESSION['can_view_as_others'] ? ' or non-administrator-readable' : '',
+				$_SESSION['can_edit_as_others'] && $can_edit_tables ? ' (-owned)' : '',
+				" tables.\n";
 	} else {
-		echo "You are authorized to send queries to read (write)
-				username-{$_SESSION['h2username']}-readable (-owned)
-				or public-user-readable (-owned) tables.\n";
+		echo 'You are authorized to send queries to read', $can_edit_tables ? ' (write)' : '',
+				"username-{$_SESSION['h2username']}-readable", $can_edit_tables ? ' (-owned)' : '',
+				$_SESSION['can_view_as_others'] ? ' or public-user-readable' : '',
+				$_SESSION['can_edit_as_others'] && $can_edit_tables ? ' (-owned)' : '',
+				" tables.\n";
 	}
 ?>
 	<form action="" method="GET">
@@ -289,7 +300,8 @@ if (check_authorization('can_view_rules', 'view rules')) {
 ?>
 <a href="view_certificates_and_private_keys.php">View certificates and private keys</a><br/>
 <?php
-if (check_authorization('can_view_users', 'view users')) {
+if (check_authorization('can_view_yourself', 'view yourself')
+		|| check_authorization('can_view_others', 'view others')) {
 ?>
 	<a href="view_users.php">View users</a><br/>
 <?php

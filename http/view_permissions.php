@@ -4,10 +4,6 @@ $can_view_permissions = check_authorization('can_view_permissions',
 		'view reader or owner permissions');
 $can_edit_permissions = check_authorization('can_edit_permissions',
 		'edit reader or owner permissions');
-$can_view_as_others = check_authorization('can_view_as_others',
-		'view others\' permissions');
-$can_edit_as_others = check_authorization('can_edit_as_others',
-		'edit others\' permissions');
 if ($can_edit_permissions) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
@@ -26,28 +22,30 @@ if ($can_edit_permissions) {
 <?php
 			exit(0);
 		}
-	} elseif (!empty($_GET['tablename']) && !empty($_GET['username'])) {
-		$s_tablename = pg_escape_literal($_GET['tablename']);
+	} elseif (!Empty($_GET['tablename']) && !Empty($_GET['username'])) {
+		$s1tablename = pg_escape_literal($_GET['tablename']);
+		$s2tablename = pg_escape_identifier($_GET['tablename']);
 		$h_tablename = '&apos;' . htmlspecialchars($_GET['tablename']) . '&apos;';
 		$s_username = pg_escape_literal($_GET['username']);
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
-		$tablename_owner = find_owner($s_tablename);
+		$tablename_owner = find_owner($s1tablename);
 		$tablename_owner_is_administrator = is_administrator($tablename_owner);
 		$tablename_owner_is_user = $tablename_owner == $_SESSION['username'];
 		$tablename_owner_is_user_or_public = $tablename_owner_is_user
 				|| $tablename_owner == 'public';
 		if (($tablename_owner_is_user_or_public || $_SESSION['is_administrator']
-				&& !$tablename_owner_is_administrator || $_SESSION['is_root'])
-				&& $tablename_owner != $_GET['username'] && isset($_GET['insert']) {
+				&& !$tablename_owner_is_administrator && $_SESSION['can_edit_as_others']
+			 	|| $_SESSION['is_root']) && $tablename_owner != $_GET['username']
+				&& isset($_GET['insert']) {
 			pgquery("INSERT INTO table_reader(tablename, username)
-					VALUES($s_tablename, $s_username);");
-			pgquery("GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, TRIGGER, REFERENCES
-					ON $s2tablename TO $s_username;");
+					VALUES($s1tablename, $s_username);");
+			pgquery("GRANT SELECT, TRIGGER, REFERENCES ON $s2tablename TO $s_username;");
 			echo "Reader ($h_tablename, $h_username) inserted.<br/>\n";
 		} elseif (!empty($_GET['key1']) && !empty($_GET['key2'])) {
-			$s_key1 = pg_escape_literal($_GET['key1']);
+			$s1key1 = pg_escape_literal($_GET['key1']);
+			$s2key1 = pg_escape_identifier($_GET['key1']);
 			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
-			$key1_owner = find_owner($s_key1);
+			$key1_owner = find_owner($s1key1);
 			$key1_owner_is_administrator = is_administrator($key1_owner);
 			$key1_owner_is_user = $key1_owner == $_SESSION['username'];
 			$key1_owner_is_user_or_public = $key1_owner_is_user
@@ -57,24 +55,25 @@ if ($can_edit_permissions) {
 			if (($key1_owner_is_user_or_public && $tablename_owner_is_user_or_public
 					|| $_SESSION['is_administrator'] && ($key1_owner_is_user
 					|| !$key1_owner_is_administrator) && ($tablename_owner_is_user
-					|| !$tablename_owner_is_administrator) || $_SESSION['is_root'])
-					&& $tablename_owner != $_GET['username'] && isset($_GET['update1'])) {
-				pgquery("UPDATE table_reader SET (tablename, username) = ($s_tablename, $s_username)
-						WHERE tablename = $s_key1 AND username = $s_key2;");
-				pgquery("REVOKE ALL PRIVILEGES ON $s2tablename FROM $s_username;");
-				pgquery("GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, TRIGGER, REFERENCES
-						ON $s2tablename TO $s_username;");
+					|| !$tablename_owner_is_administrator) && $_SESSION['can_edit_as_others']
+				 	|| $_SESSION['is_root']) && $tablename_owner != $_GET['username']
+					&& isset($_GET['update1'])) {
+				pgquery("UPDATE table_reader SET (tablename, username) = ($s1tablename, $s_username)
+						WHERE tablename = $s1key1 AND username = $s_key2;");
+				pgquery("REVOKE ALL PRIVILEGES ON $s1key1 FROM $s_username;");
+				pgquery("GRANT SELECT, TRIGGER, REFERENCES ON $s2tablename TO $s_username;");
 				echo "Reader ($h_key1, $h_key2) updated to ($h_username, $h_tablename).<br/>\n";
 			} elseif (($key1_owner_is_user_or_public || $_SESSION['is_administrator']
-					&& !$key1_owner_is_administrator || $_SESSION['is_root'])
-					&& isset($_GET['update2'])) {
+					&& !$key1_owner_is_administrator && $_SESSION['can_edit_as_others']
+					|| $_SESSION['is_root']) && isset($_GET['update2'])) {
 				pgquery("UPDATE table_owner SET username = $s_username WHERE tablename = $s_key1;");
 				pgquery("ALTER TABLE $s2key1 SET OWNER TO $s_username;");
 				echo "Owner ($h_key1, $h_key2) updated to ($h_key1, $h_username).<br/>\n";
 			}
 		}
 	} elseif (!empty($_GET['key1']) && !empty($_GET['key2'])) {
-		$s_key1 = pg_escape_literal($_GET['key1']);
+		$s1key1 = pg_escape_literal($_GET['key1']);
+		$s2key1 = pg_escape_identifier($_GET['key1']);
 		$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 		$u_key1 = urlencode($_GET['key1']);
 		$key1_owner = find_owner($s_key1);
@@ -83,9 +82,10 @@ if ($can_edit_permissions) {
 		$u_key2 = urlencode($_GET['key2']);
 		if (($key1_owner == $_SESSION['username'] || $key1_owner == 'public'
 				|| $_SESSION['is_administrator'] && !is_administrator($key1_owner)
-				|| $_SESSION['is_root']) && isset($_GET['delete'])) {
+				&& $_SESSION['can_edit_as_others'] || $_SESSION['is_root'])
+				&& isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
-				pgquery("DELETE FROM table_reader WHERE tablename = $s_key1
+				pgquery("DELETE FROM table_reader WHERE tablename = $s1key1
 						AND username = $s_key2;");
 				pgquery("REVOKE ALL PRIVILEGES ON $s2key1 FROM $s_key2;");
 				echo "Reader ($h_key1, $h_key2) deleted.<br/>\n";
@@ -113,34 +113,41 @@ if ($can_edit_permissions) {
 	} elseif ($_SESSION['is_administrator']) {
 		$can_view = "EXISTS(SELECT TRUE FROM table_reader INNER JOIN users
 				ON table_reader.username = users.username WHERE table_reader.tablename = table_name
-				AND (username = {$_SESSION['s_username']} OR NOT users.is_administrator))";
+				AND (username = {$_SESSION['s_username']} OR NOT users.is_administrator
+				AND {$_SESSION['can_view_as_others']}))";
 		$result = pgquery("SELECT table_reader.tablename AS table_name, table_reader.username,
 				EXISTS(SELECT TRUE FROM table_owner INNER JOIN users ON table_owner.username
 				= users.username WHERE table_owner.tablename = table_name AND (table_owner.username
-				= {$_SESSION['s_username']} OR NOT users.is_administrator AND $can_view_as_others))
-				AS can_edit, FALSE AS is_owner FROM table_reader WHERE can_edit OR $can_view
-				UNION ALL SELECT table_owner.tablename AS table_name, table_reader.username
-				= {$_SESSION['s_username']} OR NOT users.is_administrator AND $can_view_as_others
-				AS can_edit, TRUE AS is_owner FROM table_owner INNER JOIN users
-				ON table_owner.username = users.username WHERE can_edit OR $can_view
+				= {$_SESSION['s_username']} OR NOT users.is_administrator
+				AND {$_SESSION['can_view_as_others']})) AS can_edit, FALSE AS is_owner
+				FROM table_reader WHERE can_edit OR $can_view UNION ALL SELECT table_owner.tablename
+				AS table_name, table_reader.username = {$_SESSION['s_username']}
+				OR NOT users.is_administrator AND {$_SESSION['can_view_as_others']} AS can_edit,
+				TRUE AS is_owner FROM table_owner INNER JOIN users ON table_owner.username
+				= users.username WHERE can_edit OR $can_view
 				ORDER BY is_owner ASC, table_name ASC, table_owner.username ASC;");
-		echo "You are authorized to view (edit) permissions for
-				username-{$_SESSION['h2username']}-readable (-owned)", $can_view_as_others ?
-				' or non-administrator-readable (-owned)' : '', " tables.<br/>\n";
+		echo 'You are authorized to view', $can_edit_permissions ? ' (edit)' : '',
+				" permissions for username-{$_SESSION['h2username']}-readable",
+				$can_edit_permissions ? ' (-owned)' : '', $_SESSION['can_view_as_others'] ?
+				' or non-administrator-readable' : '', $_SESSION['can_edit_as_others']
+				&& $can_edit_permissions ? ' (-owned)' : '', " tables.<br/>\n";
 	} else {
 		$can_view = "EXISTS(SELECT TRUE FROM table_reader WHERE tablename = table_name
-				AND (username = {$_SESSION['s_username']} OR username = 'public'))";
+				AND (username = {$_SESSION['s_username']} OR username = 'public'
+				AND {$_SESSION['can_view_as_others']}))";
 		$result = pgquery("SELECT tablename AS table_name, username, EXISTS(SELECT TRUE
 				FROM table_owner WHERE tablename = table_name AND (username
-				= {$_SESSION['s_username']} OR username = 'public' AND $can_view_as_others))
-				AS can_edit, FALSE AS is_owner FROM table_reader WHERE can_edit OR $can_view
-				UNION ALL SELECT tablename AS table_name, username = {$_SESSION['s_username']}
-				OR username = 'public' AND $can_view_as_others AS can_edit, TRUE AS is_owner
-				FROM table_owner WHERE can_edit OR $can_view
-				ORDER BY is_owner ASC, table_name ASC, username ASC;");
-		echo "You are authorized to view (edit) permissions for
-				username-{$_SESSION['h2username']}-readable (-owned)", $can_view_as_others ?
-				' or public-user-readable' : '', " tables.<br/>\n";
+				= {$_SESSION['s_username']} OR username = 'public'
+				AND {$_SESSION['can_view_as_others']})) AS can_edit, FALSE AS is_owner
+				FROM table_reader WHERE can_edit OR $can_view UNION ALL SELECT tablename
+				AS table_name, username = {$_SESSION['s_username']} OR username = 'public'
+				AND {$_SESSION['can_view_as_others']} AS can_edit, TRUE AS is_owner FROM table_owner
+				WHERE can_edit OR $can_view ORDER BY is_owner ASC, table_name ASC, username ASC;");
+		echo 'You are authorized to view', $can_edit_permissions ? ' (edit)' : '',
+				" permissions for username-{$_SESSION['h2username']}-readable",
+				$can_edit_permissions ? ' (-owned)' : '', $_SESSION['can_view_as_others'] ?
+				' or public-user-readable' : '', $_SESSION['can_edit_as_others']
+				&& $can_edit_permissions ? ' (-owned)' : '', " tables.<br/>\n";
 	}
 ?>
 	Viewing tables &quot;table_reader&quot; and &quot;table_owner&quot;,

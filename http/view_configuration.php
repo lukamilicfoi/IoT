@@ -2,16 +2,14 @@
 require_once 'common.php';
 $can_view_configuration = check_authorization('can_view_configuration', 'view configuration');
 $can_edit_configuration = check_authorization('can_edit_configuration', 'edit configuration');
-$can_view_as_others = check_authorization('can view others\' configuration', 'can_view_as_others');
-$can_edit_as_others = check_authorization('can edit others\' configuration', 'can_edit_as_others');
 if ($can_edit_configuration && !empty($_GET['username']) && isset($_GET['update'])) {
 	$s_username = pg_escape_literal($_GET['username']);
 	$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 	if ($_GET['username'] == $_SESSION['username'] || $_GET['username'] == 'public'
 			|| $_SESSION['is_administrator'] && !is_administrator($s_username)
-			&& $can_edit_as_others || $_SESSION['is_root']) {
+			&& $_SESSION['can_edit_as_others'] || $_SESSION['is_root']) {
 		pgquery('UPDATE configuration SET (forward_messages, use_internet_switch_algorithm,
-				nsecs_id, nsecs_src, trust_everyone, default_gateway, insecure_port, 
+				nsecs_id, nsecs_src, trust_everyone, default_gateway, insecure_port,
 				secure_port) = (' . pgescapebool($_GET['forward_messages']) . ', '
 				. pgescapebool($_GET['use_internet_switch_algorithm']) . ', '
 				. intval($_GET['nsecs_id']) . ', '. intval($_GET['nsecs_src']) . ', '
@@ -30,18 +28,27 @@ if ($can_view_configuration) {
 		You are authorized to view (edit) configuration for all users.<br/>
 <?php
 	} elseif ($_SESSION['is_administrator']) {
-		$result = pgquery("SELECT configuration.* FROM configuration INNER JOIN users
-				ON configuration.username = users.username
-				WHERE configuration.username = {$_SESSION['s_username']}
-				OR NOT users.is_administrator AND $can_view_as_others
-				ORDER BY configuration.username ASC;");
-		echo "You are authorized to view (edit) configuration for username {$_SESSION['h2username']}
-				or non-administrators.<br/>\n";
+		$result = pgquery("SELECT configuration.*, configuration.username
+				= {$_SESSION['s_username']} OR NOT users.is_administrator
+				AND {$_SESSION['can_edit_as_others']} FROM configuration INNER JOIN users
+				ON configuration.username = users.username WHERE configuration.username
+				= {$_SESSION['s_username']} OR NOT users.is_administrator
+				AND {$_SESSION['can_view_as_others']} ORDER BY configuration.username ASC;");
+		echo 'You are authorized to view', $can_edit_configuration ? ' (edit)' : '',
+				" configuration for username {$_SESSION['h2username']}",
+				$_SESSION['can_view_as_others'] ? ' or non-administrators' : '',
+				$_SESSION['can_edit_as_others'] && $can_edit_configuration ? '' : '(noedit)',
+				".<br/>\n";
 	} else {
-		$result = pgquery("SELECT * FROM configuration WHERE username = {$_SESSION['s_username']}
-				OR username = 'public' AND $can_view_as_others ORDER BY username ASC;");
-		echo "You are authorized to view (edit) configuration for username {$_SESSION['h2username']}
-				or public user.<br/>\n";
+		$result = pgquery("SELECT * FROM configuration, username = {$_SESSION['s_username']}
+				OR username = 'public' AND {$_SESSION['can_edit_as_others']} WHERE username
+				= {$_SESSION['s_username']} OR username = 'public'
+				AND {$_SESSION['can_view_as_others']} ORDER BY username ASC;");
+		echo 'You are authorized to view', $can_edit_configuration ? ' (edit)' : '',
+				" configuration for username {$_SESSION['h2username']}",
+				$_SESSION['can_view_as_others'] ? ' or public user' : '',
+				$_SESSION['can_edit_as_others'] && $can_edit_configuration ? '' : '(noedit)',
+				".<br/>\n";
 	}
 ?>
 	Viewing table &quot;configuration&quot;.<br/>
@@ -56,6 +63,8 @@ if ($can_view_configuration) {
 				<th>Address expiration in seconds</th>
 				<th>Trust everyone?</th>
 				<th>Default gateway</th>
+				<th>Custom insecure listen port</th>
+				<th>Custom secure listen port</th>
 <?php
 				if ($can_edit_configuration) {
 ?>
@@ -113,8 +122,20 @@ if ($can_view_configuration) {
 								name=\"default_gateway\" value=\"", substr($row[6], 2), "\"/>\n";
 ?>
 					</td>
+					<td>
 <?php
-					if ($can_edit_configuration) {
+						echo "<input form=\"update_$username\" type=\"text\" name=\"insecure_port\"
+								value=\"", $row[7] !== null ? $row[7] : '', "\"/>\n";
+?>
+					</td>
+					<td>
+<?php
+						echo "<input form=\"update_$username\" type=\"text\" name=\"secure_port\"
+								value=\"", $row[8] !== null ? $row[8] : '', "\"/>\n";
+?>
+					</td>
+<?php
+					if ($can_edit_configuration && $row[9] == 't') {
 ?>
 						<td>
 <?php

@@ -43,6 +43,10 @@ if (!pg_connect("host=localhost dbname=postgres user=$username client_encoding=U
 	exit('Could not connect - ' . pg_last_error());
 }
 
+function Empty($var) {
+	return !isset($var) || $var == '';
+}
+
 function pgescapebool(&$boolvar) {
 	return $boolvar !== null ? 'TRUE' : 'FALSE';
 }
@@ -50,13 +54,19 @@ function pgescapebool(&$boolvar) {
 function can_view_table($s_tablename) {
 	return pg_num_rows(pgquery("SELECT TRUE FROM table_owner INNER JOIN users
 			ON table_owner.username = users.username WHERE table_owner.tablename = $s_tablename
-			AND (table_owner.username = {$_SESSION['s_username']} OR table_owner.username = 'public'
-			OR {$_SESSION['is_administrator']} AND NOT users.is_administrator
-			OR {$_SESSION['s_is_root']}) UNION ALL SELECT TRUE FROM table_reader INNER JOIN users
+			AND (table_owner.username = {$_SESSION['s_username']}
+			OR {$_SESSION['can_edit_as_others']} AND (table_owner.username = 'public'
+			OR {$_SESSION['is_administrator']} AND NOT users.is_administrator)
+			OR {$_SESSION['is_root']}) UNION ALL SELECT TRUE FROM table_reader INNER JOIN users
 			ON table_reader.username = users.username WHERE table_reader.username = $s_tablename
 			AND (table_reader.username = {$_SESSION['s_username']}
-			OR table_reader.username = 'public' OR {$_SESSION['is_administrator']}
-			AND NOT users.is_administrator OR {$_SESSION['s_is_root']});")) != 0;
+			OR {$_SESSION['can_view_as_others']} AND (table_reader.username = 'public'
+			OR {$_SESSION['is_administrator']} AND NOT users.is_administrator)
+			OR {$_SESSION['is_root']});")) != 0;
+}
+
+function pgescapeinteger(&$integervar) {
+	return $integervar !== null ? intval($integervar) : 'NULL';
 }
 
 function pgescapetimestamp($timestampvar) {
@@ -103,16 +113,18 @@ function pgescapebytea($byteavar) {
 function can_edit_table($s_tablename) {
 	return pg_num_rows(pgquery("SELECT TRUE FROM table_owner INNER JOIN users
 			ON table_owner.username = users.username WHERE table_owner.tablename = $s_tablename
-			AND (table_owner.username = {$_SESSION['s_username']} OR table_owner.username = 'public'
-			OR {$_SESSION['s_is_administrator']} AND NOT users.is_administrator
-			OR {$_SESSION['s_is_root']});")) != 0;
+			AND (table_owner.username = {$_SESSION['s_username']}
+			OR {$_SESSION['can_edit_as_others']} AND (table_owner.username = 'public'
+			OR {$_SESSION['is_administrator']} AND NOT users.is_administrator)
+			OR {$_SESSION['is_root']});")) != 0;
 }
 
 $user_fields = array('can_view_tables', 'can_edit_tables', 'can_send_messages',
 		'can_inject_messages', 'can_send_queries', 'can_view_rules', 'can_edit_rules',
 		'can_view_configuration', 'can_edit_configuration', 'can_view_permissions',
 		'can_edit_permissions', 'can_view_remotes', 'can_edit_remotes', 'can_execute_rules',
-		'can_view_users', 'can_edit_users');
+		'can_view_yourself', 'can_edit_yourself', 'can_view_others', 'can_edit_others',
+		'can_view_as_others', 'can_edit_as_others');
 
 function my_input_to_postgresql_input($data, $oid) {
 	if ($data == '') {

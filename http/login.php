@@ -5,13 +5,14 @@ if (!Empty($_POST['username']) && !Empty($_POST['password'])) {
 	$_SESSION['s_username'] = pg_escape_literal($_POST['username']);
 	$_SESSION['h1username'] = htmlspecialchars($_POST['username']);
 	$_SESSION['h2username'] = "&apos;{$_SESSION['h1username']}&apos;";
-	$row = pg_fetch_row(pgquery("SELECT password, is_administrator FROM users
+	$row = pg_fetch_row(pgquery("SELECT password, is_administrator,
+			can_view_as_others, can_edit_as_others FROM users
 			WHERE username = {$_SESSION['s_username']} AND can_actually_login;"));
 	if ($row && password_verify($_POST['password'], $row[0])) {
 		$_SESSION['is_root'] = $_POST['username'] == 'root';
-		$_SESSION['s_is_root'] = $_SESSION['is_root'] ? 'TRUE' : 'FALSE';
+		$_SESSION['can_view_as_others'] = $row[2] == 't';
 		$_SESSION['is_administrator'] = $row[1] == 't';
-		$_SESSION['s_is_administrator'] = $_SESSION['is_administrator'] ? 'TRUE' : 'FALSE';
+		$_SESSION['can_edit_as_others'] = $row[3] == 't';
 		$_SESSION['username'] = $_POST['username'];
 	}
 } elseif (isset($_GET['logout'])) {
@@ -27,8 +28,8 @@ if (isset($_SESSION['username'])) {
 		Password:
 		<input type="password" name="password" required/>
 		Actions:
-		<input type="submit" value="login"/>
-		<input type="reset" value="clear"/>
+		<input type="submit" value="Login"/>
+		<input type="reset" value="Clear"/>
 	</form>
 <?php
 }
