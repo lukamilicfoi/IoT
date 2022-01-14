@@ -2,8 +2,6 @@
 require_once 'common.php';
 $can_edit_rules = check_authorization('can_view_rules', 'view rules');
 $can_edit_rules = check_authorization('can_edit_rules', 'edit rules');
-$can_view_as_others = check_authorization('can_view_as_others', 'can view others\' rules');
-$can_edit_as_others = check_authorization('can_edit_as_others', 'can edit others\' rules');
 if ($can_edit_rules) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
@@ -22,8 +20,8 @@ if ($can_edit_rules) {
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 		$id = intval($_GET['id']);
 		if (($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
-				&& !is_administrator($s_username) || $_SESSION['is_root'])
-				&& isset($_GET['insert'])) {
+				&& !is_administrator($s_username) && $_SESSION['can_edit_as_others']
+			 	|| $_SESSION['is_root']) && isset($_GET['insert'])) {
 			pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter,
 					drop_modify_nothing, modification, query_command_nothing, query_command_1,
 					send_inject_query_command_nothing, query_command_2, proto_id, imm_addr,
@@ -57,8 +55,8 @@ if ($can_edit_rules) {
 			$key2 = intval($_GET['key2']);
 			if (($_GET['key1'] == $_SESSION['username'] && $_GET['key1'] == $_GET['username']
 					|| $_SESSION['is_administrator'] && !is_administrator($s_key1)
-					&& !is_administrator($s_username) || $_SESSION['is_root'])
-					&& isset($_GET['update'])) {
+					&& !is_administrator($s_username) && $_SESSION['can_edit_as_others']
+				 	|| $_SESSION['is_root']) && isset($_GET['update'])) {
 				pgquery("UPDATE rules SET (username, id, send_receive_seconds, filter,
 						drop_modify_nothing, modification, query_command_nothing, query_command_1,
 						send_inject_query_command_nothing, query_command_2, proto_id, imm_addr,
@@ -94,7 +92,8 @@ if ($can_edit_rules) {
 		$u_key1 = urlencode($_GET['key1']);
 		$key2 = intval($_GET['key2']);
 		if (($_GET['key1'] == $_SESSION['username'] || $_SESSION['is_administrator']
-				&& !is_administrator($s_key1) || $_SESSION['is_root']) && isset($_GET['delete'])) {
+				&& !is_administrator($s_key1) && $_SESSION['can_edit_as_others']
+			 	|| $_SESSION['is_root']) && isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
 				pgquery("DELETE FROM rules WHERE username = $s_key1 AND id = $key2;");
 				echo "For username $h_key1 rule $key2 deleted.<br/>\n";
@@ -113,27 +112,34 @@ if ($can_edit_rules) {
 }
 if ($can_view_rules) {
 	if ($_SESSION['is_root']) {
-		$result = pgquery('SELECT rules.*, proto_name.name FROM rules INNER JOIN proto_name
+		$result = pgquery('SELECT rules.*, TRUE, proto_name.name FROM rules INNER JOIN proto_name
 				ON rules.proto_id = proto_name.proto ORDER BY rules.username ASC, rules.id ASC;');
 ?>
 		You are authorized to view (edit) rules for all users.<br/>
 <?php
 	} elseif ($_SESSION['is_administrator']) {
-		$result = pgquery("SELECT rules.*, proto_name.name FROM rules INNER JOIN users
-				ON rules.username = users.username INNER JOIN proto_name ON rules.proto_id
-				= proto_name.proto WHERE rules.username = {$_SESSION['s_username']}
-				OR NOT users.is_administrator AND $can_view_as_others
+		$result = pgquery("SELECT rules.*, rules.username = {$_SESSION['s_username']}
+				OR NOT users.is_administrator AND {$_SESSION['can_edit_as_others']}, proto_name.name
+				FROM rules INNER JOIN users ON rules.username = users.username INNER JOIN proto_name
+				ON rules.proto_id = proto_name.proto WHERE rules.username
+				= {$_SESSION['s_username']} OR NOT users.is_administrator
+				AND {$_SESSION['can_view_as_others']}
 				ORDER BY rules.username ASC, rules.id ASC;");
-		echo "You are authorized to view (edit) rules for username {$_SESSION['h2username']}",
-				$can_view_as_others ? ' or non-administrators' : '', ".<br/>\n";
+		echo 'You are authorized to view', $can_edit_rules ? ' (edit)' : '',
+				" rules for username {$_SESSION['h2username']}", $_SESSION['can_view_as_others']
+				? ' or non-administrators' : '', $_SESSION['can_edit_as_others'] && $can_edit_rules
+				? '' : ' (noedit)', ".<br/>\n";
 	} else {
-		$result = pgquery("SELECT rules.*, proto_name.name FROM rules
-				INNER JOIN proto_name ON rules.proto_id = proto_name.proto
-				WHERE rules.username = {$_SESSION['s_username']}
-				OR rules.username = 'public' AND $can_view_as_others
+		$result = pgquery("SELECT rules.*, rules.username = {$_SESSION['s_username']}
+				OR NOT users.is_administrator AND {$_SESSION['can_edit_as_others']}, proto_name.name
+				FROM rules INNER JOIN proto_name ON rules.proto_id = proto_name.proto
+				WHERE rules.username = {$_SESSION['s_username']} OR rules.username = 'public'
+				AND {$_SESSION['can_view_as_others']}
 				ORDER BY rules.username ASC, rules.id ASC;");
-		echo "You are authorized to view (edit) rules for username {$_SESSION['h2username']}",
-				$can_view_as_others ? ' or public user' : '', ".<br/>\n";
+		echo 'You are authorized to view', $can_edit_rules ? ' (edit)' : '',
+				" rules for username {$_SESSION['h2username']}", $_SESSION['can_view_as_others']
+				? ' or public user' : '', $_SESSION['can_edit_as_others'] && $can_edit_rules ? ''
+				: ' (noedit)', ".<br/>\n";
 	}
 ?>
 	Viewing table &quot;rules&quot;<br/>
@@ -153,8 +159,8 @@ if ($can_view_rules) {
 				<th>(query/command 2)</th>
 				<th>using protocol</th>
 				<th>and immediate address</th>
-				<th>using insecure port</th>
-				<th>and secure port</th>
+				<th>using custom insecure listen port</th>
+				<th>and custom secure listen port</th>
 				<th>using also CCF</th>
 				<th>and also ACF</th>
 				<th>using broadcast</th>
@@ -434,8 +440,8 @@ if ($can_view_rules) {
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"text\" name=\"proto_id\" value=\"", $row[20]
-								=== null ? '' : htmlspecialchars($row[20]), "\" size=\"10\"/>\n";
+						echo "<input form=$form type=\"text\" name=\"proto_id\" value=\"", $row[23]
+								=== null ? '' : htmlspecialchars($row[23]), "\" size=\"10\"/>\n";
 ?>
 					</td>
 					<td>
@@ -447,57 +453,69 @@ if ($can_view_rules) {
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"checkbox\" name=\"CCF\"",
-								$row[13] == 't' ? ' checked' : '', "/>\n";
+						echo "<input form=$form type=\"text\" name=\"insecure_port\" value=\"",
+								$row[12] === null ? '' : $row[12], "\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"checkbox\" name=\"ACF\"",
+						echo "<input form=$form type=\"text\" name=\"secure_port\" value=\"",
+								$row[13] === null ? '' : $row[13], "\"/>\n";
+?>
+					</td>
+					<td>
+<?php
+						echo "<input form=$form type=\"checkbox\" name=\"CCF\"",
 								$row[14] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"checkbox\" name=\"broadcast\"",
+						echo "<input form=$form type=\"checkbox\" name=\"ACF\"",
 								$row[15] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"checkbox\" name=\"override_implicit_rules\"",
+						echo "<input form=$form type=\"checkbox\" name=\"broadcast\"",
 								$row[16] == 't' ? ' checked' : '', "/>\n";
+?>
+					</td>
+					<td>
+<?php
+						echo "<input form=$form type=\"checkbox\" name=\"override_implicit_rules\"",
+								$row[17] == 't' ? ' checked' : '', "/>\n";
 ?>
 						.
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"activate\" value=\"",
-								$row[17] === null ? '' : $row[16], "\"/>\n";
+								$row[18] === null ? '' : $row[16], "\"/>\n";
 ?>
 						.
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"deactivate\" value=\"",
-								$row[18] === null ? '' : $row[17], "\"/>\n";
+								$row[19] === null ? '' : $row[17], "\"/>\n";
 ?>
 						.
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"checkbox\" name=\"is_active\"",
-								$row[19] == 't' ? ' checked' : '', "/>\n";
+								$row[20] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"text\" name=\"last_run\" value=\"", $row[19],
+						echo "<input form=$form type=\"text\" name=\"last_run\" value=\"", $row[21],
 								"\"/>\n";
 ?>
 					</td>
 <?php
-					if ($can_edit_rules) {
+					if ($can_edit_rules && $row[22] == 't') {
 ?>
 						<td>
 <?php
@@ -528,11 +546,11 @@ if ($can_view_rules) {
 		</tbody>
 	</table>
 	If &quot;SELECT &lt;filter&gt;&quot; evaluates to TRUE, the filter is triggered.
-			You can use column names HD, ID, etc. Appropriate FROM is automatically appended.<br/>
+			You can use column names HD, ID, CCF, ACF, etc. Appropriate FROM is automatically appended.<br/>
 	Modification is performed like &quot;UPDATE message SET &lt;semicolon-separated command 1&gt;;
 			UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;&quot;.<br/>
 	During SQL queries the current message is stored in table
-			&quot;formatted_message_for_send_receive&quot; and columns HD, ID, etc.<br/>
+			&quot;formatted_message_for_send_receive&quot; and columns HD, ID, CCF, ACF, etc.<br/>
 	bash commands are NOT executed as /root/, but as the user who started the database.<br/>
 	Filter can be either a number or a string.<br/>
 	Leaving a field empty indicates null value.<br/>

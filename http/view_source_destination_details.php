@@ -37,7 +37,7 @@ if (!Empty($_GET['SRC']) && !Empty($_GET['DST'])) {
 						WHERE SRC = $s2SRC AND DST = $s_DST AND ID = $key;");
 				echo "Mapping $key for SRC $h2SRC and DST $h2DST updated.<br/>\n";
 			}
-		} elseif (!empty($_GET['key']) && isset($_GET['delete'])) {
+		} elseif (!Empty($_GET['key']) && isset($_GET['delete'])) {
 			$key = intval($_GET['key']);
 			if (isset($_GET['confirm'])) {
 				pgquery("DELETE FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST AND ID = $key;");

@@ -44,7 +44,7 @@ if (!Empty($_GET['SRC']) && !Empty($_GET['proto'])) {
 						WHERE name = $s_proto) AND imm_SRC = $s_imm_SRC;");
 				echo "Mapping $h_key for SRC $h2SRC and proto $h2proto updated.<br/>\n";
 			}
-		} elseif (!empty($_GET['key']) && isset($_GET['delete'])) {
+		} elseif (!Empty($_GET['key']) && isset($_GET['delete'])) {
 			$s_key = pgescapebytea($_GET['key']);
 			$h_key = 'X&apos;' . htmlspecialchars($_GET['key']) . '&apos;';
 			$u_key = urlencode($_GET['key']);

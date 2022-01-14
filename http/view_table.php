@@ -6,9 +6,9 @@ if (!Empty($_GET['tablename'])) {
 	$h1tablename = htmlspecialchars($_GET['tablename']);
 	$h2tablename = "&quot;$h1tablename&quot;";
 	$u_tablename = urlencode($_GET['tablename']);
-	$can_view = check_authorization('can_view_tables', 'view tables')
+	$can_view = check_authorization('can_view_tables', 'view any tables')
 			&& can_view_table($s1tablename);
-	$can_edit = check_authorization('can_edit_tables', 'edit tables')
+	$can_edit = check_authorization('can_edit_tables', 'edit any tables')
 			&& can_edit_table($s1tablename);
 	if ($can_edit) {
 		if (isset($_GET['truncate'])) {
@@ -54,7 +54,7 @@ if (!Empty($_GET['tablename'])) {
 				pgquery(substr($query, 0, -2) . ") WHERE t = $s_key;");
 				echo "Row $h_key updated.<br/>\n";
 			}
-		} elseif (!mpty($_GET['key']) && isset($_GET['delete'])) {
+		} elseif (!Empty($_GET['key']) && isset($_GET['delete'])) {
 			$s_key = pgescapetimestamp($_GET['key']);
 			$h_key = htmlspecialchars($s_key);
 			$u_key = urlencode($_GET['key']);
@@ -155,7 +155,7 @@ if (!Empty($_GET['tablename'])) {
 									echo "<input type=\"hidden\" name=\"tablename\"
 											value=\"$h1tablename\"/>\n";
 ?>
-									<input type="submit" name="update" value="UPDATE"/><br/>
+									<input type="submit" name="update" value="UPDATE"/>
 									<input type="reset" value="reset"/>
 <?php
 								echo "</form>\n";

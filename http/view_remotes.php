@@ -2,8 +2,6 @@
 require_once 'common.php';
 $can_view_remotes = check_authorization('can_view_remotes', 'view remotes');
 $can_edit_remotes = check_authorization('can_edit_remotes', 'edit remotes');
-$can_view_as_others = check_authorization('can_view_as_others', 'view others\' remotes');
-$can_edit_as_others = check_authorization('can_edit_as_others', 'edit others\' remotes');
 if ($can_view_remotes && isset($_GET['load'])) {
 	pgquery('CALL load_store(TRUE);');
 	$_SESSION['loaded'] = true;
@@ -18,7 +16,7 @@ if ($can_edit_remotes) {
 ?>
 		Stored remotes to running program.<br/>
 <?php
-	} elseif (!empty($_GET['add'])) {
+	} elseif (!Empty($_GET['add'])) {
 		$s1add = pgescapename($_GET['add']);
 		$s2add = pgescapebytea($_GET['add']);
 		$h_add = 'X&apos;' . htmlspecialchars($_GET['add']) . '&apos;';
@@ -26,7 +24,7 @@ if ($can_edit_remotes) {
 			pgquery("INSERT INTO addr_oID(addr, out_ID) VALUES($s2add, " . rand(0, 255) . ');');
 			echo "Remote $h_add added.<br/>\n";
 		}
-	} elseif (!empty($_GET['remove'])) {
+	} elseif (!Empty($_GET['remove'])) {
 		$s1remove = pgescapename($_GET['remove']);
 		$s2remove = pgescapebytea($_GET['remove']);
 		$h_remove = 'X&apos;' . htmlspecialchars($_GET['remove']) . '&apos;';
@@ -60,25 +58,30 @@ if ($can_view_remotes) {
 					FROM table_owner INNER JOIN users ON table_owner.username = users.username
 					WHERE table_owner.tablename = 't' || encode(b_address, 'hex')
 					AND (table_owner.username = {$_SESSION['s_username']}
-					OR NOT users.is_administrator AND $can_view_others)) AS can_edit FROM addr_oID
-					INNER JOIN table_reader ON 't' || encode(b_address, 'hex')
-					= table_reader.tablename WHERE can_edit OR table_reader.username
-					= {$_SESSION['s_username']} OR NOT users.is_administrator AND $can_view_others
+					OR NOT users.is_administrator AND {$_SESSION['can_edit_as_others']}))
+					AS can_edit FROM addr_oID INNER JOIN table_reader ON 't'
+					|| encode(b_address, 'hex') = table_reader.tablename WHERE can_edit
+					OR table_reader.username = {$_SESSION['s_username']}
+					OR NOT users.is_administrator AND {$_SESSION['can_view_as_others']}
 					ORDER BY b_address ASC;");
-			echo "You are authorized to view (edit) username-{$_SESSION['h2username']}-readable
-					(-owned)", $can_view_others ? ' or non-administrator-readable (-owned)' : '',
+			echo 'You are authorized to view', $can_edit_remotes ? ' (edit)' : '',
+					" username-{$_SESSION['h2username']}-readable", $can_edit_remotes ? ' (-owned)'
+					: '', $_SESSION['can_view_as_others'] ? ' or non-administrator-readable' : '',
+					$_SESSION['can_edit_as_others'] && $can_edit_remotes ? ' (-owned)' : '',
 					" remotes.\n";
 		} else {
 			$result = pgquery("SELECT DISTINCT addr_oID.addr AS b_address, EXISTS(SELECT TRUE
 					FROM table_owner WHERE tablename = 't' || encode(b_address, 'hex')
 					AND (username = {$_SESSION['username']} OR username = 'public')
-					AND $can_view_others) AS can_edit FROM addr_oID.addr INNER JOIN table_reader
-					ON 't' || encode(address, 'hex') = table_reader.tablename WHERE can_edit
-					OR table_reader.username = {$_SESSION['s_username']}
-					OR table_reader.username = 'public' AND $can_view_others
-					ORDER BY b_address ASC;");
-			echo "You are authorized to view (edit) username-{$_SESSION['h2username']}-readable
-					(-owned)", $can_view_others ? ' or public-readable (-owned)' : '',
+					AND {$_SESSION['can_edit_as_others']}) AS can_edit FROM addr_oID.addr
+					INNER JOIN table_reader ON 't' || encode(address, 'hex')
+					= table_reader.tablename WHERE can_edit OR table_reader.username
+					= {$_SESSION['s_username']} OR table_reader.username = 'public'
+					AND {$_SESSION['can_view_as_others']} ORDER BY b_address ASC;");
+			echo 'You are authorized to view', $can_edit_remotes ? ' (edit)' : '',
+					" username-{$_SESSION['h2username']}-readable", $can_edit_remotes ? ' (-owned)'
+					: '', $_SESSION['can_view_as_others'] ? ' or public-readable' : '',
+					$_SESSION['can_edit_as_others'] && $can_edit_remotes ? ' (-owned)' : '',
 					" remotes.\n";
 		}
 ?>
