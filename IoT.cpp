@@ -624,6 +624,10 @@ extern "C" const char *SSL_error_string(int e, char *buf);
 
 string SSL_give_error(const SSL *ssl, int ret);
 
+extern "C" char *PQescapeString2(PGconn *conn, const char *str, size_t length);
+
+string PQescapeString3(string str);
+
 in_addr BYTE8_to_ia(BYTE8 address) noexcept;
 
 BYTE8 ia_to_BYTE8(in_addr ia) noexcept;
@@ -1199,6 +1203,21 @@ string SSL_give_error(const SSL *ssl, int ret) {
 		retval += ERR_error_string(ERR_get_error(), nullptr);
 	}
 	return retval;
+}
+
+extern "C" char *PQescapeString2(PGconn *conn, const char *str, size_t length) {
+	char *buffer = new char[(length << 1) + 1];
+
+	PQescapeStringConn(conn, buffer, str, length, NULL);
+	return buffer;
+}
+
+string PQescapeString3(string str) {
+	char *buffer = PQescapeString2(conn, str.c_str(), str.length());
+
+	str = buffer;
+	delete buffer;
+	return str;
 }
 
 #define ADVERTISING_INTERVAL_MIN 1024
@@ -2347,7 +2366,7 @@ int main(int argc, char *argv[]) {
 	sigaddset(&sa.sa_mask, SIGUSR1);
 	sigaddset(&sa.sa_mask, SIGUSR2);
 	sigprocmask(SIG_BLOCK, &sa.sa_mask, nullptr);
-	getcwd(cwd, PATH_MAX);
+	strcpy(cwd, PQescapeString3(getcwd(cwd, PATH_MAX)).c_str());
 	initialize_vars();
 
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS users(username TEXT, "
@@ -3822,7 +3841,7 @@ raw_message *receive_raw_message() {
 			select = ss.str();
 			res_rules = execcheckreturn(select + " ORDER BY username ASC, id ASC");
 			for (i = 0, j = PQntuples(res_rules); i < j; i++) {
-				current_username = PQgetvalue(res_rules, i, 0);
+				current_username = PQescapeString3(PQgetvalue(res_rules, i, 0));
 				apply_rule_beginning(res_rules, current_id, i, "timed", current_username);
 				PQclear(execcheckreturn("UPDATE rules SET (last_run, next_run) = (last_run "
 						"+ run_period, CAST(EXTRACT(EPOCH FROM last_run + 2 * run_period) "
@@ -3969,7 +3988,7 @@ void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
 }
 
 formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool send) {
-	string current_username(find_owner(send ? fmsg->DST : fmsg->SRC)), select((send
+	string current_username(PQescapeString3(find_owner(send ? fmsg->DST : fmsg->SRC))), select((send
 			? "SELECT username, id, send_receive_seconds, filter, drop_modify_nothing, "
 			"modification, query_command_nothing, query_command_1, "
 			"send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, "
@@ -4183,7 +4202,7 @@ void manually_execute_timed_rule2(const manually_execute_timed_rule_struct &metr
 			"insecure_port, secure_port, CCF, ACF, broadcast, override_implicit_rules, activate, "
 			"deactivate, is_active FROM rules WHERE id = ", oss.out | oss.ate);
 	PGresult *res_rules;
-	string select, current_username(metrs.username);
+	string select, current_username(PQescapeString3(metrs.username));
 	int i, j = 1;
 
 	oss << metrs.id << " AND username = \'" << current_username << '\'';
