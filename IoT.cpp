@@ -2532,7 +2532,7 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS config()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS refresh_next_timed_rule_time("
 			"next_timed_rule BIGINT)"));
-	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS update_permissions()"));
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS update_ownerships()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS manually_execute_timed_rule(username TEXT, "
 			"id INTEGER)"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS raw_message_for_query_command("
@@ -2559,7 +2559,7 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_timed_rule_time(next_timed_rule BIGINT) "
 			"RETURNS void AS \'"s + cwd + "/libIoT\', \'refresh_next_timed_rule_time\' "
 			"LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE update_permissions() AS \'"s + cwd
+	PQclear(execcheckreturn("CREATE PROCEDURE update_ownerships() AS \'"s + cwd
 			+ "/libIoT\', \'update_permissions\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE manually_execute_timed_rule(username TEXT, "
 			"id INTEGER) AS\'"s + cwd + "/libIoT\', \'manually_execute_timed_rule\' "
@@ -2932,7 +2932,7 @@ extern "C" Datum send_inject(PG_FUNCTION_ARGS) {
 	text *proto_id_sql = PG_GETARG_TEXT_PP(2);
 	int message_length = VARSIZE_ANY_EXHDR(message), proto_id_len = VARSIZE_ANY_EXHDR(proto_id_sql),
 			fd = open("/tmp/flock_cpp", O_WRONLY | O_CREAT, 0777),
-			insecure_port = PG_GETARG_INTEGER(4), secure_port = PG_GETARG_INTEGER(5);
+			insecure_port = PG_GETARG_INT32(4), secure_port = PG_GETARG_INT32(5);
 	send_inject_struct *sis = new(message_length) send_inject_struct(message_length);
 	mqd_t prlimit_pid_mq = mq_open("/prlimit_pid", O_WRONLY), prlimit_ack_mq
 			= mq_open("/prlimit_ack", O_RDWR), send_inject_mq = mq_open("/send_inject", O_WRONLY);
@@ -4092,18 +4092,26 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	const char *value = PQgetvalue(res_rules, i, offset + 2);
 
 	if (*value == '0') {
+		PQclear(execcheckreturn("SET ROLE \'" + current_username + '\''));
 		PQclear(execcheckreturn(PQgetvalue(res_rules, i, offset + 3)));
+		PQclear(execcheckreturn("SET ROLE NONE"));
 	} else if (*value == '1') {
+		PQclear(execcheckreturn("SET ROLE \'" + current_username + '\''));
 		ss.str("COPY (SELECT) TO PROGRAM \'bash -c \"");
 		PQclear(execcheckreturn(ss.str() + PQgetvalue(res_rules, i, offset + 3) + "\"\'"));
+		PQclear(execcheckreturn("SET ROLE NONE"));
 	}
 	value = PQgetvalue(res_rules, i, offset + 4);
 	if (*value == '0' || *value == '2') {
+		PQclear(execcheckreturn("SET ROLE \'" + current_username + '\''));
 		ss.str("INSERT INTO raw_message_for_query_command(message) ");
 		PQclear(execcheckreturn(ss.str() + PQgetvalue(res_rules, i, offset + 5)));
+		PQclear(execcheckreturn("SET ROLE NONE"));
 	} else if (*value == '1' || *value == '3') {
+		PQclear(execcheckreturn("SET ROLE \'" + current_username + '\''));
 		ss.str("COPY raw_message_for_query_command(message) FROM PROGRAM \'bash -c \"");
 		PQclear(execcheckreturn(ss.str() + PQgetvalue(res_rules, i, offset + 5) + "\"\'"));
+		PQclear(execcheckreturn("SET ROLE NONE"));
 	}
 	res_message = execcheckreturn("SELECT message FROM raw_message_for_query_command");
 	if (*value <= '1') {
@@ -5508,7 +5516,7 @@ void create_table(string address, vector<string> &columns, vector<string> &types
 	PQclear(execcheckreturn("INSERT INTO table_owner(tablename, username) "
 			"VALUES(\'" + address + "\', \'public\')"));
 }
-//todo 4 stvori sigurati u apply_rule_end, 1 u sel, 1 u sub, username escapeati u man_ex, appl_r i rec_r_m, unda
+//todo 1 u sel, 1 u sub
 //if the final character of a member of var "columns" is inverted, the column needs altering
 void alter_table(string address, vector<string> &columns, const vector<string> &types) {
 	int i = -1, j = columns.size();
@@ -5524,7 +5532,7 @@ void alter_table(string address, vector<string> &columns, const vector<string> &
 		}
 	}
 }
-//todo escapeati cwd i urediti prava u mainu, urediti prava u create table, urediti u apply rules poziv send_inj, urediti u mainu config tls_port i sl...
+//todo urediti prava u mainu, urediti prava u create table, urediti u apply rules poziv send_inj, urediti u mainu config tls_port i sl..., ownership, sub
 BYTE8 EUI48_to_EUI64(BYTE8 EUI48) noexcept {
 	return (EUI48 << 16 & 0xFFFFFF00'00000000) | 0x000000FF'FE000000 | (EUI48 & 0x00000'00FFFFFF);
 }
