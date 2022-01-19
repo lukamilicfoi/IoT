@@ -322,7 +322,7 @@ struct refresh_next_timed_rule_time_struct {
 	time_t next_timed_rule;
 };
 
-struct update_permissions_struct { };
+struct update_ownerships_struct { };
 
 struct manually_execute_timed_rule_struct {
 	char username[256];//username cannot exceed
@@ -442,7 +442,7 @@ my_time_point (* const my_now)() noexcept = chrono::system_clock::now;
 
 mqd_t main_mq;
 
-mqd_t update_permissions_mq;
+mqd_t update_ownerships_mq;
 
 mqd_t ext_mq;
 
@@ -535,7 +535,7 @@ extern "C" { PG_FUNCTION_INFO_V1(config); }
 
 extern "C" { PG_FUNCTION_INFO_V1(refresh_next_timed_rule_time); }
 
-extern "C" { PG_FUNCTION_INFO_V1(update_permissions); }
+extern "C" { PG_FUNCTION_INFO_V1(update_ownerships); }
 
 extern "C" { PG_FUNCTION_INFO_V1(manually_execute_timed_rule); }
 
@@ -549,7 +549,7 @@ void encode_message(formatted_message &fmsg, raw_message &rmsg);
 
 void refresh_next_timed_rule_time2(const refresh_next_timed_rule_time_struct &rntrts);
 
-void update_permissions2();
+void update_ownerships2();
 
 void manually_execute_timed_rule2(const manually_execute_timed_rule_struct &metrs);
 
@@ -2560,7 +2560,7 @@ int main(int argc, char *argv[]) {
 			"RETURNS void AS \'"s + cwd + "/libIoT\', \'refresh_next_timed_rule_time\' "
 			"LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE update_ownerships() AS \'"s + cwd
-			+ "/libIoT\', \'update_permissions\' LANGUAGE C"));
+			+ "/libIoT\', \'update_ownerships\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE manually_execute_timed_rule(username TEXT, "
 			"id INTEGER) AS\'"s + cwd + "/libIoT\', \'manually_execute_timed_rule\' "
 			"LANGUAGE C"));
@@ -2609,6 +2609,8 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
 	PQclear(execcheckreturn("INSERT INTO table_owner(tablename, username) "
 			"VALUES(\'t"s + BYTE8_to_c17charp(local_addr) + "\', \'public\')"));
+	PQclear(execcheckreturn("ALTER TABLE t"s + BYTE8_to_c17charp(local_addr)
+			+ " OWNER TO \"PUBLIC\""));
 	main_loop();
 
 	destroy_vars();
@@ -2688,10 +2690,10 @@ void initialize_vars() {
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(refresh_next_timed_rule_time_mq < 0,
 			system_exception("cannot open refresh_next_timed_rule_time_mq"));
-	ma.mq_msgsize = sizeof(update_permissions_struct);
-	update_permissions_mq = mq_open("/update_permissions",
+	ma.mq_msgsize = sizeof(update_ownerships_struct);
+	update_ownerships_mq = mq_open("/update_ownerships",
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
-	THR(update_permissions_mq < 0, system_exception("cannot open update_permissions_mq"));
+	THR(update_ownerships_mq < 0, system_exception("cannot open update_ownerships_mq"));
 	ma.mq_msgsize = sizeof(manually_execute_timed_rule_struct);
 	manually_execute_timed_rule_mq = mq_open("/manually_execute_timed_rule",
 			O_RDWR | O_CREAT | O_NONBLOCK, 0777, &ma);
@@ -2762,8 +2764,8 @@ void destroy_vars() {
 	THR(mq_unlink("/config") < 0, system_exception("cannot unlink config_mq"));
 	THR(mq_unlink("/refresh_next_timed_rule_time") < 0,
 			system_exception("cannot unlink refresh_next_timed_rule_time_mq"));
-	THR(mq_unlink("/update_permissions") < 0,
-			system_exception("cannot unlink update_permissions_mq"));
+	THR(mq_unlink("/update_ownerships") < 0,
+			system_exception("cannot unlink update_ownerships_mq"));
 	THR(mq_unlink("/manually_execute_timed_rule") < 0,
 			system_exception("cannot unlink manually_execute_timed_rule_mq"));
 
@@ -3113,16 +3115,16 @@ extern "C" Datum refresh_next_timed_rule_time(PG_FUNCTION_ARGS) {
 }
 
 //this function is executed in another process!!!
-extern "C" Datum update_permissions(PG_FUNCTION_ARGS) {
-	struct update_permissions_struct ups;
-	mqd_t update_permissions_mq = mq_open("/update_permissions", O_WRONLY);
+extern "C" Datum update_ownerships(PG_FUNCTION_ARGS) {
+	struct update_ownerships_struct ups;
+	mqd_t update_ownerships_mq = mq_open("/update_ownerships", O_WRONLY);
 
-	THR(update_permissions_mq < 0, system_exception("cannot open update_permissions_mq"));
-	THR(mq_send(update_permissions_mq, reinterpret_cast<char *>(&ups),
-			sizeof(update_permissions_struct), 0) < 0,
-			system_exception("cannot send to update_permissions_mq"));
-	THR(mq_close(update_permissions_mq) < 0,
-			system_exception("cannot close update_permissions_mq"));
+	THR(update_ownerships_mq < 0, system_exception("cannot open update_ownerships_mq"));
+	THR(mq_send(update_ownerships_mq, reinterpret_cast<char *>(&ups),
+			sizeof(update_ownerships_struct), 0) < 0,
+			system_exception("cannot send to update_ownerships_mq"));
+	THR(mq_close(update_ownerships_mq) < 0,
+			system_exception("cannot close update_ownerships_mq"));
 	PG_RETURN_VOID();
 }
 
@@ -3304,7 +3306,7 @@ void refresh_next_timed_rule_time2(const refresh_next_timed_rule_time_struct &rn
 	LOG_CPP("next timed rule " << next_timed_rule - time(nullptr) << " seconds from now" << endl);
 }
 
-void update_permissions2() {
+void update_ownerships2() {
 	PGresult *res = execcheckreturn("TABLE table_owner ORDER BY tablename DESC");
 	int i = PQntuples(res);
 
@@ -3749,7 +3751,7 @@ raw_message *receive_raw_message() {
 	config_struct cs;
 	PGresult *res_rules;
 	stringstream ss(ss.in | ss.out | ss.ate);
-	update_permissions_struct ups;
+	update_ownerships_struct ups;
 	manually_execute_timed_rule_struct metrs;
 	string current_username;
 
@@ -3816,12 +3818,12 @@ raw_message *receive_raw_message() {
 		} else {
 			refresh_next_timed_rule_time2(rntrts);
 		}
-		if (mq_receive(update_permissions_mq, reinterpret_cast<char *>(&ups),
+		if (mq_receive(update_ownerships_mq, reinterpret_cast<char *>(&ups),
 				sizeof(ups), nullptr) < 0) {
 			THR(errno != EAGAIN,
-					system_exception("cannot receive from update_permissions_mq"));
+					system_exception("cannot receive from update_ownerships_mq"));
 		} else {
-			update_permissions2();
+			update_ownerships2();
 		}
 		if (mq_receive(manually_execute_timed_rule_mq, reinterpret_cast<char *>(&metrs),
 				sizeof(metrs), nullptr) < 0) {
@@ -4093,32 +4095,40 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 
 	if (*value == '0') {
 		PQclear(execcheckreturn("SET ROLE \'" + current_username + '\''));
-		PQclear(execcheckreturn(PQgetvalue(res_rules, i, offset + 3)));
+		string query = PQgetvalue(res_rules, i, offset + 3);
+		THR(!clean_insert(query), system_exception("multiple queries"));
+		PQclear(execcheckreturn(query));
 		PQclear(execcheckreturn("SET ROLE NONE"));
 	} else if (*value == '1') {
 		PQclear(execcheckreturn("SET ROLE \'" + current_username + '\''));
+		string query = PQgetvalue(res_rules, i, offset + 3);
+		THR(!clean_insert(query), system_exception("multiple queries"));
 		ss.str("COPY (SELECT) TO PROGRAM \'bash -c \"");
-		PQclear(execcheckreturn(ss.str() + PQgetvalue(res_rules, i, offset + 3) + "\"\'"));
+		PQclear(execcheckreturn(ss.str() + query + "\"\'"));
 		PQclear(execcheckreturn("SET ROLE NONE"));
 	}
 	value = PQgetvalue(res_rules, i, offset + 4);
 	if (*value == '0' || *value == '2') {
 		PQclear(execcheckreturn("SET ROLE \'" + current_username + '\''));
+		string query = PQgetvalue(res_rules, i, offset + 5);
+		THR(!clean_insert(query), system_exception("multiple queries"));
 		ss.str("INSERT INTO raw_message_for_query_command(message) ");
-		PQclear(execcheckreturn(ss.str() + PQgetvalue(res_rules, i, offset + 5)));
+		PQclear(execcheckreturn(ss.str() + query));
 		PQclear(execcheckreturn("SET ROLE NONE"));
 	} else if (*value == '1' || *value == '3') {
 		PQclear(execcheckreturn("SET ROLE \'" + current_username + '\''));
+		string query = PQgetvalue(res_rules, i, offset + 5);
+		THR(!clean_insert(query), system_exception("multiple queries"));
 		ss.str("COPY raw_message_for_query_command(message) FROM PROGRAM \'bash -c \"");
-		PQclear(execcheckreturn(ss.str() + PQgetvalue(res_rules, i, offset + 5) + "\"\'"));
+		PQclear(execcheckreturn(ss.str() + query + "\"\'"));
 		PQclear(execcheckreturn("SET ROLE NONE"));
 	}
 	res_message = execcheckreturn("SELECT message FROM raw_message_for_query_command");
 	if (*value <= '1') {
 		send_inject_from_rule(PQgetvalue(res_message, 0, 0),
 				PQgetvalue(res_rules, i, offset + 6), PQgetvalue(res_rules, i, offset + 7) + 2,
-				*PQgetvalue(res_rules, i, offset + 8) == 't',
-				*PQgetvalue(res_rules, i, offset + 9) == 't',
+				atoi(PQgetvalue(res_rules, i, offset + 8)),
+				atoi(PQgetvalue(res_rules, i, offset + 9)),
 				*PQgetvalue(res_rules, i, offset + 10) == 't',
 				*PQgetvalue(res_rules, i, offset + 11) == 't',
 				*PQgetvalue(res_rules, i, offset + 12) == 't',
@@ -4126,8 +4136,8 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	} else if (*value <= '3') {
 		send_inject_from_rule(PQgetvalue(res_message, 0, 0),
 				PQgetvalue(res_rules, i, offset + 6), PQgetvalue(res_rules, i, offset + 7) + 2,
-				*PQgetvalue(res_rules, i, offset + 8) == 't',
-				*PQgetvalue(res_rules, i, offset + 9) == 't',
+				atoi(PQgetvalue(res_rules, i, offset + 8)),
+				atoi(PQgetvalue(res_rules, i, offset + 9)),
 				*PQgetvalue(res_rules, i, offset + 10) == 't',
 				*PQgetvalue(res_rules, i, offset + 11) == 't',
 				*PQgetvalue(res_rules, i, offset + 12) == 't',
@@ -5515,6 +5525,7 @@ void create_table(string address, vector<string> &columns, vector<string> &types
 			+ "t TIMESTAMP(4) WITHOUT TIME ZONE, PRIMARY KEY(t))"));//strlen("4294967296") = 10
 	PQclear(execcheckreturn("INSERT INTO table_owner(tablename, username) "
 			"VALUES(\'" + address + "\', \'public\')"));
+	PQclear(execcheckreturn("ALTER TABLE " + address + " OWNER TO \"PUBLIC\""));
 }
 //todo 1 u sel, 1 u sub
 //if the final character of a member of var "columns" is inverted, the column needs altering
