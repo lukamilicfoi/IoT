@@ -2434,6 +2434,16 @@ int main(int argc, char *argv[]) {
 			"FOREIGN KEY(proto) REFERENCES proto_name(proto))"));
 	PQclear(execcheckreturn("TRUNCATE TABLE formatted_message_for_send_receive"));
 
+	res = execcheckreturn("SELECT insecure_port, secure_port FROM configuration "
+			"WHERE username = \'root\'");
+	oss.str(PQgetvalue(res, 0, 0));
+	oss >> tcp_port;
+	udp_port = tcp_port;
+	oss.str(PQgetvalue(res, 0, 1));
+	oss.clear();
+	oss >> tls_port;
+	dtls_port = tls_port;
+	PQclear(res);
 	res = execcheckreturn("SELECT TRUE FROM pg_class WHERE relname = \'adapter_name\'");
 	if (PQntuples(res) == 0) {
 		PQclear(execcheckreturn("CREATE TABLE adapter_name(adapter INTEGER, name TEXT NOT NULL, "
@@ -4095,32 +4105,32 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 
 	if (*value == '0') {
 		PQclear(execcheckreturn("SET ROLE \'" + current_username + '\''));
-		string query = PQgetvalue(res_rules, i, offset + 3);
-		THR(!clean_insert(query), system_exception("multiple queries"));
-		PQclear(execcheckreturn(query));
+		value = PQgetvalue(res_rules, i, offset + 3);
+		THR(!clean_insert(value), system_exception("multiple queries"));
+		PQclear(execcheckreturn(value));
 		PQclear(execcheckreturn("SET ROLE NONE"));
 	} else if (*value == '1') {
 		PQclear(execcheckreturn("SET ROLE \'" + current_username + '\''));
-		string query = PQgetvalue(res_rules, i, offset + 3);
-		THR(!clean_insert(query), system_exception("multiple queries"));
+		value = PQgetvalue(res_rules, i, offset + 3);
+		THR(!clean_insert(value), system_exception("multiple queries"));
 		ss.str("COPY (SELECT) TO PROGRAM \'bash -c \"");
-		PQclear(execcheckreturn(ss.str() + query + "\"\'"));
+		PQclear(execcheckreturn(ss.str() + value + "\"\'"));
 		PQclear(execcheckreturn("SET ROLE NONE"));
 	}
 	value = PQgetvalue(res_rules, i, offset + 4);
 	if (*value == '0' || *value == '2') {
 		PQclear(execcheckreturn("SET ROLE \'" + current_username + '\''));
-		string query = PQgetvalue(res_rules, i, offset + 5);
-		THR(!clean_insert(query), system_exception("multiple queries"));
+		value = PQgetvalue(res_rules, i, offset + 5);
+		THR(!clean_insert(value), system_exception("multiple queries"));
 		ss.str("INSERT INTO raw_message_for_query_command(message) ");
-		PQclear(execcheckreturn(ss.str() + query));
+		PQclear(execcheckreturn(ss.str() + value));
 		PQclear(execcheckreturn("SET ROLE NONE"));
 	} else if (*value == '1' || *value == '3') {
 		PQclear(execcheckreturn("SET ROLE \'" + current_username + '\''));
-		string query = PQgetvalue(res_rules, i, offset + 5);
-		THR(!clean_insert(query), system_exception("multiple queries"));
+		value = PQgetvalue(res_rules, i, offset + 5);
+		THR(!clean_insert(value), system_exception("multiple queries"));
 		ss.str("COPY raw_message_for_query_command(message) FROM PROGRAM \'bash -c \"");
-		PQclear(execcheckreturn(ss.str() + query + "\"\'"));
+		PQclear(execcheckreturn(ss.str() + value + "\"\'"));
 		PQclear(execcheckreturn("SET ROLE NONE"));
 	}
 	res_message = execcheckreturn("SELECT message FROM raw_message_for_query_command");
@@ -4657,8 +4667,7 @@ void sub(string query, string _id, BYTE8 address) {
 	regex re("(?:FROM|JOIN) +([a-z0-9]+)");//deliberately not ignoring case
 	sti iter_begin(query.begin(), query.end(), re, 1), iter_end;
 
-	unsub(_id, address);
-	sel(query, address);
+	PQclear(execcheckreturn("SET ROLE \'" + PQescapeString3(find_owner(address)) + '\''));
 	if (iter_begin != iter_end) {
 		PQclear(execcheckreturn("CREATE TABLE table_" + addr_id + " AS " + query));
 		PQclear(execcheckreturn("CREATE VIEW view_" + addr_id + " AS " + query));
@@ -4690,6 +4699,7 @@ void sub(string query, string _id, BYTE8 address) {
 					+ " EXECUTE PROCEDURE function_" + addr_id + "()"));
 		} while (++iter_begin != iter_end);
 	}
+	PQclear(execcheckreturn("SET ROLE NONE"));
 }
 
 /*
@@ -4732,7 +4742,9 @@ void sel(string query, BYTE8 address) {
 	 * multi-queries, SELECT INTO, or SELECT FOR
 	 */
 	THR(!clean_select(query), error_exception("error in SELECT"));
+	PQclear(execcheckreturn("SET ROLE \'" + PQescapeString3(find_owner(address)) + '\''));
 	PQclear(formatsendreturn(execcheckreturn(query), address));
+	PQclear(execcheckreturn("SET ROLE NONE"));
 }
 
 bool is_select(string query) {
@@ -5527,7 +5539,7 @@ void create_table(string address, vector<string> &columns, vector<string> &types
 			"VALUES(\'" + address + "\', \'public\')"));
 	PQclear(execcheckreturn("ALTER TABLE " + address + " OWNER TO \"PUBLIC\""));
 }
-//todo 1 u sel, 1 u sub
+
 //if the final character of a member of var "columns" is inverted, the column needs altering
 void alter_table(string address, vector<string> &columns, const vector<string> &types) {
 	int i = -1, j = columns.size();
@@ -5543,7 +5555,7 @@ void alter_table(string address, vector<string> &columns, const vector<string> &
 		}
 	}
 }
-//todo urediti prava u mainu, urediti prava u create table, urediti u apply rules poziv send_inj, urediti u mainu config tls_port i sl..., ownership, sub
+
 BYTE8 EUI48_to_EUI64(BYTE8 EUI48) noexcept {
 	return (EUI48 << 16 & 0xFFFFFF00'00000000) | 0x000000FF'FE000000 | (EUI48 & 0x00000'00FFFFFF);
 }
