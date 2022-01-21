@@ -36,7 +36,7 @@ if ($can_edit_permissions) {
 		if (($tablename_owner_is_user_or_public || $_SESSION['is_administrator']
 				&& !$tablename_owner_is_administrator && $_SESSION['can_edit_as_others']
 			 	|| $_SESSION['is_root']) && $tablename_owner != $_GET['username']
-				&& isset($_GET['insert']) {
+				&& isset($_GET['insert'])) {
 			pgquery("INSERT INTO table_reader(tablename, username)
 					VALUES($s1tablename, $s_username);");
 			pgquery("GRANT SELECT, TRIGGER, REFERENCES ON $s2tablename TO $s_username;");

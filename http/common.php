@@ -38,12 +38,12 @@ if ($needs_login && !isset($_SESSION['username'])) {
 </html>
 
 <?php
-);
+});
 if (!pg_connect("host=localhost dbname=postgres user=$username client_encoding=UTF8")) {
 	exit('Could not connect - ' . pg_last_error());
 }
 
-function Empty($var) {
+function vacuous($var) {
 	return !isset($var) || $var == '';
 }
 

@@ -1,6 +1,6 @@
 <?php
 require_once 'common.php';
-$can_edit_rules = check_authorization('can_view_rules', 'view rules');
+$can_view_rules = check_authorization('can_view_rules', 'view rules');
 $can_edit_rules = check_authorization('can_edit_rules', 'edit rules');
 if ($can_edit_rules) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
@@ -142,7 +142,7 @@ if ($can_view_rules) {
 				: ' (noedit)', ".<br/>\n";
 	}
 ?>
-	Viewing table &quot;rules&quot;<br/>
+	Viewing table &quot;rules&quot;.<br/>
 	Table ordered by username ascending and id ascending.
 	<table border="1">
 		<tbody>

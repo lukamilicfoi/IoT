@@ -14,7 +14,7 @@ if ($can_edit_others) {
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 				pgquery('DROP OWNED BY ' . pg_escape_literal($row[0]) . ' CASCADE;');
 			}
-			pgquery('DELETE FROM users WHERE username <> \'root\' AND username <> \'public\';'));
+			pgquery('DELETE FROM users WHERE username <> \'root\' AND username <> \'public\';');
 ?>
 			Table &quot;users&quot; truncated - except for &apos;root&apos;
 					and &apos;public&apos;.<br/>
@@ -71,7 +71,7 @@ if ($can_edit_others) {
 		$h_key = '&apos;' . htmlspecialchars($_GET['key']) . '&apos;';
 		$u_key = urlencode($_GET['key']);
 		if (($_SESSION['is_administrator'] && !is_administrator($s_key) || $_SESSION['is_root'])
-				&& isset($_GET['delete']) {
+				&& isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
 				pgquery("DELETE FROM users WHERE username = $s_key;");
 				pgquery("DROP OWNED BY $s_key CASCADE;");
@@ -96,15 +96,15 @@ if ($can_edit_yourself && isset($_POST['update2']) && !Empty($_POST['username'])
 	$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
 	pgquery('UPDATE users SET (username' . (!Empty($_POST['password']) ? ', password' : '')
 			. ') = ROW(' . pg_escape_literal($_POST['username']) . (!Empty($_POST['password'])
-			? ', \'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'')
+			? ', \'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : '')
 			. ") WHERE username = {$_SESSION['s_username']};");
 	echo "Password updated - for username $h_username.<br/>\n";
 }
 if ($can_view_yourself || $can_view_others) {
 	if ($_SESSION['is_root']) {
-		$result = pgquery("SELECT * FROM users ORDER BY username ASC;");
+		$result = pgquery("SELECT *, TRUE FROM users ORDER BY username ASC;");
 ?>
-		You are authorized to view (edit) all users.
+		You are authorized to view (edit) all users.<br/>
 <?php
 	} elseif ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT username, TRUE, is_administrator, $user_fields_joined,
@@ -113,7 +113,8 @@ if ($can_view_yourself || $can_view_others) {
 				ORDER BY username ASC;");
 		echo 'You are authorized to view', $can_edit_yourself ? ' (edit)' : '',
 				" username {$_SESSION['h2username']}", $can_view_others ? ' or view' : '',
-				$can_edit_others ? ' (edit)' : '', ' non-administrators' : '', ".\n";
+				$can_edit_others ? ' (edit)' : '', $can_view_others ? ' non-administrators'
+				: '', ".\n";
 	} else {
 		$result = pgquery("SELECT username, TRUE, is_administrator, $user_fields_joined,
 				can_actually_login FROM users WHERE username = {$_SESSION['s_username']}
@@ -121,7 +122,8 @@ if ($can_view_yourself || $can_view_others) {
 				ORDER BY username ASC;");
 		echo 'You are authorized to view', $can_edit_yourself ? ' (edit)' : '',
 				" username {$_SESSION['h2username']}", $can_view_others ? ' or view' : '',
-				$can_edit_others ? ' (edit)' : '', ' public user' : '', ".\n";
+				$can_edit_others ? ' (edit)' : '', $can_view_others ? ' public user'
+				: '', ".\n";
 	}
 ?>
 	Viewing table &quot;users&quot;.<br/>

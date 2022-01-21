@@ -23,7 +23,7 @@ if ($can_edit_configuration && !empty($_GET['username']) && isset($_GET['update'
 }
 if ($can_view_configuration) {
 	if ($_SESSION['is_root']) {
-		$result = pgquery('SELECT * FROM configuration ORDER BY username ASC;');
+		$result = pgquery('SELECT *, TRUE FROM configuration ORDER BY username ASC;');
 ?>
 		You are authorized to view (edit) configuration for all users.<br/>
 <?php
