@@ -28,7 +28,7 @@ if (!Empty($_GET['SRC']) && !Empty($_GET['proto'])) {
 				echo "<a href=\"?SRC=$u_SRC&amp;proto=$u_proto\">No</a>\n";
 				exit(0);
 			}
-		} elseif (!Empty($_GET['imm_SRC']) && !Empty($_GET['TWR'])) {
+		} elseif (!vacuous($_GET['imm_SRC']) && !vacuous($_GET['TWR'])) {
 			$s_imm_SRC = pgescapebytea($_GET['imm_SRC']);
 			$h_imm_SRC = 'X&apos;' . htmlspecialchars($_GET['imm_SRC']) . '&apos;';
 			$TWR = pgescapetimestamp($_GET['TWR']);
@@ -36,7 +36,7 @@ if (!Empty($_GET['SRC']) && !Empty($_GET['proto'])) {
 				pgquery("INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR) VALUES($s2SRC,
 						(SELECT proto FROM proto_name WHERE name = $s_proto), $s_imm_SRC, $TWR);");
 				echo "Mapping $h_imm_SRC for SRC $h2SRC and proto $h2proto inserted.<br/>\n";
-			} else if (!Empty($_GET['key']) && isset($_GET['update'])) {
+			} else if (!vacuous($_GET['key']) && isset($_GET['update'])) {
 				$s_key = pgescapebytea($_GET['key']);
 				$h_key = 'X&apos;' . htmlspecialchars($_GET['key']) . '&apos;';
 				pgquery("UPDATE iSRC_TWR SET (imm_SRC, TWR) = ($s_imm_SRC, $TWR)
@@ -44,7 +44,7 @@ if (!Empty($_GET['SRC']) && !Empty($_GET['proto'])) {
 						WHERE name = $s_proto) AND imm_SRC = $s_imm_SRC;");
 				echo "Mapping $h_key for SRC $h2SRC and proto $h2proto updated.<br/>\n";
 			}
-		} elseif (!Empty($_GET['key']) && isset($_GET['delete'])) {
+		} elseif (!vacuous($_GET['key']) && isset($_GET['delete'])) {
 			$s_key = pgescapebytea($_GET['key']);
 			$h_key = 'X&apos;' . htmlspecialchars($_GET['key']) . '&apos;';
 			$u_key = urlencode($_GET['key']);

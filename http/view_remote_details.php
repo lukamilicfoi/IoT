@@ -11,7 +11,7 @@ if (!Empty($_GET['addr'])) {
 	$can_edit = check_authorization('can_edit_remotes', 'edit remotes at all')
 			&& can_edit_table($s1addr);
 	if ($can_edit) {
-		if (!Empty($_GET['out_ID'])) {
+		if (!vacuous($_GET['out_ID'])) {
 			$out_ID = intval($_GET['out_ID']);
 			pgquery("UPDATE addr_oID SET out_ID = $out_ID WHERE addr = $s2addr;");
 			echo "out_ID changed for DST $h2addr.<br/>\n";
@@ -19,18 +19,18 @@ if (!Empty($_GET['addr'])) {
 			pg_free_result(pgquery('UPDATE addr_oID SET out_ID = ' . rand(0, 255)
 					. " WHERE addr = $s2addr;"));
 			echo "out_ID randomized for DST $h2addr.<br/>\n";
-		} elseif (!Empty($_GET['add_proto'])) {
+		} elseif (!vacuous($_GET['add_proto'])) {
 			$s_add_proto = pg_escape_literal($_GET['add_proto']);
 			$h_add_proto = '&apos;' . htmlspecialchars($_GET['add_proto']) . '&apos;';
 			pgquery("INSERT INTO SRC_proto(SRC, proto) VALUES($s2addr,
 					(SELECT proto FROM proto_name WHERE name = $s_add_proto));");
 			echo "proto $h_add_proto added for SRC $h2addr.<br/>\n";
-		} elseif (!Empty($_GET['add_DST'])) {
+		} elseif (!vacuous($_GET['add_DST'])) {
 			$s_add_DST = pgescapebytea($_GET['add_DST']);
 			$h_add_DST = 'X&apos;' . htmlspecialchars($_GET['add_DST']) . '&apos;';
 			pgquery("INSERT INTO SRC_DST(SRC, DST) VALUES($s2addr, $s_add_DST);");
 			echo "DST $h_add_DST added for SRC $h2addr.<br/>\n";
-		} elseif (!Empty($_GET['remove_proto'])) {
+		} elseif (!vacuous($_GET['remove_proto'])) {
 			$s_remove_proto = pg_escape_literal($_GET['remove_proto']);
 			$h_remove_proto = '&apos;' . htmlspecialchars($_GET['remove_proto']) . '&apos;';
 			$u_remove_proto = urlencode($_GET['remove_proto']);
@@ -47,7 +47,7 @@ if (!Empty($_GET['addr'])) {
 				echo "<a href=\"?addr=$u_addr\">No</a>\n";
 				exit(0);
 			}
-		} elseif (!Empty($_GET['remove_DST'])) {
+		} elseif (!vacuous($_GET['remove_DST'])) {
 			$s_remove_DST = pgescapebytea($_GET['remove_DST']);
 			$h_remove_DST = 'X&apos;' . htmlspecialchars($_GET['remove_DST']) . '&apos;';
 			$u_remove_DST = urlencode($_GET['remove_DST']);

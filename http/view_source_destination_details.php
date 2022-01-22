@@ -25,19 +25,19 @@ if (!Empty($_GET['SRC']) && !Empty($_GET['DST'])) {
 				echo "<a href=\"?SRC=$u_SRC&amp;DST=$u_DST\">No</a>\n";
 				exit(0);
 			}
-		} elseif (!Empty($_GET['ID']) && !Empty($_GET['TWR'])) {
+		} elseif (!vacuous($_GET['ID']) && !vacuous($_GET['TWR'])) {
 			$id = intval($_GET['ID']);
 			$TWR = pgescapetimestamp($_GET['TWR']);
 			if (isset($_GET['insert'])) {
 				pgquery("INSERT INTO ID_TWR(SRC, DST, ID, TWR) VALUES($s2SRC, $s_DST, $id, $TWR);");
 				echo "Mapping $id for SRC $h2SRC and DST $h2DST inserted.<br/>\n";
-			} else if (!Empty($_GET['key']) && isset($_GET['update'])) {
+			} else if (!vacuous($_GET['key']) && isset($_GET['update'])) {
 				$key = intval($_GET['key']);
 				pgquery("UPDATE ID_TWR SET(ID, TWR) = ($id, $TWR)
 						WHERE SRC = $s2SRC AND DST = $s_DST AND ID = $key;");
 				echo "Mapping $key for SRC $h2SRC and DST $h2DST updated.<br/>\n";
 			}
-		} elseif (!Empty($_GET['key']) && isset($_GET['delete'])) {
+		} elseif (!vacuous($_GET['key']) && isset($_GET['delete'])) {
 			$key = intval($_GET['key']);
 			if (isset($_GET['confirm'])) {
 				pgquery("DELETE FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST AND ID = $key;");

@@ -15,7 +15,7 @@ if ($can_edit_rules) {
 <?php
 			exit(0);
 		}
-	} elseif (!Empty($_GET['username']) && !Empty($_GET['id'])) {
+	} elseif (!vacuous($_GET['username']) && !vacuous($_GET['id'])) {
 		$s_username = pg_escape_literal($_GET['username']);
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 		$id = intval($_GET['id']);
@@ -49,7 +49,7 @@ if ($can_edit_rules) {
 					. (!empty($_GET['deactivate']) ? intval($_GET['deactivate']) : 'NULL') . ', '
 					. pgescapebool($_GET['is_active']) . ');');
 			echo "For username $h_username rule $id inserted.<br/>\n";
-		} elseif (!Empty($_GET['key1']) && !Empty($_GET['key2'])) {
+		} elseif (!vacuous($_GET['key1']) && !vacuous($_GET['key2'])) {
 			$s_key1 = pg_escape_literal($_GET['key1']);
 			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 			$key2 = intval($_GET['key2']);
@@ -86,7 +86,7 @@ if ($can_edit_rules) {
 				echo "For username $h_key1 rule $key2 updated.<br/>\n";
 			}
 		}
-	} elseif (!empty($_GET['key1']) && !empty($_GET['key2'])) {
+	} elseif (!vacuous($_GET['key1']) && !vacuous($_GET['key2'])) {
 		$s_key1 = pg_escape_literal($_GET['key1']);
 		$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 		$u_key1 = urlencode($_GET['key1']);

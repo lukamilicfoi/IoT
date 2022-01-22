@@ -22,7 +22,7 @@ if ($can_edit_permissions) {
 <?php
 			exit(0);
 		}
-	} elseif (!Empty($_GET['tablename']) && !Empty($_GET['username'])) {
+	} elseif (!vacuous($_GET['tablename']) && !vacuous($_GET['username'])) {
 		$s1tablename = pg_escape_literal($_GET['tablename']);
 		$s2tablename = pg_escape_identifier($_GET['tablename']);
 		$h_tablename = '&apos;' . htmlspecialchars($_GET['tablename']) . '&apos;';
@@ -41,7 +41,7 @@ if ($can_edit_permissions) {
 					VALUES($s1tablename, $s_username);");
 			pgquery("GRANT SELECT, TRIGGER, REFERENCES ON $s2tablename TO $s_username;");
 			echo "Reader ($h_tablename, $h_username) inserted.<br/>\n";
-		} elseif (!empty($_GET['key1']) && !empty($_GET['key2'])) {
+		} elseif (!vacuous($_GET['key1']) && !vacuous($_GET['key2'])) {
 			$s1key1 = pg_escape_literal($_GET['key1']);
 			$s2key1 = pg_escape_identifier($_GET['key1']);
 			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
@@ -71,7 +71,7 @@ if ($can_edit_permissions) {
 				echo "Owner ($h_key1, $h_key2) updated to ($h_key1, $h_username).<br/>\n";
 			}
 		}
-	} elseif (!empty($_GET['key1']) && !empty($_GET['key2'])) {
+	} elseif (!vacuous($_GET['key1']) && !vacuous($_GET['key2'])) {
 		$s1key1 = pg_escape_literal($_GET['key1']);
 		$s2key1 = pg_escape_identifier($_GET['key1']);
 		$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';

@@ -3,14 +3,14 @@ require_once 'common.php';
 $can_view_tables = check_authorization('can_view_tables', 'view device or regular tables');
 $can_edit_tables = check_authorization('can_edit_tables', 'edit device or regular tables');
 if ($can_edit_tables) {
-	if (!Empty($_GET['add'])) {
+	if (!vacuous($_GET['add'])) {
 		$s1add = pg_escape_identifier($_GET['add']);
 		$s2add = pg_escape_literal($_GET['add']);
 		pgquery("CREATE TABLE $s1add(t TIMESTAMP(4) WITHOUT TIME ZONE);");
 		pgquery("ALTER TABLE $s1add OWNER TO {$_SESSION['s_username']};");
 		pgquery("INSERT INTO table_owner(tablename, username) VALUES($s2add,
 				{$_SESSION['s_username']});");
-	} elseif (!Empty($_GET['remove'])) {
+	} elseif (!vacuous($_GET['remove'])) {
 		$s1remove = pg_escape_identifier($_GET['remove']);
 		$s2remove = pg_escape_literal($_GET['remove']);
 		$u_remove = urlencode($_GET['remove']);
@@ -102,7 +102,8 @@ if ($can_view_tables) {
 <?php
 }
 if (check_authorization('can_send_messages', 'send messages to nodes')) {
-	if (!empty($_GET['msgtosend']) && !empty($_GET['proto_name']) && !empty($_GET['imm_DST'])) {
+	if (!vacuous($_GET['msgtosend']) && !vacuous($_GET['proto_name'])
+			&& !vacuous($_GET['imm_DST'])) {
 		$s_msgtosend = pgescapebytea($_GET['msgtosend']);
 		$h_msgtosend = 'X&apos;' . htmlspecialchars($_GET['msgtosend']) . '&apos;';
 		$proto_name = pg_escape_literal($_GET['proto_name']);
@@ -142,7 +143,8 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 <?php
 }
 if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
-	if (!empty($_GET['msgtoinject']) && !empty($_GET['proto_name']) && !empty($_GET['imm_SRC'])) {
+	if (!vacuous($_GET['msgtoinject']) && !vacuous($_GET['proto_name'])
+			&& !vacuous($_GET['imm_SRC'])) {
 		$s_msgtoinject = pgescapebytea($_GET['msgtoinject']);
 		$h_msgtoinject = 'X&apos;' . htmlspecialchars($_GET['msgtoinject']) . '&apos;';
 		$proto_name = pg_escape_literal($_GET['proto_name']);
@@ -258,7 +260,7 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 <?php
 }
 if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
-	if (!empty($_GET['username']) && !empty($_GET['id'])) {
+	if (!vacuous($_GET['username']) && !vacuous($_GET['id'])) {
 		$s_username = pg_escape_literal($_GET['username']);
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 		$id = intval($_GET['id']);

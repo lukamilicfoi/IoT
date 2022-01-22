@@ -16,7 +16,7 @@ if ($can_edit_remotes) {
 ?>
 		Stored remotes to running program.<br/>
 <?php
-	} elseif (!Empty($_GET['add'])) {
+	} elseif (!vacuous($_GET['add'])) {
 		$s1add = pgescapename($_GET['add']);
 		$s2add = pgescapebytea($_GET['add']);
 		$h_add = 'X&apos;' . htmlspecialchars($_GET['add']) . '&apos;';
@@ -24,7 +24,7 @@ if ($can_edit_remotes) {
 			pgquery("INSERT INTO addr_oID(addr, out_ID) VALUES($s2add, " . rand(0, 255) . ');');
 			echo "Remote $h_add added.<br/>\n";
 		}
-	} elseif (!Empty($_GET['remove'])) {
+	} elseif (!vacuous($_GET['remove'])) {
 		$s1remove = pgescapename($_GET['remove']);
 		$s2remove = pgescapebytea($_GET['remove']);
 		$h_remove = 'X&apos;' . htmlspecialchars($_GET['remove']) . '&apos;';

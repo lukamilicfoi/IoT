@@ -27,7 +27,7 @@ if ($can_edit_others) {
 <?php
 			exit(0);
 		}
-	} elseif (!Empty($_POST['username'])) {
+	} elseif (!vacuous($_POST['username'])) {
 		if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
 				|| $_SESSION['is_root']) && isset($_POST['insert'])) {
 			$s_username = pg_escape_literal($_POST['username']);
@@ -53,9 +53,9 @@ if ($can_edit_others) {
 			$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
 			if ($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
 					&& !is_administrator($s_username) || $_SESSION['is_root']) {
-				$query = 'UPDATE users SET (username' . (!Empty($_POST['password']) ? ', password'
+				$query = 'UPDATE users SET (username' . (!vacuous($_POST['password']) ? ', password'
 						: '') . ", is_administrator, $user_fields_joined) = ($s_username"
-						. (!Empty($_POST['password']) ? ', \'' . password_hash($_POST['password'],
+						. (!vacuous($_POST['password']) ? ', \'' . password_hash($_POST['password'],
 						PASSWORD_DEFAULT) . '\'' : '') . ', ' .
 						pgescapebool($_POST['is_administrator']) . ', ';
 				foreach ($user_fields as $field) {
@@ -91,11 +91,11 @@ if ($can_edit_others) {
 		}
 	}
 }
-if ($can_edit_yourself && isset($_POST['update2']) && !Empty($_POST['username'])) {
+if ($can_edit_yourself && isset($_POST['update2']) && !vacuous($_POST['username'])) {
 	$s_username = pg_escape_literal($_POST['username']);
 	$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
-	pgquery('UPDATE users SET (username' . (!Empty($_POST['password']) ? ', password' : '')
-			. ') = ROW(' . pg_escape_literal($_POST['username']) . (!Empty($_POST['password'])
+	pgquery('UPDATE users SET (username' . (!vacuous($_POST['password']) ? ', password' : '')
+			. ') = ROW(' . pg_escape_literal($_POST['username']) . (!vacuous($_POST['password'])
 			? ', \'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : '')
 			. ") WHERE username = {$_SESSION['s_username']};");
 	echo "Password updated - for username $h_username.<br/>\n";
