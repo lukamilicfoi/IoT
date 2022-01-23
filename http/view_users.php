@@ -114,7 +114,7 @@ if ($can_view_yourself || $can_view_others) {
 		echo 'You are authorized to view', $can_edit_yourself ? ' (edit)' : '',
 				" username {$_SESSION['h2username']}", $can_view_others ? ' or view' : '',
 				$can_edit_others ? ' (edit)' : '', $can_view_others ? ' non-administrators'
-				: '', ".\n";
+				: '', "<br/>.\n";
 	} else {
 		$result = pgquery("SELECT username, TRUE, is_administrator, $user_fields_joined,
 				can_actually_login FROM users WHERE username = {$_SESSION['s_username']}
@@ -123,7 +123,7 @@ if ($can_view_yourself || $can_view_others) {
 		echo 'You are authorized to view', $can_edit_yourself ? ' (edit)' : '',
 				" username {$_SESSION['h2username']}", $can_view_others ? ' or view' : '',
 				$can_edit_others ? ' (edit)' : '', $can_view_others ? ' public user'
-				: '', ".\n";
+				: '', "<br/>.\n";
 	}
 ?>
 	Viewing table &quot;users&quot;.<br/>

@@ -43,8 +43,8 @@ if (!pg_connect("host=localhost dbname=postgres user=$username client_encoding=U
 	exit('Could not connect - ' . pg_last_error());
 }
 
-function vacuous($var) {
-	return !isset($var) || $var == '';
+function vacuous(&$var) {
+	return is_null($var) || $var == '';
 }
 
 function pgescapebool(&$boolvar) {
