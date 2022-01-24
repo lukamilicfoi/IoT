@@ -29,24 +29,24 @@ if ($can_edit_rules) {
 					activate, deactivate, is_active) VALUES($s_username, $id, "
 					. intval($_GET['send_receive_seconds']) . ', '
 					. pg_escape_literal($_GET['filter']) . ', '
-					. intval($_GET['drop_modify_nothing']) . ', ' . (!Empty($_GET['modification'])
+					. intval($_GET['drop_modify_nothing']) . ', ' . (!vacuous($_GET['modification'])
 					? pg_escape_literal($_GET['modification']) : 'NULL') . ', '
 					. intval($_GET['query_command_nothing']) . ', '
-					. (!Empty($_GET['query_command_1'])
+					. (!vacuous($_GET['query_command_1'])
 					? pg_escape_literal($_GET['query_command_1']) : 'NULL') . ', '
 					. intval($_GET['send_inject_query_command_nothing']) . ', '
-					. (!Empty($_GET['query_command_2'])
+					. (!vacuous($_GET['query_command_2'])
 					? pg_escape_literal($_GET['query_command_2']) : 'NULL') . ', '
-					. (!Empty($_GET['proto_name']) ? '(SELECT proto FROM proto_name WHERE name = '
+					. (!vacuous($_GET['proto_name']) ? '(SELECT proto FROM proto_name WHERE name = '
 					. pg_escape_literal($_GET['proto_id']) : 'NULL') . ', '
-					. (!Empty($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL') . ', '
+					. (!vacuous($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL') . ', '
 					. pgescapeinteger($_GET['insecure_port']) . ', '
 					. pgescapeinteger($_GET['secure_port']) . ', '
 					. pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF']) . ', '
 					. pgescapebool($_GET['broadcast']) . ', '
 					. pgescapebool($_GET['override_implicit_rules']) . ', '
-					. (!empty($_GET['activate']) ? intval($_GET['activate']) : 'NULL') . ', '
-					. (!empty($_GET['deactivate']) ? intval($_GET['deactivate']) : 'NULL') . ', '
+					. pgescapeinteger($_GET['activate']) . ', '
+					. pgescapeinteger($_GET['deactivate']) . ', '
 					. pgescapebool($_GET['is_active']) . ');');
 			echo "For username $h_username rule $id inserted.<br/>\n";
 		} elseif (!vacuous($_GET['key1']) && !vacuous($_GET['key2'])) {
@@ -65,22 +65,22 @@ if ($can_edit_rules) {
 						. intval($_GET['send_receive_seconds']) . ', '
 						. pg_escape_literal($_GET['filter']) . ', '
 						. intval($_GET['drop_modify_nothing']) . ', '
-						. (!empty($_GET['modification']) ? pg_escape_literal($_GET['modification'])
+						. (!vacuous($_GET['modification']) ? pg_escape_literal($_GET['modification'])
 						: 'NULL') . ', ' . intval($_GET['query_command_nothing']) . ', '
 						. (!empty($_GET['query_command_1'])
 						? pg_escape_literal($_GET['query_command_1']) : 'NULL') . ', '
 						. intval($_GET['send_inject_query_command_nothing']) . ', '
-						. (!empty($_GET['query_command_2'])
+						. (!vacuous($_GET['query_command_2'])
 						? pg_escape_literal($_GET['query_command_2']) : 'NULL') . ', '
-						. (!empty($_GET['proto_name']) ? '(SELECT proto FROM proto_name
+						. (!vacuous($_GET['proto_name']) ? '(SELECT proto FROM proto_name
 						WHERE name = ' . pg_escape_literal($_GET['proto_name']) : 'NULL') . ', '
-						. (!empty($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL')
+						. (!vacuous($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL')
 						. ', ' . pgescapeinteger($_GET['insecure_port']) . ', '
 						. pgescapeinteger($_GET['secure_port']) . pgescapebool($_GET['CCF']) . ', '
 						. pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast'])
 						. ', ' . pgescapebool($_GET['override_implicit_rules']) . ', '
-						. (!empty($_GET['activate']) ? intval($_GET['activate']) : 'NULL') . ', '
-						. (!empty($_GET['deactivate']) ? intval($_GET['deactivate']) : 'NULL')
+						. pgescapeinteger($_GET['activate']) . ', '
+						. pgescapeinteger($_GET['deactivate'])
 						. ', ' . pgescapebool($_GET['is_active'])
 						. ") WHERE username = $s_key1 AND id = $key2;");
 				echo "For username $h_key1 rule $key2 updated.<br/>\n";

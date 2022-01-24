@@ -10,7 +10,7 @@ if ($can_edit_permissions) {
 			$result = pgquery('TABLE table_reader;');
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
 				pgquery('REVOKE ALL PRIVILEGES ON ' . pg_escape_identifier($row[0])
-						. ' FROM ' . pg_escape_literal($row[1]) . ';');
+						. ' FROM ' . pg_escape_identifier($row[1]) . ';');
 			}
 			pgquery('TRUNCATE TABLE table_reader;');
 			echo "Table &quot;table_reader&quot; truncated.<br/>\n";
@@ -26,7 +26,8 @@ if ($can_edit_permissions) {
 		$s1tablename = pg_escape_literal($_GET['tablename']);
 		$s2tablename = pg_escape_identifier($_GET['tablename']);
 		$h_tablename = '&apos;' . htmlspecialchars($_GET['tablename']) . '&apos;';
-		$s_username = pg_escape_literal($_GET['username']);
+		$s1username = pg_escape_literal($_GET['username']);
+		$s2username = pg_escape_identifier($_GET['username']);
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 		$tablename_owner = find_owner($s1tablename);
 		$tablename_owner_is_administrator = is_administrator($tablename_owner);
@@ -38,8 +39,8 @@ if ($can_edit_permissions) {
 			 	|| $_SESSION['is_root']) && $tablename_owner != $_GET['username']
 				&& isset($_GET['insert'])) {
 			pgquery("INSERT INTO table_reader(tablename, username)
-					VALUES($s1tablename, $s_username);");
-			pgquery("GRANT SELECT, TRIGGER, REFERENCES ON $s2tablename TO $s_username;");
+					VALUES($s1tablename, $s1username);");
+			pgquery("GRANT SELECT, TRIGGER, REFERENCES ON $s2tablename TO $s2username;");
 			echo "Reader ($h_tablename, $h_username) inserted.<br/>\n";
 		} elseif (!vacuous($_GET['key1']) && !vacuous($_GET['key2'])) {
 			$s1key1 = pg_escape_literal($_GET['key1']);
@@ -50,7 +51,8 @@ if ($can_edit_permissions) {
 			$key1_owner_is_user = $key1_owner == $_SESSION['username'];
 			$key1_owner_is_user_or_public = $key1_owner_is_user
 					|| $key1_owner == 'public';
-			$s_key2 = pg_escape_literal($_GET['key2']);
+			$s1key2 = pg_escape_literal($_GET['key2']);
+			$s2key2 = pg_escape_identifier($_GET['key2']);
 			$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
 			if (($key1_owner_is_user_or_public && $tablename_owner_is_user_or_public
 					|| $_SESSION['is_administrator'] && ($key1_owner_is_user
@@ -58,16 +60,16 @@ if ($can_edit_permissions) {
 					|| !$tablename_owner_is_administrator) && $_SESSION['can_edit_as_others']
 				 	|| $_SESSION['is_root']) && $tablename_owner != $_GET['username']
 					&& isset($_GET['update1'])) {
-				pgquery("UPDATE table_reader SET (tablename, username) = ($s1tablename, $s_username)
-						WHERE tablename = $s1key1 AND username = $s_key2;");
-				pgquery("REVOKE ALL PRIVILEGES ON $s1key1 FROM $s_username;");
-				pgquery("GRANT SELECT, TRIGGER, REFERENCES ON $s2tablename TO $s_username;");
+				pgquery("UPDATE table_reader SET (tablename, username) = ($s1tablename, $s1username)
+						WHERE tablename = $s1key1 AND username = $s1key2;");
+				pgquery("REVOKE ALL PRIVILEGES ON $s1key1 FROM $s2username;");
+				pgquery("GRANT SELECT, TRIGGER, REFERENCES ON $s2tablename TO $s2key2;");
 				echo "Reader ($h_key1, $h_key2) updated to ($h_username, $h_tablename).<br/>\n";
 			} elseif (($key1_owner_is_user_or_public || $_SESSION['is_administrator']
 					&& !$key1_owner_is_administrator && $_SESSION['can_edit_as_others']
 					|| $_SESSION['is_root']) && isset($_GET['update2'])) {
-				pgquery("UPDATE table_owner SET username = $s_username WHERE tablename = $s_key1;");
-				pgquery("ALTER TABLE $s2key1 SET OWNER TO $s_username;");
+				pgquery("UPDATE table_owner SET username = $s1username WHERE tablename = $s_key1;");
+				pgquery("ALTER TABLE $s2key1 SET OWNER TO $s2username;");
 				echo "Owner ($h_key1, $h_key2) updated to ($h_key1, $h_username).<br/>\n";
 			}
 		}
@@ -77,7 +79,8 @@ if ($can_edit_permissions) {
 		$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 		$u_key1 = urlencode($_GET['key1']);
 		$key1_owner = find_owner($s_key1);
-		$s_key2 = pg_escape_literal($_GET['key2']);
+		$s1key2 = pg_escape_literal($_GET['key2']);
+		$s2key2 = pg_escape_identifier($_GET['key2']);
 		$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
 		$u_key2 = urlencode($_GET['key2']);
 		if (($key1_owner == $_SESSION['username'] || $key1_owner == 'public'
@@ -86,8 +89,8 @@ if ($can_edit_permissions) {
 				&& isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
 				pgquery("DELETE FROM table_reader WHERE tablename = $s1key1
-						AND username = $s_key2;");
-				pgquery("REVOKE ALL PRIVILEGES ON $s2key1 FROM $s_key2;");
+						AND username = $s1key2;");
+				pgquery("REVOKE ALL PRIVILEGES ON $s2key1 FROM $s2key2;");
 				echo "Reader ($h_key1, $h_key2) deleted.<br/>\n";
 			} else {
 ?>
