@@ -48,7 +48,7 @@ function vacuous(&$var) {
 }
 
 function pgescapebool(&$boolvar) {
-	return $boolvar !== null ? 'TRUE' : 'FALSE';
+	return is_null($boolvar) ? 'FALSE' : 'TRUE';
 }
 
 function can_view_table($s_tablename) {
@@ -66,7 +66,7 @@ function can_view_table($s_tablename) {
 }
 
 function pgescapeinteger(&$integervar) {
-	return $integervar !== null ? intval($integervar) : 'NULL';
+	return is_null($integervar) ? 'NULL' : intval($integervar);
 }
 
 function pgescapetimestamp($timestampvar) {
@@ -91,6 +91,15 @@ function postgresql_output_to_my_input($data, $oid) {
 	default://17//BYTEA
 		return substr($data, 2);
 	}
+}
+
+function pgescapeusername2($username) {
+	if ($username == 'root') {
+		return '"postgres"';
+	} else if ($username == 'public') {
+		return '"PUBLIC"';
+	}
+	return pg_escape_identifier($username);
 }
 
 function find_owner($s_tablename) {
@@ -146,6 +155,15 @@ function my_input_to_postgresql_input($data, $oid) {
 	default://17//BYTEA
 		return '\'\\x' . $data . '\'';
 	}
+}
+
+function pgescapeusername3($username) {
+	if ($username == 'root') {
+		return '\'postgres\'';
+	} else if ($username == 'public') {
+		return '\'PUBLIC\'';
+	}
+	return pg_escape_literal($username);
 }
 
 function is_administrator($s_username) {
