@@ -67,7 +67,7 @@ if ($can_edit_rules) {
 						. intval($_GET['drop_modify_nothing']) . ', '
 						. (!vacuous($_GET['modification']) ? pg_escape_literal($_GET['modification'])
 						: 'NULL') . ', ' . intval($_GET['query_command_nothing']) . ', '
-						. (!empty($_GET['query_command_1'])
+						. (!vacuous($_GET['query_command_1'])
 						? pg_escape_literal($_GET['query_command_1']) : 'NULL') . ', '
 						. intval($_GET['send_inject_query_command_nothing']) . ', '
 						. (!vacuous($_GET['query_command_2'])
@@ -555,7 +555,7 @@ if ($can_view_rules) {
 	Filter can be either a number or a string.<br/>
 	Leaving a field empty indicates null value.<br/>
 	Deactivating a rule deletes its timer. Changing a period does not.<br/>
-	Id must be unique positive integer. Smaller value indicates bigger priority.<br/>
+	Id must be a unique integer. Smaller value indicates bigger priority.<br/>
 	When broadcasting a message any &quot;imm_DST&quot; is ignored.<br/>
 	On send and receive rules &quot;last_run&quot; is meaningless.<br/>
 	Strings are written without excess quotations, e.g., proto = &apos;tcp&apos;.<br/>
