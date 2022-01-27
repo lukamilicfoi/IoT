@@ -7,7 +7,7 @@ if ($can_edit_tables) {
 		$s1add = pg_escape_identifier($_GET['add']);
 		$s2add = pg_escape_literal($_GET['add']);
 		pgquery("CREATE TABLE $s1add(t TIMESTAMP(4) WITHOUT TIME ZONE);");
-		pgquery("ALTER TABLE $s1add OWNER TO {$_SESSION['s_username']};");
+		pgquery("ALTER TABLE $s1add OWNER TO {$_SESSION['s2username']};");
 		pgquery("INSERT INTO table_owner(tablename, username) VALUES($s2add,
 				{$_SESSION['s_username']});");
 	} elseif (!vacuous($_GET['remove'])) {
@@ -194,7 +194,7 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 			if (!flock($flock, LOCK_EX)) {
 				exit('cannot flock');
 			}
-			pgquery("SET ROLE {$_SESSION['s_username']};");
+			pgquery("SET ROLE {$_SESSION['s3username']};");
 		}
 		$result = pgquery($_GET['query']);
 		if (!$_SESSION['is_root']) {

@@ -50,12 +50,13 @@ if ($can_edit_others) {
 			pgquery("GRANT CREATE ON public TO $s2username;");
 			echo "User $h_username inserted.<br/>\n";
 		} elseif (isset($_POST['update1'])) {
-			$s_username = pg_escape_literal($_POST['username']);
+			$s1username = pg_escape_literal($_POST['username']);
+			$s2username = pgescapeusername2($_POST['username']);
 			$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
 			if ($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
-					&& !is_administrator($s_username) || $_SESSION['is_root']) {
+					&& !is_administrator($s1username) || $_SESSION['is_root']) {
 				$query = 'UPDATE users SET (username' . (!vacuous($_POST['password']) ? ', password'
-						: '') . ", is_administrator, $user_fields_joined) = ($s_username"
+						: '') . ", is_administrator, $user_fields_joined) = ($s1username"
 						. (!vacuous($_POST['password']) ? ', \'' . password_hash($_POST['password'],
 						PASSWORD_DEFAULT) . '\'' : '') . ', ' .
 						pgescapebool($_POST['is_administrator']) . ', ';
@@ -64,6 +65,7 @@ if ($can_edit_others) {
 				}
 				pgquery($query . pgescapebool($_POST['can_actually_login'])
 						. ") WHERE username = $s_username;");
+				pgquery("ALTER ROLE $s2key RENAME TO $s2username;");
 				echo "User $h_username updated.<br/>\n";
 			}
 		}
@@ -94,12 +96,14 @@ if ($can_edit_others) {
 	}
 }
 if ($can_edit_yourself && isset($_POST['update2']) && !vacuous($_POST['username'])) {
-	$s_username = pg_escape_literal($_POST['username']);
+	$s1username = pg_escape_literal($_POST['username']);
+	$s2username = pgescapeusername2($_POST['username']);
 	$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
 	pgquery('UPDATE users SET (username' . (!vacuous($_POST['password']) ? ', password' : '')
 			. ') = ROW(' . pg_escape_literal($_POST['username']) . (!vacuous($_POST['password'])
 			? ', \'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : '')
 			. ") WHERE username = {$_SESSION['s_username']};");
+	pgquery("ALTER ROLE {$_SESSION['s2username']} RENAME TO $s2username;");
 	echo "Password updated - for username $h_username.<br/>\n";
 }
 if ($can_view_yourself || $can_view_others) {
