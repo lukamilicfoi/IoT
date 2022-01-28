@@ -12,8 +12,8 @@ if ($can_edit_configuration && !empty($_GET['username']) && isset($_GET['update'
 				nsecs_id, nsecs_src, trust_everyone, default_gateway, insecure_port,
 				secure_port) = (' . pgescapebool($_GET['forward_messages']) . ', '
 				. pgescapebool($_GET['use_internet_switch_algorithm']) . ', '
-				. intval($_GET['nsecs_id']) . ', '. intval($_GET['nsecs_src']) . ', '
-		   		. pgescapeinteger($_GET['insecure_port']) . ', '
+				. pgescapeinteger($_GET['nsecs_id']) . ', '. pgescapeinteger($_GET['nsecs_src'])
+				. ', ' . pgescapeinteger($_GET['insecure_port']) . ', '
 				. pgescapeinteger($_GET['secure_port']) . ', '
 				. pgescapebool($_GET['trust_everyone']) . ', '
 		   		. pgescapebytea($_GET['default_gateway']) . ") WHERE username = $s_username;");
@@ -101,13 +101,13 @@ if ($can_view_configuration) {
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\" name=\"nsecs_id\"
-								value=\"{$row[3]}\"/>\n";
+								value=\"", is_null($row[3]) ? '' : $row[3], "\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\" name=\"nsecs_src\"
-								value=\"{$row[4]}\"/>\n";
+								value=\"", is_null($row[4]) ? '' : $row[4], "\"/>\n";
 ?>
 					</td>
 					<td>
@@ -125,13 +125,13 @@ if ($can_view_configuration) {
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\" name=\"insecure_port\"
-								value=\"", $row[7] !== null ? $row[7] : '', "\"/>\n";
+								value=\"", is_null($row[7]) ? '' : $row[7], "\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\" name=\"secure_port\"
-								value=\"", $row[8] !== null ? $row[8] : '', "\"/>\n";
+								value=\"", is_null($row[8]) ? '' : $row[8], "\"/>\n";
 ?>
 					</td>
 <?php

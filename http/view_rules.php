@@ -80,8 +80,8 @@ if ($can_edit_rules) {
 						. pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast'])
 						. ', ' . pgescapebool($_GET['override_implicit_rules']) . ', '
 						. pgescapeinteger($_GET['activate']) . ', '
-						. pgescapeinteger($_GET['deactivate'])
-						. ', ' . pgescapebool($_GET['is_active'])
+						. pgescapeinteger($_GET['deactivate']) . ', '
+						. pgescapebool($_GET['is_active'])
 						. ") WHERE username = $s_key1 AND id = $key2;");
 				echo "For username $h_key1 rule $key2 updated.<br/>\n";
 			}
@@ -369,7 +369,7 @@ if ($can_view_rules) {
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"modification\" value=\"",
-								$row[5] === null ? '' : htmlspecialchars($row[5]),
+								is_null($row[5]) ? '' : htmlspecialchars($row[5]),
 								"\" size=\"10\"/>\n";
 ?>
 						,
@@ -394,7 +394,7 @@ if ($can_view_rules) {
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"query_command_1\" value=\"",
-								$row[7] === null ? '' : htmlspecialchars($row[7]),
+								is_null($row[7]) ? '' : htmlspecialchars($row[7]),
 								"\" size=\"10\"/>\n";
 ?>
 						,
@@ -434,33 +434,34 @@ if ($can_view_rules) {
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"query_command_2\" value=\"",
-								$row[9] === null ? '' : htmlspecialchars($row[9]),
+								is_null($row[9]) ? '' : htmlspecialchars($row[9]),
 								"\" size=\"10\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"text\" name=\"proto_id\" value=\"", $row[23]
-								=== null ? '' : htmlspecialchars($row[23]), "\" size=\"10\"/>\n";
+						echo "<input form=$form type=\"text\" name=\"proto_id\" value=\"",
+								is_null($row[23]) ? '' : htmlspecialchars($row[23]),
+								"\" size=\"10\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"imm_addr\" value=\"",
-								$row[11] === null ? '' : htmlspecialchars(substr($row[11], 2)),
+								is_null($row[11]) ? '' : htmlspecialchars(substr($row[11], 2)),
 								"\" size=\"10\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"insecure_port\" value=\"",
-								$row[12] === null ? '' : $row[12], "\"/>\n";
+								is_null($row[12]) ? '' : $row[12], "\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"secure_port\" value=\"",
-								$row[13] === null ? '' : $row[13], "\"/>\n";
+								is_null($row[13]) ? '' : $row[13], "\"/>\n";
 ?>
 					</td>
 					<td>
@@ -491,14 +492,14 @@ if ($can_view_rules) {
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"activate\" value=\"",
-								$row[18] === null ? '' : $row[16], "\"/>\n";
+								is_null($row[18]) ? '' : $row[16], "\"/>\n";
 ?>
 						.
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"deactivate\" value=\"",
-								$row[19] === null ? '' : $row[17], "\"/>\n";
+								is_null($row[19]) ? '' : $row[17], "\"/>\n";
 ?>
 						.
 					</td>
@@ -510,8 +511,7 @@ if ($can_view_rules) {
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"text\" name=\"last_run\" value=\"", $row[21],
-								"\"/>\n";
+						echo "<input form=$form type=\"text\" name=\"last_run\" value=\"{$row[21]}\"/>\n";
 ?>
 					</td>
 <?php
@@ -555,7 +555,7 @@ if ($can_view_rules) {
 	Filter can be either a number or a string.<br/>
 	Leaving a field empty indicates null value.<br/>
 	Deactivating a rule deletes its timer. Changing a period does not.<br/>
-	Id must be a unique integer. Smaller value indicates bigger priority.<br/>
+	Id must be unique. Smaller value indicates bigger priority.<br/>
 	When broadcasting a message any &quot;imm_DST&quot; is ignored.<br/>
 	On send and receive rules &quot;last_run&quot; is meaningless.<br/>
 	Strings are written without excess quotations, e.g., proto = &apos;tcp&apos;.<br/>
