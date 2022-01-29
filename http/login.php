@@ -12,7 +12,7 @@ if (!vacuous($_POST['username']) && !vacuous($_POST['password'])) {
 		$_SESSION['h1username'] = htmlspecialchars($_POST['username']);
 		$_SESSION['h2username'] = "&apos;{$_SESSION['h1username']}&apos;";
 		$_SESSION['is_root'] = $_POST['username'] == 'root';
-		$_SESSION['can_view_as_others'] = $row[2] == 't';
+		$_SESSION['can_view_as_others'] = $row[2] == 't' ? 'TRUE' : 'FALSE';
 		$_SESSION['is_administrator'] = $row[1] == 't';
 		$_SESSION['can_edit_as_others'] = $row[3] == 't';
 		$_SESSION['username'] = $_POST['username'];

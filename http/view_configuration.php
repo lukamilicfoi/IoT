@@ -2,12 +2,14 @@
 require_once 'common.php';
 $can_view_configuration = check_authorization('can_view_configuration', 'view configuration');
 $can_edit_configuration = check_authorization('can_edit_configuration', 'edit configuration');
+$can_view_as_others = check_authorization('can_view_as_others', 'view configuration as others');
+$can_edit_as_others = check_authorization('can_edit_as_others', 'edit configuration as others');
 if ($can_edit_configuration && !empty($_GET['username']) && isset($_GET['update'])) {
 	$s_username = pg_escape_literal($_GET['username']);
 	$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 	if ($_GET['username'] == $_SESSION['username'] || $_GET['username'] == 'public'
 			|| $_SESSION['is_administrator'] && !is_administrator($s_username)
-			&& $_SESSION['can_edit_as_others'] || $_SESSION['is_root']) {
+			&& $can_edit_as_others || $_SESSION['is_root']) {
 		pgquery('UPDATE configuration SET (forward_messages, use_internet_switch_algorithm,
 				nsecs_id, nsecs_src, trust_everyone, default_gateway, insecure_port,
 				secure_port) = (' . pgescapebool($_GET['forward_messages']) . ', '
@@ -36,9 +38,8 @@ if ($can_view_configuration) {
 				AND {$_SESSION['can_view_as_others']} ORDER BY configuration.username ASC;");
 		echo 'You are authorized to view', $can_edit_configuration ? ' (edit)' : '',
 				" configuration for username {$_SESSION['h2username']}",
-				$_SESSION['can_view_as_others'] ? ' or non-administrators' : '',
-				$_SESSION['can_edit_as_others'] && $can_edit_configuration ? '' : '(noedit)',
-				".<br/>\n";
+				$can_view_as_others ? ' or non-administrators' : '', $can_edit_as_others
+				&& $can_edit_configuration ? '' : '(noedit)', ".<br/>\n";
 	} else {
 		$result = pgquery("SELECT * FROM configuration, username = {$_SESSION['s_username']}
 				OR username = 'public' AND {$_SESSION['can_edit_as_others']} WHERE username
@@ -46,9 +47,8 @@ if ($can_view_configuration) {
 				AND {$_SESSION['can_view_as_others']} ORDER BY username ASC;");
 		echo 'You are authorized to view', $can_edit_configuration ? ' (edit)' : '',
 				" configuration for username {$_SESSION['h2username']}",
-				$_SESSION['can_view_as_others'] ? ' or public user' : '',
-				$_SESSION['can_edit_as_others'] && $can_edit_configuration ? '' : '(noedit)',
-				".<br/>\n";
+				$can_view_as_others ? ' or public user' : '', $can_edit_as_others
+				&& $can_edit_configuration ? '' : '(noedit)', ".<br/>\n";
 	}
 ?>
 	Viewing table &quot;configuration&quot;.<br/>

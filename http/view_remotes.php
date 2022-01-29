@@ -2,6 +2,8 @@
 require_once 'common.php';
 $can_view_remotes = check_authorization('can_view_remotes', 'view remotes');
 $can_edit_remotes = check_authorization('can_edit_remotes', 'edit remotes');
+$can_view_as_others = check_authorization('can_view_remotes', 'view others\' remotes');
+$can_edit_as_others = check_authorization('can_edit_remotes', 'edit others\' remotes');
 if ($can_view_remotes && isset($_GET['load'])) {
 	pgquery('CALL load_store(TRUE);');
 	$_SESSION['loaded'] = true;
@@ -66,8 +68,8 @@ if ($can_view_remotes) {
 					ORDER BY b_address ASC;");
 			echo 'You are authorized to view', $can_edit_remotes ? ' (edit)' : '',
 					" username-{$_SESSION['h2username']}-readable", $can_edit_remotes ? ' (-owned)'
-					: '', $_SESSION['can_view_as_others'] ? ' or non-administrator-readable' : '',
-					$_SESSION['can_edit_as_others'] && $can_edit_remotes ? ' (-owned)' : '',
+					: '', $can_view_as_others ? ' or non-administrator-readable' : '',
+					$can_edit_as_others && $can_edit_remotes ? ' (-owned)' : '',
 					" remotes.\n";
 		} else {
 			$result = pgquery("SELECT DISTINCT addr_oID.addr AS b_address, EXISTS(SELECT TRUE
@@ -80,8 +82,8 @@ if ($can_view_remotes) {
 					AND {$_SESSION['can_view_as_others']} ORDER BY b_address ASC;");
 			echo 'You are authorized to view', $can_edit_remotes ? ' (edit)' : '',
 					" username-{$_SESSION['h2username']}-readable", $can_edit_remotes ? ' (-owned)'
-					: '', $_SESSION['can_view_as_others'] ? ' or public-readable' : '',
-					$_SESSION['can_edit_as_others'] && $can_edit_remotes ? ' (-owned)' : '',
+					: '', $can_view_as_others ? ' or public-readable' : '',
+					$can_edit_as_others && $can_edit_remotes ? ' (-owned)' : '',
 					" remotes.\n";
 		}
 ?>

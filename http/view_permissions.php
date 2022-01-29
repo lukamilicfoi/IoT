@@ -4,6 +4,10 @@ $can_view_permissions = check_authorization('can_view_permissions',
 		'view reader or owner permissions');
 $can_edit_permissions = check_authorization('can_edit_permissions',
 		'edit reader or owner permissions');
+$can_view_as_others = check_authorization('can_view_as_others',
+		'view reader or owner permissions for others');
+$can_edit_as_others = check_authorization('can_edit_as_others',
+		'edit reader or owner permissions for others');
 if ($can_edit_permissions) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
@@ -35,7 +39,7 @@ if ($can_edit_permissions) {
 		$tablename_owner_is_user_or_public = $tablename_owner_is_user
 				|| $tablename_owner == 'public';
 		if (($tablename_owner_is_user_or_public || $_SESSION['is_administrator']
-				&& !$tablename_owner_is_administrator && $_SESSION['can_edit_as_others']
+				&& !$tablename_owner_is_administrator && $can_edit_as_others
 			 	|| $_SESSION['is_root']) && $tablename_owner != $_GET['username']
 				&& isset($_GET['insert'])) {
 			pgquery("INSERT INTO table_reader(tablename, username)
@@ -57,7 +61,7 @@ if ($can_edit_permissions) {
 			if (($key1_owner_is_user_or_public && $tablename_owner_is_user_or_public
 					|| $_SESSION['is_administrator'] && ($key1_owner_is_user
 					|| !$key1_owner_is_administrator) && ($tablename_owner_is_user
-					|| !$tablename_owner_is_administrator) && $_SESSION['can_edit_as_others']
+					|| !$tablename_owner_is_administrator) && $can_edit_as_others
 				 	|| $_SESSION['is_root']) && $tablename_owner != $_GET['username']
 					&& isset($_GET['update1'])) {
 				pgquery("UPDATE table_reader SET (tablename, username) = ($s1tablename, $s1username)
@@ -66,7 +70,7 @@ if ($can_edit_permissions) {
 				pgquery("GRANT SELECT, TRIGGER, REFERENCES ON $s2tablename TO $s2key2;");
 				echo "Reader ($h_key1, $h_key2) updated to ($h_username, $h_tablename).<br/>\n";
 			} elseif (($key1_owner_is_user_or_public || $_SESSION['is_administrator']
-					&& !$key1_owner_is_administrator && $_SESSION['can_edit_as_others']
+					&& !$key1_owner_is_administrator && $can_edit_as_others
 					|| $_SESSION['is_root']) && isset($_GET['update2'])) {
 				pgquery("UPDATE table_owner SET username = $s1username WHERE tablename = $s_key1;");
 				pgquery("ALTER TABLE $s2key1 SET OWNER TO $s2username;");
@@ -85,7 +89,7 @@ if ($can_edit_permissions) {
 		$u_key2 = urlencode($_GET['key2']);
 		if (($key1_owner == $_SESSION['username'] || $key1_owner == 'public'
 				|| $_SESSION['is_administrator'] && !is_administrator($key1_owner)
-				&& $_SESSION['can_edit_as_others'] || $_SESSION['is_root'])
+				&& $can_edit_as_others || $_SESSION['is_root'])
 				&& isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
 				pgquery("DELETE FROM table_reader WHERE tablename = $s1key1
@@ -131,8 +135,8 @@ if ($can_edit_permissions) {
 				ORDER BY is_owner ASC, table_name ASC, table_owner.username ASC;");
 		echo 'You are authorized to view', $can_edit_permissions ? ' (edit)' : '',
 				" permissions for username-{$_SESSION['h2username']}-readable",
-				$can_edit_permissions ? ' (-owned)' : '', $_SESSION['can_view_as_others'] ?
-				' or non-administrator-readable' : '', $_SESSION['can_edit_as_others']
+				$can_edit_permissions ? ' (-owned)' : '', $can_view_as_others ?
+				' or non-administrator-readable' : '', $can_edit_as_others
 				&& $can_edit_permissions ? ' (-owned)' : '', " tables.<br/>\n";
 	} else {
 		$can_view = "EXISTS(SELECT TRUE FROM table_reader WHERE tablename = table_name
@@ -148,8 +152,8 @@ if ($can_edit_permissions) {
 				WHERE can_edit OR $can_view ORDER BY is_owner ASC, table_name ASC, username ASC;");
 		echo 'You are authorized to view', $can_edit_permissions ? ' (edit)' : '',
 				" permissions for username-{$_SESSION['h2username']}-readable",
-				$can_edit_permissions ? ' (-owned)' : '', $_SESSION['can_view_as_others'] ?
-				' or public-user-readable' : '', $_SESSION['can_edit_as_others']
+				$can_edit_permissions ? ' (-owned)' : '', $can_view_as_others ?
+				' or public-user-readable' : '', $can_edit_as_others
 				&& $can_edit_permissions ? ' (-owned)' : '', " tables.<br/>\n";
 	}
 ?>

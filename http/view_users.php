@@ -104,7 +104,7 @@ if ($can_edit_yourself && isset($_POST['update2']) && !vacuous($_POST['username'
 			? ', \'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : '')
 			. ") WHERE username = {$_SESSION['s_username']};");
 	pgquery("ALTER ROLE {$_SESSION['s2username']} RENAME TO $s2username;");
-	echo "Password updated - for username $h_username.<br/>\n";
+	echo "User $h_username updated.<br/>\n";
 }
 if ($can_view_yourself || $can_view_others) {
 	if ($_SESSION['is_root']) {
