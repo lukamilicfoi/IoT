@@ -14,7 +14,7 @@ if (!vacuous($_POST['username']) && !vacuous($_POST['password'])) {
 		$_SESSION['is_root'] = $_POST['username'] == 'root';
 		$_SESSION['can_view_as_others'] = $row[2] == 't' ? 'TRUE' : 'FALSE';
 		$_SESSION['is_administrator'] = $row[1] == 't';
-		$_SESSION['can_edit_as_others'] = $row[3] == 't';
+		$_SESSION['can_edit_as_others'] = $row[3] == 't' ? 'TRUE' : 'FALSE';
 		$_SESSION['username'] = $_POST['username'];
 	}
 } elseif (isset($_GET['logout'])) {

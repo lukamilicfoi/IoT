@@ -37,18 +37,18 @@ if ($can_view_configuration) {
 				= {$_SESSION['s_username']} OR NOT users.is_administrator
 				AND {$_SESSION['can_view_as_others']} ORDER BY configuration.username ASC;");
 		echo 'You are authorized to view', $can_edit_configuration ? ' (edit)' : '',
-				" configuration for username {$_SESSION['h2username']}",
-				$can_view_as_others ? ' or non-administrators' : '', $can_edit_as_others
-				&& $can_edit_configuration ? '' : '(noedit)', ".<br/>\n";
+				" configuration for username {$_SESSION['h2username']}", $can_view_as_others
+				? ' or non-administrators' : '', $can_edit_as_others && $can_edit_configuration
+				? '' : '(noedit)', ".<br/>\n";
 	} else {
 		$result = pgquery("SELECT * FROM configuration, username = {$_SESSION['s_username']}
 				OR username = 'public' AND {$_SESSION['can_edit_as_others']} WHERE username
 				= {$_SESSION['s_username']} OR username = 'public'
 				AND {$_SESSION['can_view_as_others']} ORDER BY username ASC;");
 		echo 'You are authorized to view', $can_edit_configuration ? ' (edit)' : '',
-				" configuration for username {$_SESSION['h2username']}",
-				$can_view_as_others ? ' or public user' : '', $can_edit_as_others
-				&& $can_edit_configuration ? '' : '(noedit)', ".<br/>\n";
+				" configuration for username {$_SESSION['h2username']}", $can_view_as_others
+				? ' or public user' : '', $can_edit_as_others && $can_edit_configuration ? ''
+				: '(noedit)', ".<br/>\n";
 	}
 ?>
 	Viewing table &quot;configuration&quot;.<br/>

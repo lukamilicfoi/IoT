@@ -16,7 +16,7 @@ if ($can_edit_others) {
 			}
 			pgquery('DELETE FROM users WHERE username <> \'root\' AND username <> \'public\';');
 ?>
-			Table &quot;users&quot; truncated - except for &apos;root&apos;
+			Table &quot;users&quot; truncated except for users &apos;root&apos;
 					and &apos;public&apos;.<br/>
 <?php
 		} else {
@@ -49,12 +49,16 @@ if ($can_edit_others) {
 			pgquery("CREATE ROLE $s2username;");
 			pgquery("GRANT CREATE ON public TO $s2username;");
 			echo "User $h_username inserted.<br/>\n";
-		} elseif (isset($_POST['update1'])) {
+		} elseif (isset($_POST['key'])) {
 			$s1username = pg_escape_literal($_POST['username']);
 			$s2username = pgescapeusername2($_POST['username']);
 			$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
-			if ($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
-					&& !is_administrator($s1username) || $_SESSION['is_root']) {
+			$s1key = pg_escape_literal($_POST['key']);
+			$s2key = pgescapeusername2($_POST['username']);
+			if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
+					&& !is_administrator($s1username) || $_SESSION['is_root']))
+					&& isset($_POST['update1'] && ($_POST['key'] != 'root'
+					&& $_POST['key'] != 'public' || $_POST['key'] == $_POST['username'])) { 
 				$query = 'UPDATE users SET (username' . (!vacuous($_POST['password']) ? ', password'
 						: '') . ", is_administrator, $user_fields_joined) = ($s1username"
 						. (!vacuous($_POST['password']) ? ', \'' . password_hash($_POST['password'],
@@ -64,9 +68,9 @@ if ($can_edit_others) {
 					$query .= pgescapebool($_POST[$field]) . ', ';
 				}
 				pgquery($query . pgescapebool($_POST['can_actually_login'])
-						. ") WHERE username = $s_username;");
+						. ") WHERE username = $s_key;");
 				pgquery("ALTER ROLE $s2key RENAME TO $s2username;");
-				echo "User $h_username updated.<br/>\n";
+				echo "User $h_key updated.<br/>\n";
 			}
 		}
 	} elseif (isset($_GET['key'])) {
@@ -75,7 +79,7 @@ if ($can_edit_others) {
 		$h_key = '&apos;' . htmlspecialchars($_GET['key']) . '&apos;';
 		$u_key = urlencode($_GET['key']);
 		if (($_SESSION['is_administrator'] && !is_administrator($s1key) || $_SESSION['is_root'])
-				&& isset($_GET['delete'])) {
+				&& isset($_GET['delete']) && $_GET['key'] != 'root' && $_GET['key'] != 'public') {
 			if (isset($_GET['confirm'])) {
 				pgquery("DELETE FROM users WHERE username = $s1key;");
 				pgquery("DROP OWNED BY $s2key CASCADE;");
@@ -281,7 +285,7 @@ if ($can_view_yourself || $can_view_others) {
 						} elseif ($username != $_SESSION['h1username'] && $can_edit_others) {
 							echo "<form id=\"update1_$username\" action=\"?\" method=\"POST\">\n";
 ?>
-								<input type="submit" name="update1" value="UPDATE"/>
+								<input type="submit" name="update1" value="UPDATE"/><br/>
 								<input type="reset" value="reset"/>
 <?php
 							echo "</form>\n";

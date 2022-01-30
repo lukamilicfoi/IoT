@@ -33,7 +33,8 @@ if (!vacuous($_GET['tablename'])) {
 				}
 				$query = substr($query, 0, -2) . ') VALUES(';
 				for ($i = 0; $i < $j; $i++) {
-					$query .= my_input_to_postgresql_input($_GET[pg_field_name($result, $i)],
+					$query .= my_input_to_postgresql_input(pg_escape_string(
+							$_GET[pg_field_name($result, $i)]),
 							pg_field_type_oid($result, $i)) . ', ';
 				}
 				pgquery(substr($query, 0, -2) . ');');
@@ -48,7 +49,8 @@ if (!vacuous($_GET['tablename'])) {
 				}
 				$query = substr($query, 0, -2) . ') = ROW (';
 				for ($i = 0; $i < $j; $i++) {
-					$query .= my_input_to_postgresql_input($_GET[pg_field_name($result, $i)],
+					$query .= my_input_to_postgresql_input(pg_escape_string(
+							$_GET[pg_field_name($result, $i)]),
 							pg_field_type_oid($result, $i)) . ', ';
 				}
 				pgquery(substr($query, 0, -2) . ") WHERE t = $s_key;");
@@ -155,7 +157,7 @@ if (!vacuous($_GET['tablename'])) {
 									echo "<input type=\"hidden\" name=\"tablename\"
 											value=\"$h1tablename\"/>\n";
 ?>
-									<input type="submit" name="update" value="UPDATE"/>
+									<input type="submit" name="update" value="UPDATE"/><br/>
 									<input type="reset" value="reset"/>
 <?php
 								echo "</form>\n";

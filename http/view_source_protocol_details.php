@@ -1,6 +1,6 @@
 <?php
 require_once 'common.php';
-if (!Empty($_GET['SRC']) && !Empty($_GET['proto'])) {
+if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 	$s1SRC = pgescapename($_GET['SRC']);
 	$s2SRC = pgescapebytea($_GET['SRC']);
 	$h1SRC = htmlspecialchars($_GET['SRC']);
