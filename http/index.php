@@ -42,14 +42,14 @@ if ($can_view_tables) {
 	} elseif ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT table_owner.tablename AS table_name, table_owner.username
 				= {$_SESSION['s_username']} OR NOT users.is_administrator
-				AND {$_SESSION['can_edit_as_others']} AS can_edit,
+				AND {$_SESSION['s_can_edit_as_others']} AS can_edit,
 				table_name LIKE 't________________' AND table_name <> 'table_constraints'
 				AS is_device FROM table_owner INNER JOIN users ON table_owner.username
 				= users.username WHERE can_edit OR EXISTS(SELECT TRUE FROM table_reader
 				INNER JOIN users ON table_reader.username = users.username
 				WHERE table_reader.tablename = table_name
 				AND (table_reader.username = {$_SESSION['s_username']} OR NOT users.is_administrator
-				AND {$_SESSION['can_view_as_others']})) ORDER BY is_device ASC, table_name ASC;");
+				AND {$_SESSION['s_can_view_as_others']})) ORDER BY is_device ASC, table_name ASC;");
 		echo 'You are authorized to view', $can_edit_tables ? ' (edit)' : '',
 				" username-{$_SESSION['h2username']}-readable", $can_edit_tables ? ' (-owned)'
 				: '', $_SESSION['can_view_as_others'] ? ' or non-administrator-readable' : '',
@@ -58,12 +58,12 @@ if ($can_view_tables) {
 	} else {
 		$result = pgquery("SELECT table_owner.tablename AS table_name, table_owner.username
 				= {$_SESSION['s_username']} OR table_owner.username = 'public'
-				AND {$_SESSION['can_edit_as_others']} AS can_edit,
+				AND {$_SESSION['s_can_edit_as_others']} AS can_edit,
 				table_name LIKE 't________________' AND table_name <> 'table_constraints'
 				AS is_device FROM table_owner INNER JOIN users ON table_owner.username
 				= users.username WHERE can_edit OR EXISTS(SELECT TRUE FROM table_reader
 				WHERE tablename = table_name AND (username = {$_SESSION['s_username']}
-				OR username = 'public' AND {$_SESSION['can_view_as_others']}))
+				OR username = 'public' AND {$_SESSION['s_can_view_as_others']}))
 				ORDER BY is_device ASC, table_name ASC;");
 		echo 'You are authorized to view', $can_edit_tables ? ' (edit)' : '',
 				" username-{$_SESSION['h2username']}-readable", $can_edit_tables ? ' (-owned)'
@@ -139,7 +139,7 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 		<input type="reset" value="reset"/>
 	</form>
 	Write message and imm_DST as a binary string, e.g., abababababababab; write protocol
-			as a string, e.g., tcp; write ports as integers, e.g. 44000 and 44001.<br/><br/>
+			as a string, e.g., tcp; write ports as integers, e.g., 44000 and 44001.<br/><br/>
 <?php
 }
 if (check_authorization('can_inject_messages', 'inject messages from nodes')) {

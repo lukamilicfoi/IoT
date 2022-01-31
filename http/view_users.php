@@ -28,11 +28,11 @@ if ($can_edit_others) {
 			exit(0);
 		}
 	} elseif (!vacuous($_POST['username'])) {
+		$s1username = pg_escape_literal($_POST['username']);
+		$s2username = pgescapeusername2($_POST['username']);
+		$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
 		if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
 				|| $_SESSION['is_root']) && isset($_POST['insert'])) {
-			$s1username = pg_escape_literal($_POST['username']);
-			$s2username = pgescapeusername2($_POST['username']);
-			$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
 			$query = "INSERT INTO users(username, password, is_administrator, $user_fields_joined,
 					can_actually_login) VALUES($s1username, '" . password_hash($_POST['password'],
 					PASSWORD_DEFAULT) . '\', ' . pgescapebool($_POST['is_administrator']) . ', ';
@@ -50,15 +50,13 @@ if ($can_edit_others) {
 			pgquery("GRANT CREATE ON public TO $s2username;");
 			echo "User $h_username inserted.<br/>\n";
 		} elseif (isset($_POST['key'])) {
-			$s1username = pg_escape_literal($_POST['username']);
-			$s2username = pgescapeusername2($_POST['username']);
-			$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
 			$s1key = pg_escape_literal($_POST['key']);
 			$s2key = pgescapeusername2($_POST['username']);
 			if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
 					&& !is_administrator($s1username) || $_SESSION['is_root']))
 					&& isset($_POST['update1'] && ($_POST['key'] != 'root'
-					&& $_POST['key'] != 'public' || $_POST['key'] == $_POST['username'])) { 
+					&& $_POST['key'] != 'public' || $_POST['key'] == $_POST['username'])) {
+				$h_key = htmlspecialchars($_POST['key']);
 				$query = 'UPDATE users SET (username' . (!vacuous($_POST['password']) ? ', password'
 						: '') . ", is_administrator, $user_fields_joined) = ($s1username"
 						. (!vacuous($_POST['password']) ? ', \'' . password_hash($_POST['password'],
@@ -68,7 +66,7 @@ if ($can_edit_others) {
 					$query .= pgescapebool($_POST[$field]) . ', ';
 				}
 				pgquery($query . pgescapebool($_POST['can_actually_login'])
-						. ") WHERE username = $s_key;");
+						. ") WHERE username = $s1key;");
 				pgquery("ALTER ROLE $s2key RENAME TO $s2username;");
 				echo "User $h_key updated.<br/>\n";
 			}
@@ -217,7 +215,8 @@ if ($can_view_yourself || $can_view_others) {
 						if ($username == $_SESSION['h1username'] && $can_edit_yourself) {
 							echo "<input form=\"update2\" type=\"text\" name=\"username\"
 									value=\"$username\" required/>\n";
-						} elseif ($username != $_SESSION['h1username'] && $can_edit_others) {
+						} elseif ($username != $_SESSION['h1username'] && $can_edit_others
+								 && $username != 'public') {
 							echo "<input form=\"update1_$username\" type=\"text\"
 									name=\"username\" value=\"$username\" required/>\n";
 						} else {
@@ -282,7 +281,8 @@ if ($can_view_yourself || $can_view_others) {
 								<input type="reset" value="reset"/>
 							</form>
 <?php
-						} elseif ($username != $_SESSION['h1username'] && $can_edit_others) {
+						} elseif ($username != $_SESSION['h1username'] && $can_edit_others
+								 && $username != 'public') {
 							echo "<form id=\"update1_$username\" action=\"?\" method=\"POST\">\n";
 ?>
 								<input type="submit" name="update1" value="UPDATE"/><br/>

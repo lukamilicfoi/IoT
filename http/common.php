@@ -55,14 +55,14 @@ function can_view_table($s_tablename) {
 	return pg_num_rows(pgquery("SELECT TRUE FROM table_owner INNER JOIN users
 			ON table_owner.username = users.username WHERE table_owner.tablename = $s_tablename
 			AND (table_owner.username = {$_SESSION['s_username']}
-			OR {$_SESSION['can_edit_as_others']} AND (table_owner.username = 'public'
-			OR {$_SESSION['is_administrator']} AND NOT users.is_administrator)
-			OR {$_SESSION['is_root']}) UNION ALL SELECT TRUE FROM table_reader INNER JOIN users
+			OR {$_SESSION['s_can_edit_as_others']} AND (table_owner.username = 'public'
+			OR {$_SESSION['s_is_administrator']} AND NOT users.is_administrator)
+			OR {$_SESSION['s_is_root']}) UNION ALL SELECT TRUE FROM table_reader INNER JOIN users
 			ON table_reader.username = users.username WHERE table_reader.username = $s_tablename
 			AND (table_reader.username = {$_SESSION['s_username']}
-			OR {$_SESSION['can_view_as_others']} AND (table_reader.username = 'public'
-			OR {$_SESSION['is_administrator']} AND NOT users.is_administrator)
-			OR {$_SESSION['is_root']});")) != 0;
+			OR {$_SESSION['s_can_view_as_others']} AND (table_reader.username = 'public'
+			OR {$_SESSION['s_is_administrator']} AND NOT users.is_administrator)
+			OR {$_SESSION['s_is_root']});")) != 0;
 }
 
 function pgescapeinteger(&$integervar) {
@@ -123,9 +123,9 @@ function can_edit_table($s_tablename) {
 	return pg_num_rows(pgquery("SELECT TRUE FROM table_owner INNER JOIN users
 			ON table_owner.username = users.username WHERE table_owner.tablename = $s_tablename
 			AND (table_owner.username = {$_SESSION['s_username']}
-			OR {$_SESSION['can_edit_as_others']} AND (table_owner.username = 'public'
-			OR {$_SESSION['is_administrator']} AND NOT users.is_administrator)
-			OR {$_SESSION['is_root']});")) != 0;
+			OR {$_SESSION['s_can_edit_as_others']} AND (table_owner.username = 'public'
+			OR {$_SESSION['s_is_administrator']} AND NOT users.is_administrator)
+			OR {$_SESSION['s_is_root']});")) != 0;
 }
 
 $user_fields = array('can_view_tables', 'can_edit_tables', 'can_send_messages',
