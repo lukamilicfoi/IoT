@@ -2,8 +2,6 @@
 require_once 'common.php';
 $can_view_rules = check_authorization('can_view_rules', 'view rules');
 $can_edit_rules = check_authorization('can_edit_rules', 'edit rules');
-$can_view_as_others = check_authorization('can_view_as_others', 'view others\' rules');
-$can_edit_as_others = check_authorization('can_edit_as_others', 'edit others\' rules');
 if ($can_edit_rules) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
@@ -22,7 +20,7 @@ if ($can_edit_rules) {
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 		$id = intval($_GET['id']);
 		if (($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
-				&& !is_administrator($s_username) && $can_edit_as_others
+				&& !is_administrator($s_username) && $_SESSION['can_edit_as_others']
 			 	|| $_SESSION['is_root']) && isset($_GET['insert'])) {
 			pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter,
 					drop_modify_nothing, modification, query_command_nothing, query_command_1,
@@ -57,7 +55,7 @@ if ($can_edit_rules) {
 			$key2 = intval($_GET['key2']);
 			if (($_GET['key1'] == $_SESSION['username'] && $_GET['key1'] == $_GET['username']
 					|| $_SESSION['is_administrator'] && !is_administrator($s_key1)
-					&& !is_administrator($s_username) && $can_edit_as_others
+					&& !is_administrator($s_username) && $_SESSION['can_edit_as_others']
 				 	|| $_SESSION['is_root']) && isset($_GET['update'])) {
 				pgquery("UPDATE rules SET (username, id, send_receive_seconds, filter,
 						drop_modify_nothing, modification, query_command_nothing, query_command_1,
@@ -94,7 +92,7 @@ if ($can_edit_rules) {
 		$u_key1 = urlencode($_GET['key1']);
 		$key2 = intval($_GET['key2']);
 		if (($_GET['key1'] == $_SESSION['username'] || $_SESSION['is_administrator']
-				&& !is_administrator($s_key1) && $can_edit_as_others
+				&& !is_administrator($s_key1) && $_SESSION['can_edit_as_others']
 			 	|| $_SESSION['is_root']) && isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
 				pgquery("DELETE FROM rules WHERE username = $s_key1 AND id = $key2;");
@@ -121,26 +119,26 @@ if ($can_view_rules) {
 <?php
 	} elseif ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT rules.*, rules.username = {$_SESSION['s_username']}
-				OR NOT users.is_administrator AND {$_SESSION['can_edit_as_others']}, proto_name.name
+				OR NOT users.is_administrator AND {$_SESSION['s_can_edit_as_others']}, proto_name.name
 				FROM rules INNER JOIN users ON rules.username = users.username INNER JOIN proto_name
 				ON rules.proto_id = proto_name.proto WHERE rules.username
 				= {$_SESSION['s_username']} OR NOT users.is_administrator
-				AND {$_SESSION['can_view_as_others']}
+				AND {$_SESSION['s_can_view_as_others']}
 				ORDER BY rules.username ASC, rules.id ASC;");
 		echo 'You are authorized to view', $can_edit_rules ? ' (edit)' : '',
-				" rules for username {$_SESSION['h2username']}", $can_view_as_others
-				? ' or non-administrators' : '', $can_edit_as_others && $can_edit_rules
+				" rules for username {$_SESSION['h2username']}", $_SESSION['can_view_as_others']
+				? ' or non-administrators' : '', $_SESSION['can_edit_as_others'] && $can_edit_rules
 				? '' : ' (noedit)', ".<br/>\n";
 	} else {
 		$result = pgquery("SELECT rules.*, rules.username = {$_SESSION['s_username']}
-				OR NOT users.is_administrator AND {$_SESSION['can_edit_as_others']}, proto_name.name
+				OR NOT users.is_administrator AND {$_SESSION['s_can_edit_as_others']}, proto_name.name
 				FROM rules INNER JOIN proto_name ON rules.proto_id = proto_name.proto
 				WHERE rules.username = {$_SESSION['s_username']} OR rules.username = 'public'
-				AND {$_SESSION['can_view_as_others']}
+				AND {$_SESSION['s_can_view_as_others']}
 				ORDER BY rules.username ASC, rules.id ASC;");
 		echo 'You are authorized to view', $can_edit_rules ? ' (edit)' : '',
-				" rules for username {$_SESSION['h2username']}", $can_view_as_others
-				? ' or public user' : '', $can_edit_as_others && $can_edit_rules ? ''
+				" rules for username {$_SESSION['h2username']}", $_SESSION['can_view_as_others']
+				? ' or public user' : '', $_SESSION['can_edit_as_others'] && $can_edit_rules ? ''
 				: ' (noedit)', ".<br/>\n";
 	}
 ?>
@@ -555,7 +553,7 @@ if ($can_view_rules) {
 			&quot;formatted_message_for_send_receive&quot; and columns HD, ID, LEN, DST, SRC, PL, CRC, CCF, ACF, override, broadcast, insecure_port and secure_port.<br/>
 	bash commands are NOT executed as /root/, but as the user who started the database.<br/>
 	Filter can be either a number or a string.<br/>
-	Leaving a field empty indicates null value.<br/>
+	Leaving a field empty indicates NULL value.<br/>
 	Deactivating a rule deletes its timer. Changing a period does not.<br/>
 	Id must be unique. Smaller value indicates bigger priority.<br/>
 	When broadcasting a message any &quot;imm_DST&quot; is ignored.<br/>
