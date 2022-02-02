@@ -49,7 +49,7 @@ if ($can_edit_others) {
 			pgquery("CREATE ROLE $s2username;");
 			pgquery("GRANT CREATE ON public TO $s2username;");
 			echo "User $h_username inserted.<br/>\n";
-		} elseif (isset($_POST['key'])) {
+		} elseif (!vacuous($_POST['key'])) {
 			$s1key = pg_escape_literal($_POST['key']);
 			$s2key = pgescapeusername2($_POST['username']);
 			if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
@@ -71,7 +71,7 @@ if ($can_edit_others) {
 				echo "User $h_key updated.<br/>\n";
 			}
 		}
-	} elseif (isset($_GET['key'])) {
+	} elseif (!vacuous($_GET['key'])) {
 		$s1key = pg_escape_literal($_GET['key']);
 		$s2key = pgescapeusername2($_GET['key']);
 		$h_key = '&apos;' . htmlspecialchars($_GET['key']) . '&apos;';

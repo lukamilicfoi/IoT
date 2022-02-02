@@ -30,19 +30,19 @@ if ($can_view_configuration) {
 	} elseif ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT configuration.*, configuration.username
 				= {$_SESSION['s_username']} OR NOT users.is_administrator
-				AND {$_SESSION['can_edit_as_others']} FROM configuration INNER JOIN users
+				AND {$_SESSION['s_can_edit_as_others']} FROM configuration INNER JOIN users
 				ON configuration.username = users.username WHERE configuration.username
 				= {$_SESSION['s_username']} OR NOT users.is_administrator
-				AND {$_SESSION['can_view_as_others']} ORDER BY configuration.username ASC;");
+				AND {$_SESSION['s_can_view_as_others']} ORDER BY configuration.username ASC;");
 		echo 'You are authorized to view', $can_edit_configuration ? ' (edit)' : '',
 				" configuration for username {$_SESSION['h2username']}", $can_view_as_others
 				? ' or non-administrators' : '', $_SESSION['can_edit_as_others']
 				&& $can_edit_configuration ? '' : '(noedit)', ".<br/>\n";
 	} else {
 		$result = pgquery("SELECT * FROM configuration, username = {$_SESSION['s_username']}
-				OR username = 'public' AND {$_SESSION['can_edit_as_others']} WHERE username
+				OR username = 'public' AND {$_SESSION['s_can_edit_as_others']} WHERE username
 				= {$_SESSION['s_username']} OR username = 'public'
-				AND {$_SESSION['can_view_as_others']} ORDER BY username ASC;");
+				AND {$_SESSION['s_can_view_as_others']} ORDER BY username ASC;");
 		echo 'You are authorized to view', $can_edit_configuration ? ' (edit)' : '',
 				" configuration for username {$_SESSION['h2username']}", $can_view_as_others
 				? ' or public user' : '', $_SESSION['can_edit_as_others']
