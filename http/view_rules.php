@@ -112,7 +112,7 @@ if ($can_edit_rules) {
 }
 if ($can_view_rules) {
 	if ($_SESSION['is_root']) {
-		$result = pgquery('SELECT rules.*, TRUE, proto_name.name FROM rules INNER JOIN proto_name
+		$result = pgquery('SELECT rules.*, TRUE, proto_name.name FROM rules LEFT OUTER JOIN proto_name
 				ON rules.proto_id = proto_name.proto ORDER BY rules.username ASC, rules.id ASC;');
 ?>
 		You are authorized to view (edit) rules for all users.<br/>
@@ -120,11 +120,10 @@ if ($can_view_rules) {
 	} elseif ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT rules.*, rules.username = {$_SESSION['s_username']}
 				OR NOT users.is_administrator AND {$_SESSION['s_can_edit_as_others']}, proto_name.name
-				FROM rules INNER JOIN users ON rules.username = users.username INNER JOIN proto_name
+				FROM rules INNER JOIN users ON rules.username = users.username LEFT OUTER JOIN proto_name
 				ON rules.proto_id = proto_name.proto WHERE rules.username
 				= {$_SESSION['s_username']} OR NOT users.is_administrator
-				AND {$_SESSION['s_can_view_as_others']}
-				ORDER BY rules.username ASC, rules.id ASC;");
+				AND {$_SESSION['s_can_view_as_others']} ORDER BY rules.username ASC, rules.id ASC;");
 		echo 'You are authorized to view', $can_edit_rules ? ' (edit)' : '',
 				" rules for username {$_SESSION['h2username']}", $_SESSION['can_view_as_others']
 				? ' or non-administrators' : '', $_SESSION['can_edit_as_others'] && $can_edit_rules
@@ -132,10 +131,9 @@ if ($can_view_rules) {
 	} else {
 		$result = pgquery("SELECT rules.*, rules.username = {$_SESSION['s_username']}
 				OR NOT users.is_administrator AND {$_SESSION['s_can_edit_as_others']}, proto_name.name
-				FROM rules INNER JOIN proto_name ON rules.proto_id = proto_name.proto
+				FROM rules LEFT OUTER JOIN proto_name ON rules.proto_id = proto_name.proto
 				WHERE rules.username = {$_SESSION['s_username']} OR rules.username = 'public'
-				AND {$_SESSION['s_can_view_as_others']}
-				ORDER BY rules.username ASC, rules.id ASC;");
+				AND {$_SESSION['s_can_view_as_others']} ORDER BY rules.username ASC, rules.id ASC;");
 		echo 'You are authorized to view', $can_edit_rules ? ' (edit)' : '',
 				" rules for username {$_SESSION['h2username']}", $_SESSION['can_view_as_others']
 				? ' or public user' : '', $_SESSION['can_edit_as_others'] && $can_edit_rules ? ''
@@ -492,14 +490,14 @@ if ($can_view_rules) {
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"activate\" value=\"",
-								is_null($row[18]) ? '' : $row[16], "\"/>\n";
+								is_null($row[18]) ? '' : $row[18], "\"/>\n";
 ?>
 						.
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"deactivate\" value=\"",
-								is_null($row[19]) ? '' : $row[17], "\"/>\n";
+								is_null($row[19]) ? '' : $row[19], "\"/>\n";
 ?>
 						.
 					</td>
@@ -545,12 +543,10 @@ if ($can_view_rules) {
 ?>
 		</tbody>
 	</table>
-	If &quot;SELECT &lt;filter&gt;&quot; evaluates to TRUE, the filter is triggered.
-			You can use column names HD, ID, LEN, DST, SRC, PL, CRC, CCF, ACF, override, broadcast, insecure_port and secure_port. Appropriate FROM is automatically appended.<br/>
+	If &quot;SELECT &lt;filter&gt;&quot; evaluates to TRUE, the filter is triggered. You can use column names HD, ID, LEN, DST, SRC, PL, CRC, CCF, ACF, broadcast, override_implicit_rules, insecure_port and secure_port. Appropriate FROM is automatically appended.<br/>
 	Modification is performed like &quot;UPDATE message SET &lt;semicolon-separated command 1&gt;;
 			UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;&quot;.<br/>
-	During SQL queries the current message is stored in table
-			&quot;formatted_message_for_send_receive&quot; and columns HD, ID, LEN, DST, SRC, PL, CRC, CCF, ACF, override, broadcast, insecure_port and secure_port.<br/>
+	During SQL queries the current message is stored in table &quot;formatted_message_for_send_receive&quot; and columns HD, ID, LEN, DST, SRC, PL, CRC, CCF, ACF, broadcast, override_implicit_rules, insecure_port and secure_port.<br/>
 	bash commands are NOT executed as /root/, but as the user who started the database.<br/>
 	Filter can be either a number or a string.<br/>
 	Leaving a field empty indicates NULL value.<br/>

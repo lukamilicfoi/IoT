@@ -30,7 +30,7 @@ if ($can_edit_permissions) {
 		$s2username = pg_escape_identifier($_GET['username']);
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 		$tablename_owner = find_owner($s1tablename);
-		$tablename_owner_is_administrator = is_administrator($tablename_owner);
+		$tablename_owner_is_administrator = is_administrator(pg_escape_literal($tablename_owner));
 		$tablename_owner_is_user = $tablename_owner == $_SESSION['username'];
 		$tablename_owner_is_user_or_public = $tablename_owner_is_user
 				|| $tablename_owner == 'public';
@@ -47,7 +47,7 @@ if ($can_edit_permissions) {
 			$s2key1 = pg_escape_identifier($_GET['key1']);
 			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 			$key1_owner = find_owner($s1key1);
-			$key1_owner_is_administrator = is_administrator($key1_owner);
+			$key1_owner_is_administrator = is_administrator(pg_escape_literal($key1_owner));
 			$key1_owner_is_user = $key1_owner == $_SESSION['username'];
 			$key1_owner_is_user_or_public = $key1_owner_is_user
 					|| $key1_owner == 'public';
@@ -68,7 +68,7 @@ if ($can_edit_permissions) {
 			} elseif (($key1_owner_is_user_or_public || $_SESSION['is_administrator']
 					&& !$key1_owner_is_administrator && $_SESSION['can_edit_as_others']
 					|| $_SESSION['is_root']) && isset($_GET['update2'])) {
-				pgquery("UPDATE table_owner SET username = $s1username WHERE tablename = $s_key1;");
+				pgquery("UPDATE table_owner SET username = $s1username WHERE tablename = $s1key1;");
 				pgquery("ALTER TABLE $s2key1 SET OWNER TO $s2username;");
 				echo "Owner ($h_key1, $h_key2) updated to ($h_key1, $h_username).<br/>\n";
 			}
@@ -78,13 +78,13 @@ if ($can_edit_permissions) {
 		$s2key1 = pg_escape_identifier($_GET['key1']);
 		$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 		$u_key1 = urlencode($_GET['key1']);
-		$key1_owner = find_owner($s_key1);
+		$key1_owner = find_owner($s1key1);
 		$s1key2 = pg_escape_literal($_GET['key2']);
 		$s2key2 = pg_escape_identifier($_GET['key2']);
 		$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
 		$u_key2 = urlencode($_GET['key2']);
 		if (($key1_owner == $_SESSION['username'] || $key1_owner == 'public'
-				|| $_SESSION['is_administrator'] && !is_administrator($key1_owner)
+				|| $_SESSION['is_administrator'] && !is_administrator(pg_escape_literal($key1_owner))
 				&& $_SESSION['can_edit_as_others'] || $_SESSION['is_root'])
 				&& isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {
@@ -205,7 +205,7 @@ if ($can_edit_permissions) {
 						$h_tablename = htmlspecialchars($row[0]);
 						$s_tablename = pg_escape_literal($row[0]);
 						$username = htmlspecialchars($row[1]);
-						$form = "\"update_{$tablename}_$username\"";
+						$form = "\"update_{$h_tablename}_$username\"";
 						echo "<input form=$form type=\"text\" name=\"tablename\"
 								value=\"$h_tablename\"",
 								$row[2] == 't' ? ' readonly' : ' required', "/>\n";
@@ -217,7 +217,6 @@ if ($can_edit_permissions) {
 								value=\"$username\" required/>\n";
 ?>
 					</td>
-					<td>
 <?php
 					if ($can_edit_permissions && $row[2] == 't') {
 ?>
