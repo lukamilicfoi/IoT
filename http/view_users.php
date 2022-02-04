@@ -47,27 +47,29 @@ if ($can_edit_others) {
 					trust_everyone, default_gateway, insecure_port, secure_port FROM configuration
 					WHERE username = {$_SESSION['s_username']};");
 			pgquery("CREATE ROLE $s2username;");
-			pgquery("GRANT CREATE ON public TO $s2username;");
+			pgquery("GRANT CREATE ON SCHEMA public TO $s2username;");
 			echo "User $h_username inserted.<br/>\n";
 		} elseif (!vacuous($_POST['key'])) {
 			$s1key = pg_escape_literal($_POST['key']);
 			$s2key = pgescapeusername2($_POST['username']);
 			if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
-					&& !is_administrator($s1username) || $_SESSION['is_root']))
-					&& isset($_POST['update1'] && ($_POST['key'] != 'root'
+					&& !is_administrator($s1username) || $_SESSION['is_root'])
+					&& isset($_POST['update1']) && ($_POST['key'] != 'root'
 					&& $_POST['key'] != 'public' || $_POST['key'] == $_POST['username'])) {
 				$h_key = htmlspecialchars($_POST['key']);
 				$query = 'UPDATE users SET (username' . (!vacuous($_POST['password']) ? ', password'
-						: '') . ", is_administrator, $user_fields_joined) = ($s1username"
-						. (!vacuous($_POST['password']) ? ', \'' . password_hash($_POST['password'],
-						PASSWORD_DEFAULT) . '\'' : '') . ', ' .
+						: '') . ", is_administrator, $user_fields_joined, can_actually_login)
+						= ($s1username" . (!vacuous($_POST['password']) ? ', \''
+						. password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : '') . ', ' .
 						pgescapebool($_POST['is_administrator']) . ', ';
 				foreach ($user_fields as $field) {
 					$query .= pgescapebool($_POST[$field]) . ', ';
 				}
 				pgquery($query . pgescapebool($_POST['can_actually_login'])
 						. ") WHERE username = $s1key;");
-				pgquery("ALTER ROLE $s2key RENAME TO $s2username;");
+				if ($s2key != $s2username) {
+					pgquery("ALTER ROLE $s2key RENAME TO $s2username;");
+				}
 				echo "User $h_key updated.<br/>\n";
 			}
 		}
@@ -105,7 +107,9 @@ if ($can_edit_yourself && isset($_POST['update2']) && !vacuous($_POST['username'
 			. ') = ROW(' . pg_escape_literal($_POST['username']) . (!vacuous($_POST['password'])
 			? ', \'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : '')
 			. ") WHERE username = {$_SESSION['s_username']};");
-	pgquery("ALTER ROLE {$_SESSION['s2username']} RENAME TO $s2username;");
+	if ($_SESSION['s2username'] != $s2username) {
+		pgquery("ALTER ROLE {$_SESSION['s2username']} RENAME TO $s2username;");
+	}
 	echo "User $h_username updated.<br/>\n";
 }
 if ($can_view_yourself || $can_view_others) {
@@ -149,6 +153,7 @@ if ($can_view_yourself || $can_view_others) {
 					echo '<th>', ucfirst(strtr($field, '_', ' ')), "?</th>\n";
 				}
 ?>
+				<th>Can actually login?</th>
 				<th>Actions</th>
 			</tr>
 <?php
@@ -215,10 +220,10 @@ if ($can_view_yourself || $can_view_others) {
 						if ($username == $_SESSION['h1username'] && $can_edit_yourself) {
 							echo "<input form=\"update2\" type=\"text\" name=\"username\"
 									value=\"$username\" required/>\n";
-						} elseif ($username != $_SESSION['h1username'] && $can_edit_others
-								 && $username != 'public') {
+						} elseif ($username != $_SESSION['h1username'] && $can_edit_others) {
 							echo "<input form=\"update1_$username\" type=\"text\"
-									name=\"username\" value=\"$username\" required/>\n";
+									name=\"username\" value=\"$username\" ", $username == 'public'
+									? 'readonly' : 'required', "/>\n";
 						} else {
 							echo "<input type=\"text\" value=\"$username\" disabled/>\n";
 						}
@@ -267,7 +272,7 @@ if ($can_view_yourself || $can_view_others) {
 					<td>
 <?php
 						echo "<input form=\"update1_$username\" type=\"checkbox\"
-								name=\"can_actually_login\"", $row[$user_fields_length + 4] == 't'
+								name=\"can_actually_login\"", $row[$user_fields_length + 3] == 't'
 								? ' checked' : '', $can_edit_others && $username
 								!= $_SESSION['h1username'] ? '' : ' disabled', "/>\n";
 ?>
@@ -281,22 +286,24 @@ if ($can_view_yourself || $can_view_others) {
 								<input type="reset" value="reset"/>
 							</form>
 <?php
-						} elseif ($username != $_SESSION['h1username'] && $can_edit_others
-								 && $username != 'public') {
+						} elseif ($username != $_SESSION['h1username'] && $can_edit_others) {
 							echo "<form id=\"update1_$username\" action=\"?\" method=\"POST\">\n";
+								echo "<input type=\"hidden\" name=\"key\" value=\"$username\"/>\n";
 ?>
 								<input type="submit" name="update1" value="UPDATE"/><br/>
 								<input type="reset" value="reset"/>
 <?php
 							echo "</form>\n";
+							if ($username != 'public') {
 ?>
-							<form action="?" method="GET">
+								<form action="?" method="GET">
 <?php
-								echo "<input type=\"hidden\" name=\"key\" value=\"$username\"/>\n";
+									echo "<input type=\"hidden\" name=\"key\" value=\"$username\"/>\n";
 ?>
-								<input type="submit" name="delete" value="DELETE"/>
-							</form>
+									<input type="submit" name="delete" value="DELETE"/>
+								</form>
 <?php
+							}
 						}
 ?>
 					</td>
@@ -306,7 +313,7 @@ if ($can_view_yourself || $can_view_others) {
 ?>
 		</tbody>
 	</table>
-	Write username as a string, e.g., root.<br/><br/>
+	<br/>
 	<a href="index.php">Done</a>
 <?php
 }

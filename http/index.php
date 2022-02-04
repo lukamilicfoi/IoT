@@ -98,7 +98,7 @@ if ($can_view_tables) {
 		}
 ?>
 	</form>
-	Tables ordered by name ascending.<br/><br/>
+	Tables ordered by name ascending.<br/><br/><br/>
 <?php
 }
 if (check_authorization('can_send_messages', 'send messages to nodes')) {
@@ -327,4 +327,4 @@ if (check_authorization('can_view_remotes', 'view remotes')) {
 <?php
 }
 ?>
-<br/><a href="login.php?logout">Logout</a>
+<br/><br/><a href="login.php?logout">Logout</a>
