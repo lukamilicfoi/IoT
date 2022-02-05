@@ -89,7 +89,7 @@ if ($can_view_configuration) {
 								$row[1] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
-					<td>g
+					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"checkbox\"
 								name=\"use_internet_switch_algorithm\"",

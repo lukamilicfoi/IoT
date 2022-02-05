@@ -554,7 +554,7 @@ if ($can_view_rules) {
 	Id must be unique. Smaller value indicates bigger priority.<br/>
 	When broadcasting a message any &quot;imm_DST&quot; is ignored.<br/>
 	On send and receive rules &quot;last_run&quot; is meaningless.<br/>
-	Strings are written without excess quotations, e.g., proto = &apos;tcp&apos;.<br/>
+	Strings are written without excess quotations, e.g., proto = &apos;tcp&apos;.<br/><br/>
 	<a href="index.php">Done</a>
 <?php
 }
