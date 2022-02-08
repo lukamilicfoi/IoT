@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "\
+echo "
 CREATE TABLE users(username TEXT, password TEXT NOT NULL, is_administrator BOOLEAN NOT NULL,
 		can_view_tables BOOLEAN NOT NULL, can_edit_tables BOOLEAN NOT NULL,
 		can_send_messages BOOLEAN NOT NULL, can_inject_messages BOOLEAN NOT NULL,
@@ -68,5 +68,5 @@ INSERT INTO users(username, password, is_administrator, can_view_tables, can_edi
 INSERT INTO configuration(username, forward_messages, use_internet_switch_algorithm, nsecs_id,
 		nsecs_src, trust_everyone, default_gateway, insecure_port, secure_port) VALUES('root', TRUE,
 		TRUE, 600, 36000, FALSE, '\\x0000000000000000', 44000, 44001), ('public', TRUE, TRUE, 600,
-		36000, FALSE, '\\x0000000000000000', 44000, 44001);x
+		36000, FALSE, '\\x0000000000000000', 44000, 44001);
 " | psql -U postgres
