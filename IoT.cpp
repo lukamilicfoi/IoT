@@ -2369,39 +2369,6 @@ int main(int argc, char *argv[]) {
 	strcpy(cwd, PQescapeString3(getcwd(cwd, PATH_MAX)).c_str());
 	initialize_vars();
 
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS users(username TEXT, "
-			"password TEXT NOT NULL, is_administrator BOOLEAN NOT NULL, "
-			"can_view_tables BOOLEAN NOT NULL, can_edit_tables BOOLEAN NOT NULL, "
-			"can_send_messages BOOLEAN NOT NULL, can_inject_messages BOOLEAN NOT NULL, "
-			"can_send_queries BOOLEAN NOT NULL, can_view_rules BOOLEAN NOT NULL, "
-			"can_edit_rules BOOLEAN NOT NULL, can_view_configuration BOOLEAN NOT NULL, "
-			"can_edit_configuration BOOLEAN NOT NULL, can_view_permissions BOOLEAN NOT NULL, "
-			"can_edit_permissions BOOLEAN NOT NULL, can_view_remotes BOOLEAN NOT NULL, "
-			"can_edit_remotes BOOLEAN NOT NULL, can_execute_rules BOOLEAN NOT NULL, "
-			"can_view_yourself BOOLEAN NOT NULL, can_edit_yourself BOOLEAN NOT NULL, "
-			"can_view_others BOOLEAN NOT NULL, can_edit_others BOOLEAN NOT NULL, "
-			"can_view_as_others BOOLEAN NOT NULL, can_edit_as_others BOOLEAN NOT NULL, "
-			"can_actually_login BOOLEAN NOT NULL, PRIMARY KEY(username))"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS rules(username TEXT, id INTEGER, "
-			"send_receive_seconds SMALLINT NOT NULL, filter TEXT, "
-			"drop_modify_nothing SMALLINT NOT NULL, modification TEXT, "
-			"query_command_nothing SMALLINT NOT NULL, query_command_1 TEXT, "
-			"send_inject_query_command_nothing SMALLINT NOT NULL, query_command_2 TEXT, "
-			"proto_id TEXT, imm_addr BYTEA, insecure_port INTEGER, secure_port INTEGER, "
-			"CCF BOOLEAN, ACF BOOLEAN, broadcast BOOLEAN, override_implicit_rules BOOLEAN, "
-			"activate INTEGER, deactivate INTEGER, is_active BOOLEAN NOT NULL, "
-			"last_run TIMESTAMP(0) WITH TIME ZONE, run_period INTERVAL SECOND(0), next_run BIGINT, "
-			"PRIMARY KEY(username, id), FOREIGN KEY(username) REFERENCES users(username) "
-			"ON DELETE CASCADE ON UPDATE CASCADE)"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS addr_oID(addr BYTEA, "
-			"out_ID SMALLINT NOT NULL, PRIMARY KEY(addr))"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS SRC_DST(SRC BYTEA, DST BYTEA, "
-			"PRIMARY KEY(SRC, DST), FOREIGN KEY(SRC) REFERENCES addr_oID(addr) "
-			"ON DELETE CASCADE ON UPDATE CASCADE)"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS ID_TWR(SRC BYTEA, DST BYTEA, ID SMALLINT, "
-			"TWR TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(SRC, DST, ID), "
-			"FOREIGN KEY(SRC, DST) REFERENCES SRC_DST(SRC, DST) "
-			"ON DELETE CASCADE ON UPDATE CASCADE)"));
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS t"s + BYTE8_to_c17charp(local_addr)
 			+ "(t TIMESTAMP(4) WITHOUT TIME ZONE, PRIMARY KEY(t))"));
 
@@ -2427,11 +2394,6 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn(oss.str()));
 
 	populate_local_proto_iaddr();
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS formatted_message_for_send_receive("
-			"HD BYTEA, ID BYTEA, LEN BYTEA, DST BYTEA, SRC BYTEA, PL BYTEA, CRC BYTEA, "
-			"ENCRYPTED BOOLEAN, SIGNED BOOLEAN, BROADCAST BOOLEAN, OVERRIDE BOOLEAN, proto TEXT, "
-			"imm_addr BYTEA, insecure_port INTEGER, secure_port INTEGER, CCF BOOLEAN, ACF BOOLEAN, "
-			"FOREIGN KEY(proto) REFERENCES proto_name(proto))"));
 	PQclear(execcheckreturn("TRUNCATE TABLE formatted_message_for_send_receive"));
 
 	res = execcheckreturn("SELECT insecure_port, secure_port FROM configuration "
@@ -2519,21 +2481,6 @@ int main(int argc, char *argv[]) {
 	PQclear(res);
 	close(sock);
 
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS SRC_proto(SRC BYTEA, proto TEXT, "
-			"PRIMARY KEY(SRC, proto), FOREIGN KEY(SRC) REFERENCES addr_oID(addr) "
-			"ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY(proto) REFERENCES proto_name(proto) "
-			"ON DELETE CASCADE ON UPDATE CASCADE)"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS iSRC_TWR(SRC BYTEA, proto TEXT, "
-			"imm_SRC BYTEA, TWR TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, "
-			"PRIMARY KEY(SRC, proto, imm_SRC), FOREIGN KEY(SRC, proto) "
-			"REFERENCES SRC_proto(SRC, proto) ON DELETE CASCADE ON UPDATE CASCADE)"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS configuration(username TEXT, "
-			"forward_messages BOOLEAN NOT NULL, use_internet_switch_algorithm BOOLEAN NOT NULL, "
-			"nsecs_id INTEGER NOT NULL, nsecs_src INTEGER NOT NULL, "
-			"trust_everyone BOOLEAN NOT NULL, default_gateway BYTEA NOT NULL, "
-			"insecure_port INTEGER NOT NULL, secure_port INTEGER NOT NULL, "
-			"PRIMARY KEY(username), FOREIGN KEY(username) REFERENCES users(username) "
-			"ON DELETE CASCADE ON UPDATE CASCADE)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS ext(addr_id TEXT) CASCADE"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS send_inject(send BOOLEAN, message BYTEA, "
 			"proto_id TEXT, imm_addr BYTEA, insecure_port INTEGER, secure_port INTEGER, "
@@ -2545,17 +2492,7 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS update_ownerships()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS manually_execute_timed_rule(username TEXT, "
 			"id INTEGER)"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS raw_message_for_query_command("
-			"message BYTEA)"));
 	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_owner(tablename NAME, "
-			"username TEXT, PRIMARY KEY(tablename), FOREIGN KEY(username)"
-			"REFERENCES users(username) ON UPDATE CASCADE ON DELETE CASCADE)"));
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS table_reader(tablename NAME, "
-			"username TEXT, PRIMARY KEY(tablename, username), FOREIGN KEY(tablename) "
-			"REFERENCES table_owner(tablename) ON UPDATE CASCADE ON DELETE CASCADE, "
-			"FOREIGN KEY(username) REFERENCES users(username) ON UPDATE CASCADE "
-			"ON DELETE CASCADE)"));
 	PQclear(execcheckreturn("CREATE PROCEDURE ext(addr_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'ext\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE send_inject(send BOOLEAN, message BYTEA, "
@@ -4094,7 +4031,6 @@ void select_message(formatted_message &fmsg, raw_message &rmsg) {
 	PQclear(execcheckreturn("TRUNCATE TABLE formatted_message_for_send_receive"));
 }
 
-//todo check permissions
 void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int offset,
 		string &select, string &current_username) {
 	int new_id;
