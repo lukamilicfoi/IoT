@@ -2372,10 +2372,8 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS t"s + BYTE8_to_c17charp(local_addr)
 			+ "(t TIMESTAMP(4) WITHOUT TIME ZONE, PRIMARY KEY(t))"));
 
-	res = execcheckreturn("SELECT TRUE FROM pg_class WHERE relname = \'proto_name\'");
+	res = execcheckreturn("TABLE proto_name");
 	if (PQntuples(res) == 0) {
-		PQclear(execcheckreturn("CREATE TABLE proto_name(proto TEXT, name TEXT NOT NULL, "
-				"PRIMARY KEY(proto))"));
 		protocols.push_back(new tcp);
 		protocols.push_back(new udp);
 	} else {
@@ -2406,10 +2404,8 @@ int main(int argc, char *argv[]) {
 	oss >> tls_port;
 	dtls_port = tls_port;
 	PQclear(res);
-	res = execcheckreturn("SELECT TRUE FROM pg_class WHERE relname = \'adapter_name\'");
+	res = execcheckreturn("TABLE adapter_name");
 	if (PQntuples(res) == 0) {
-		PQclear(execcheckreturn("CREATE TABLE adapter_name(adapter INTEGER, name TEXT NOT NULL, "
-				"PRIMARY KEY(adapter))"));
 		oss.str("INSERT INTO adapter_name(adapter, name) VALUES(");
 		i = MAX_DEVICE_INDEX;
 		while (find_next_lower_device(sock, ifr, i) >= 0) {
@@ -2551,6 +2547,7 @@ int main(int argc, char *argv[]) {
 			"EXECUTE PROCEDURE update_timer()"));
 	PQclear(execcheckreturn("SELECT refresh_next_timed_rule_time(("
 			"SELECT MIN(next_run) FROM rules))"));
+
 	PQclear(execcheckreturn("CALL config()"));
 	PQclear(execcheckreturn("CALL update_permissions()"));
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
@@ -5203,7 +5200,6 @@ void format_insert_header(sti &iter_begin, sti &iter_end, string &temp, vector<s
 	}
 }
 
-//todo binary literals
 //the number of columns is sent through a member of var "dt" (cast to type)
 void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<datatypes> &dt,
 		vector<typedetails> &td, string &first, string &second, bool &no_t) {
