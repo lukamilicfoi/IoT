@@ -2347,7 +2347,7 @@ void udp::stop() {
  * suffix strings
  */
 int main(int argc, char *argv[]) {
-	ostringstream oss(oss.out | oss.ate);
+	stringstream ss(ss.out | ss.ate);
 	PGresult *res;
 	int i, sock = socket(AF_UNIX, SOCK_SEQPACKET, 0);
 	struct sigaction sa;
@@ -2384,29 +2384,30 @@ int main(int argc, char *argv[]) {
 	}
 	PQclear(res);
 	PQclear(execcheckreturn("TRUNCATE TABLE proto_name CASCADE"));//CASCADE needed for table fmforsr
-	oss.str("INSERT INTO proto_name(proto, name) VALUES(");
+	ss.str("INSERT INTO proto_name(proto, name) VALUES(");
 	for (const protocol *p : protocols) {
-		oss << '\'' << p->get_my_id() << "\', \'" << get_typename(typeid(*p)) << "\'), (";
+		ss << '\'' << p->get_my_id() << "\', \'" << get_typename(typeid(*p)) << "\'), (";
 	}
-	oss.seekp(-3, oss.end) << '\0';
-	PQclear(execcheckreturn(oss.str()));
+	ss.seekp(-3, ss.end) << '\0';
+	PQclear(execcheckreturn(ss.str()));
 
 	populate_local_proto_iaddr();
 	PQclear(execcheckreturn("TRUNCATE TABLE formatted_message_for_send_receive"));
 
 	res = execcheckreturn("SELECT insecure_port, secure_port FROM configuration "
 			"WHERE username = \'root\'");
-	oss.str(PQgetvalue(res, 0, 0));
-	oss >> tcp_port;
+	ss.str(PQgetvalue(res, 0, 0));
+	ss >> tcp_port;
 	udp_port = tcp_port;
-	oss.str(PQgetvalue(res, 0, 1));
-	oss.clear();
-	oss >> tls_port;
+	ss.str(PQgetvalue(res, 0, 1));
+	ss.clear();
+	ss >> tls_port;
 	dtls_port = tls_port;
+	ss.clear();
 	PQclear(res);
 	res = execcheckreturn("TABLE adapter_name");
 	if (PQntuples(res) == 0) {
-		oss.str("INSERT INTO adapter_name(adapter, name) VALUES(");
+		ss.str("INSERT INTO adapter_name(adapter, name) VALUES(");
 		i = MAX_DEVICE_INDEX;
 		while (find_next_lower_device(sock, ifr, i) >= 0) {
 			THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
@@ -2416,7 +2417,7 @@ int main(int argc, char *argv[]) {
 						system_exception("cannot SIOCSIFFLAGS ioctl"));//privileged operation!!!
 				LOG_CPP("turned on device " << ifr.ifr_name << endl);
 			}
-			oss << i << ", \'" << ifr.ifr_name << "\'), (";
+			ss << i << ", \'" << ifr.ifr_name << "\'), (";
 		}
 		close(sock);
 		sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
@@ -2427,9 +2428,9 @@ int main(int argc, char *argv[]) {
 					//privileged operation!!!
 			LOG_CPP("turned on device " << hdi.name << endl);
 		}
-		oss << MAX_DEVICE_INDEX << ", \'" << hdi.name << "\'), (";
-		oss.seekp(-3, oss.end) << '\0';
-		PQclear(execcheckreturn(oss.str()));
+		ss << MAX_DEVICE_INDEX << ", \'" << hdi.name << "\'), (";
+		ss.seekp(-3, ss.end) << '\0';
+		PQclear(execcheckreturn(ss.str()));
 	} else {
 		i = MAX_DEVICE_INDEX;
 		while (find_next_lower_device(sock, ifr, i) >= 0) {
@@ -2454,11 +2455,11 @@ int main(int argc, char *argv[]) {
 		PQclear(res);
 		close(sock);
 		sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-		oss.str("SELECT TRUE FROM adapter_name WHERE name = \'");
+		ss.str("SELECT TRUE FROM adapter_name WHERE name = \'");
 		hdi.dev_id = 0;
 		THR(ioctl(sock, HCIGETDEVINFO, &hdi) < 0, system_exception("cannot HCIGETDEVINFO ioctl"));
-		oss << hdi.name;
-		res = execcheckreturn(oss.str() + '\'');
+		ss << hdi.name;
+		res = execcheckreturn(ss.str() + '\'');
 		if (PQntuples(res) == 0) {
 			if (!hci_test_bit(HCI_UP, &hdi.flags)) {
 				THR(ioctl(sock, HCIDEVUP, 0) < 0, system_exception("cannot HCIDEVUP ioctl"));
@@ -2549,7 +2550,7 @@ int main(int argc, char *argv[]) {
 			"SELECT MIN(next_run) FROM rules))"));
 
 	PQclear(execcheckreturn("CALL config()"));
-	PQclear(execcheckreturn("CALL update_permissions()"));
+	PQclear(execcheckreturn("CALL update_ownerships()"));
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
 	PQclear(execcheckreturn("INSERT INTO table_owner(tablename, username) "
 			"VALUES(\'t"s + BYTE8_to_c17charp(local_addr) + "\', \'public\')"));
