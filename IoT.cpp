@@ -2527,6 +2527,7 @@ int main(int argc, char *argv[]) {
 			"WHEN (NEW.send_receive_seconds = 2 AND NEW.is_active) "
 			"EXECUTE PROCEDURE insert_timer()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS update_timer() CASCADE"));
+
 	PQclear(execcheckreturn("CREATE FUNCTION update_timer() RETURNS trigger AS \'DECLARE "
 			"lastrun TIMESTAMP(0) WITH TIME ZONE; runperiod INTERVAL SECOND(0); BEGIN "
 			"lastrun = CURRENT_TIMESTAMP(0); "
@@ -2552,8 +2553,10 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CALL config()"));
 	PQclear(execcheckreturn("CALL update_ownerships()"));
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
-	PQclear(execcheckreturn("INSERT INTO table_owner(tablename, username) "
-			"VALUES(\'t"s + BYTE8_to_c17charp(local_addr) + "\', \'public\')"));
+	try {
+		PQclear(execcheckreturn("INSERT INTO table_owner(tablename, username) "
+				"VALUES(\'t"s + BYTE8_to_c17charp(local_addr) + "\', \'public\')"));
+	} catch (...) { }
 	PQclear(execcheckreturn("ALTER TABLE t"s + BYTE8_to_c17charp(local_addr)
 			+ " OWNER TO \"PUBLIC\""));
 	main_loop();
@@ -2589,6 +2592,7 @@ void initialize_vars() {
 	mq_attr ma = { 0, 4, sizeof(raw_message *) };
 	BYTE test[2] = { 1 };
 	random_device rd;
+	FILE *file = fopen("certificate.pem", "rb");
 	EVP_PKEY *local_public_key;
 
 	THR(getrlimit(RLIMIT_MSGQUEUE, &rl) < 0, system_exception("cannot getrlimit"));
@@ -2675,10 +2679,11 @@ void initialize_vars() {
 	dre.seed(rd());
 	determine_local_addr();
 	local_FROM = local_FROM + BYTE8_to_c17charp(local_addr) + ' ';
-	local_public_key = get_public_key(local_addr);
+	local_public_key = X509_get_pubkey(PEM_read_X509(file, nullptr, nullptr, nullptr));
 	encrypted_key_max_length = EVP_PKEY_size(local_public_key);
 	formatted_message_max_augment = 6 + (encrypted_key_max_length << 1) + blocksizetimes2minus1
 			+ ivlength;
+	fclose(file);
 	EVP_PKEY_free(local_public_key);
 }
 
@@ -2783,7 +2788,7 @@ void determine_local_addr() {
 	while (find_next_lower_device(sock, ifr, i) >= 0) {
 		THR(ioctl(sock, SIOCGIFHWADDR, &ifr) < 0,
 				system_exception("cannot SIOCGIFHWADDR ioctl"));//cannot cause EADDRNOTAVAIL
-		if (ifr.ifr_hwaddr.sa_family == ARPHRD_IEEE80211) {
+		if (ifr.ifr_hwaddr.sa_family == ARPHRD_ETHER) {
 			if (little_endian) {
 				memcpy_reverse(&local_addr, ifr.ifr_hwaddr.sa_data, 6);
 			} else {
