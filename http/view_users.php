@@ -161,10 +161,11 @@ if ($can_view_yourself || $can_view_others) {
 ?>
 				<tr>
 					<td>
-						<input form="insert" type="text" name="username" required/>
+						<input form="insert" type="text" name="username" required autofocus/>
 					</td>
 					<td>
-						<input form="insert" type="password" name="password" required/>
+						<input form="insert" type="password" name="password" required
+								autocomplete="new-password"/>
 					</td>
 					<td>
 <?php
@@ -219,7 +220,7 @@ if ($can_view_yourself || $can_view_others) {
 						$username = htmlspecialchars($row[0]);
 						if ($username == $_SESSION['h1username'] && $can_edit_yourself) {
 							echo "<input form=\"update2\" type=\"text\" name=\"username\"
-									value=\"$username\" required/>\n";
+									value=\"$username\" ", $username == 'root' ? 'readonly' : 'required', "/>\n";
 						} elseif ($username != $_SESSION['h1username'] && $can_edit_others) {
 							echo "<input form=\"update1_$username\" type=\"text\"
 									name=\"username\" value=\"$username\" ", $username == 'public'
@@ -232,10 +233,11 @@ if ($can_view_yourself || $can_view_others) {
 					<td>
 <?php
 						if ($username == $_SESSION['h1username'] && $can_edit_yourself) {
-							echo "<input form=\"update2\" type=\"password\" name=\"password\"/>\n";
+							echo "<input form=\"update2\" type=\"password\" name=\"password\"
+									autocomplete=\"new-password\"/>\n";
 						} elseif ($username != $_SESSION['h1username'] && $can_edit_others) {
 							echo "<input form=\"update1_$username\" type=\"password\"
-									name=\"password\"/>\n";
+									name=\"password\" autocomplete=\"new-password\"/>\n";
 						} else {
 ?>
 							<input type="password" disabled/>

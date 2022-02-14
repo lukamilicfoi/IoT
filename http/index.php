@@ -123,9 +123,9 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 		<input type="text" name="proto_name" required/>
 		and imm_DST
 		<input type="text" name="imm_DST" required/>
-		using insecure port
+		using custom insecure listen port
 		<input type="text" name="insecure_port"/><br/>
-		and secure port
+		and custom secure listen port
 		<input type="text" name="secure_port"/>
 		using CCF
 		<input type="checkbox" name="CCF"/>
@@ -139,7 +139,7 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 		<input type="reset" value="reset"/>
 	</form>
 	Write message and imm_DST as a binary string, e.g., abababababababab; write protocol
-			as a string, e.g., tcp; write ports as integers, e.g., 44000 and 44001.<br/><br/>
+			as a string, e.g., tcp; write ports as integers, e.g., 44000 and 44001.<br/><br/><br/>
 <?php
 }
 if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
@@ -164,9 +164,9 @@ if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
 		<input type="text" name="proto_name" required/>
 		and imm_SRC
 		<input type="text" name="imm_SRC" required/>
-		using insecure port
+		using custom insecure listen port
 		<input type="text" name="insecure_port"/><br/>
-		and secure port
+		and custom secure listen port
 		<input type="text" name="secure_port"/>
 		using CCF
 		<input type="checkbox" name="CCF"/>
@@ -180,7 +180,7 @@ if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
 		<input type="reset" value="reset"/>
 	</form>
 	Write message and imm_SRC as a binary string, e.g., abababababababab; write protocol
-			as a string, e.g., tcp; write ports as integers, e.g., 44000 and 44001.<br/><br/>
+			as a string, e.g., tcp; write ports as integers, e.g., 44000 and 44001.<br/><br/><br/>
 <?php
 }
 if (check_authorization('can_send_queries', 'send queries to database')) {
@@ -256,7 +256,7 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write query as a string, e.g., SELECT a FROM b;.<br/><br/>
+	Write query as a string, e.g., SELECT a FROM b;.<br/><br/><br/>
 <?php
 }
 if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
@@ -291,7 +291,7 @@ if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write username and rule as a string and a positive integer, e.g., root and 11.<br/><br/>
+	Write username and rule as a string and an integer, e.g., root and 11.<br/><br/><br/>
 <?php
 }
 if (check_authorization('can_view_rules', 'view rules')) {
