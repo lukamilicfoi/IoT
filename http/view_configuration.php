@@ -79,7 +79,7 @@ if ($can_view_configuration) {
 <?php
 						$username = htmlspecialchars($row[0]);
 						echo "<input form=\"update_$username\" type=\"text\" name=\"username\"
-								value=\"$username\" readonly/>\n";
+								value=\"$username\" size=\"16\" readonly autofocus/>\n";
 ?>
 					</td>
 					<td>
@@ -99,13 +99,13 @@ if ($can_view_configuration) {
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\" name=\"nsecs_id\"
-								value=\"", is_null($row[3]) ? '' : $row[3], "\"/>\n";
+								value=\"", is_null($row[3]) ? '' : $row[3], "\" size=\"8\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\" name=\"nsecs_src\"
-								value=\"", is_null($row[4]) ? '' : $row[4], "\"/>\n";
+								value=\"", is_null($row[4]) ? '' : $row[4], "\" size=\"8\"/>\n";
 ?>
 					</td>
 					<td>
@@ -117,19 +117,19 @@ if ($can_view_configuration) {
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\"
-								name=\"default_gateway\" value=\"", substr($row[6], 2), "\"/>\n";
+								name=\"default_gateway\" value=\"", substr($row[6], 2), "\" size=\"16\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\" name=\"insecure_port\"
-								value=\"", is_null($row[7]) ? '' : $row[7], "\"/>\n";
+								value=\"", is_null($row[7]) ? '' : $row[7], "\" size=\"8\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\" name=\"secure_port\"
-								value=\"", is_null($row[8]) ? '' : $row[8], "\"/>\n";
+								value=\"", is_null($row[8]) ? '' : $row[8], "\" size=\"8\"/>\n";
 ?>
 					</td>
 <?php

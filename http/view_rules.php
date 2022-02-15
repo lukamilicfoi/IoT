@@ -159,8 +159,8 @@ if ($can_view_rules) {
 				<th>and immediate address</th>
 				<th>using custom insecure listen port</th>
 				<th>and custom secure listen port</th>
-				<th>using also CCF</th>
-				<th>and also ACF</th>
+				<th>using CCF</th>
+				<th>and ACF</th>
 				<th>using broadcast</th>
 				<th>and override implicit rules</th>
 				<th>Also activate rule number</th>
@@ -180,7 +180,7 @@ if ($can_view_rules) {
 ?>
 				<tr>
 					<td nowrap="nowrap">
-						<input form="insert" type="text" name="username" size="10" required/>
+						<input form="insert" type="text" name="username" size="10" required autofocus/>
 						,
 					</td>
 					<td nowrap="nowrap">
@@ -272,11 +272,11 @@ if ($can_view_rules) {
 						.
 					</td>
 					<td nowrap="nowrap">
-						<input form="insert" type="text" name="activate"/>
+						<input form="insert" type="text" name="activate" size="10"/>
 						.
 					</td>
 					<td nowrap="nowrap">
-						<input form="insert" type="text" name="deactivate"/>
+						<input form="insert" type="text" name="deactivate" size="10"/>
 						.
 					</td>
 					<td>
@@ -453,13 +453,13 @@ if ($can_view_rules) {
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"insecure_port\" value=\"",
-								is_null($row[12]) ? '' : $row[12], "\"/>\n";
+								is_null($row[12]) ? '' : $row[12], "\" size=\"10\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"secure_port\" value=\"",
-								is_null($row[13]) ? '' : $row[13], "\"/>\n";
+								is_null($row[13]) ? '' : $row[13], "\" size=\"10\"/>\n";
 ?>
 					</td>
 					<td>
@@ -490,14 +490,14 @@ if ($can_view_rules) {
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"activate\" value=\"",
-								is_null($row[18]) ? '' : $row[18], "\"/>\n";
+								is_null($row[18]) ? '' : $row[18], "\" size=\"10\"/>\n";
 ?>
 						.
 					</td>
 					<td>
 <?php
 						echo "<input form=$form type=\"text\" name=\"deactivate\" value=\"",
-								is_null($row[19]) ? '' : $row[19], "\"/>\n";
+								is_null($row[19]) ? '' : $row[19], "\" size=\"10\"/>\n";
 ?>
 						.
 					</td>
