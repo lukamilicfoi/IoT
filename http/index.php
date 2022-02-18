@@ -40,31 +40,33 @@ if ($can_view_tables) {
 		You are authorized to view (edit) all tables.
 <?php
 	} elseif ($_SESSION['is_administrator']) {
-		$result = pgquery("SELECT table_owner.tablename AS table_name, table_owner.username
-				= {$_SESSION['s_username']} OR NOT users.is_administrator
-				AND {$_SESSION['s_can_edit_as_others']} AS can_edit,
-				table_name LIKE 't________________' AND table_name <> 'table_constraints'
-				AS is_device FROM table_owner INNER JOIN users ON table_owner.username
-				= users.username WHERE can_edit OR EXISTS(SELECT TRUE FROM table_reader
-				INNER JOIN users ON table_reader.username = users.username
-				WHERE table_reader.tablename = table_name
+		$table_name = 'table_owner.tablename';
+		$can_edit = "table_owner.username = {$_SESSION['s_username']}
+				OR NOT users.is_administrator AND {$_SESSION['s_can_edit_as_others']}";
+		$is_device = "$table_name LIKE 't________________' AND table_name <> 'table_constraints'";
+		$result = pgquery("SELECT $table_name, $can_edit, $is_device FROM table_owner
+				INNER JOIN users ON table_owner.username = users.username WHERE $can_edit
+				OR EXISTS(SELECT TRUE FROM table_reader INNER JOIN users ON table_reader.username
+				= users.username WHERE table_reader.tablename = $table_name
 				AND (table_reader.username = {$_SESSION['s_username']} OR NOT users.is_administrator
-				AND {$_SESSION['s_can_view_as_others']})) ORDER BY is_device ASC, table_name ASC;");
+				AND {$_SESSION['s_can_view_as_others']}))
+				ORDER BY $is_device ASC, $table_name ASC;");
 		echo 'You are authorized to view', $can_edit_tables ? ' (edit)' : '',
 				" username-{$_SESSION['h2username']}-readable", $can_edit_tables ? ' (-owned)'
 				: '', $_SESSION['can_view_as_others'] ? ' or non-administrator-readable' : '',
 				$_SESSION['can_edit_as_others'] && $can_edit_tables ? ' (-owned)' : '',
 				" tables.\n";
 	} else {
-		$result = pgquery("SELECT table_owner.tablename AS table_name, table_owner.username
-				= {$_SESSION['s_username']} OR table_owner.username = 'public'
-				AND {$_SESSION['s_can_edit_as_others']} AS can_edit,
-				table_name LIKE 't________________' AND table_name <> 'table_constraints'
-				AS is_device FROM table_owner INNER JOIN users ON table_owner.username
-				= users.username WHERE can_edit OR EXISTS(SELECT TRUE FROM table_reader
-				WHERE tablename = table_name AND (username = {$_SESSION['s_username']}
-				OR username = 'public' AND {$_SESSION['s_can_view_as_others']}))
-				ORDER BY is_device ASC, table_name ASC;");
+		$table_name = 'table_owner.tablename';
+		$can_edit = "table_owner.username = {$_SESSION['s_username']}
+				OR table_owner.username = 'public' AND {$_SESSION['s_can_edit_as_others']}";
+		$is_device = "$table_name LIKE 't________________' AND table_name <> 'table_constraints'";
+		$result = pgquery("SELECT $table_name, $can_edit, $is_device FROM table_owner
+				INNER JOIN users ON table_owner.username = users.username WHERE $can_edit
+				OR EXISTS(SELECT TRUE FROM table_reader WHERE tablename = $table_name
+				AND (username = {$_SESSION['s_username']} OR username = 'public'
+				AND {$_SESSION['s_can_view_as_others']}))
+				ORDER BY $is_device ASC, $table_name ASC;");
 		echo 'You are authorized to view', $can_edit_tables ? ' (edit)' : '',
 				" username-{$_SESSION['h2username']}-readable", $can_edit_tables ? ' (-owned)'
 				: '', $_SESSION['can_view_as_others'] ? ' or public-user-readable' : '',
@@ -91,7 +93,7 @@ if ($can_view_tables) {
 		}
 		if ($can_edit_tables) {
 ?>
-			<input type="text" name="add" required/>
+			<input type="text" name="add" required autofocus/>
 			<input type="submit" value="(add as mine)"/>
 			Write name as a string, e.g., table.
 <?php
@@ -118,7 +120,7 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 ?>
 	<form action="" method="GET">
 		Send message
-		<input type="text" name="msgtosend" required/>
+		<input type="text" name="msgtosend" required autofocus/>
 		using protocol
 		<input type="text" name="proto_name" required/>
 		and imm_DST
@@ -159,7 +161,7 @@ if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
 ?>
 	<form action="" method="GET">
 		Inject message
-		<input type="text" name="msgtoinject" required/>
+		<input type="text" name="msgtoinject" required autofocus/>
 		using protocol
 		<input type="text" name="proto_name" required/>
 		and imm_SRC
@@ -252,7 +254,7 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 <?php
 		echo 'Send query to database (PostgreSQL ', pg_version()['client'], ")\n";
 ?>
-		<input type="text" name="query" required/>
+		<input type="text" name="query" required autofocus/>
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
@@ -284,7 +286,7 @@ if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
 ?>
 	<form action="" method="GET">
 		For username
-		<input type="text" name="username" required/>
+		<input type="text" name="username" required autofocus/>
 		manually execute timed rule
 		<input type="text" name="id" required/>
 		right now

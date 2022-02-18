@@ -3,9 +3,13 @@ require_once 'common.php';
 $user_fields_joined = implode(', ', $user_fields);
 $user_fields_length = count($user_fields);
 $can_view_yourself = check_authorization('can_view_yourself', 'view yourself');
+$s_can_view_yourself = $can_view_yourself ? 'TRUE' : 'FALSE';
 $can_edit_yourself = check_authorization('can_edit_yourself', 'edit yourself');
+$s_can_edit_yourself = $can_edit_yourself ? 'TRUE' : 'FALSE';
 $can_view_others = check_authorization('can_view_others', 'view others');
+$s_can_view_others = $can_view_others ? 'TRUE' : 'FALSE';
 $can_edit_others = check_authorization('can_edit_others', 'edit others');
+$s_can_edit_others = $can_edit_others ? 'TRUE' : 'FALSE';
 if ($can_edit_others) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
@@ -120,20 +124,20 @@ if ($can_view_yourself || $can_view_others) {
 <?php
 	} elseif ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT username, TRUE, is_administrator, $user_fields_joined,
-				can_actually_login, username = {$_SESSION['s_username']} AND $can_edit_yourself
-				OR NOT is_administrator AND $can_edit_others FROM users
-				WHERE username = {$_SESSION['s_username']} AND $can_view_yourself
-				OR NOT is_administrator AND $can_view_others ORDER BY username ASC;");
+				can_actually_login, username = {$_SESSION['s_username']} AND $s_can_edit_yourself
+				OR NOT is_administrator AND $s_can_edit_others FROM users
+				WHERE username = {$_SESSION['s_username']} AND $s_can_view_yourself
+				OR NOT is_administrator AND $s_can_view_others ORDER BY username ASC;");
 		echo 'You are authorized to view', $can_edit_yourself ? ' (edit)' : '',
 				" username {$_SESSION['h2username']}", $can_view_others ? ' or view' : '',
 				$can_edit_others ? ' (edit)' : '', $can_view_others ? ' non-administrators'
 				: '', "<br/>.\n";
 	} else {
 		$result = pgquery("SELECT username, TRUE, is_administrator, $user_fields_joined,
-				can_actually_login, username = {$_SESSION['s_username']} AND $can_edit_yourself
-				OR username = 'public' AND $can_edit_others FROM users
-				WHERE username = {$_SESSION['s_username']} AND $can_view_yourself
-				OR username = 'public' AND $can_view_others ORDER BY username ASC;");
+				can_actually_login, username = {$_SESSION['s_username']} AND $s_can_edit_yourself
+				OR username = 'public' AND $s_can_edit_others FROM users
+				WHERE username = {$_SESSION['s_username']} AND $s_can_view_yourself
+				OR username = 'public' AND $s_can_view_others ORDER BY username ASC;");
 		echo 'You are authorized to view', $can_edit_yourself ? ' (edit)' : '',
 				" username {$_SESSION['h2username']}", $can_view_others ? ' or view' : '',
 				$can_edit_others ? ' (edit)' : '', $can_view_others ? ' public user'
@@ -220,7 +224,7 @@ if ($can_view_yourself || $can_view_others) {
 						$username = htmlspecialchars($row[0]);
 						if ($username == $_SESSION['h1username'] && $can_edit_yourself) {
 							echo "<input form=\"update2\" type=\"text\" name=\"username\"
-									value=\"$username\" ", $username == 'root' ? 'readonly' : 'required', "/>\n";
+									value=\"$username\" ", $username == 'root' ? 'readonly' : 'required', " autofocus/>\n";
 						} elseif ($username != $_SESSION['h1username'] && $can_edit_others) {
 							echo "<input form=\"update1_$username\" type=\"text\"
 									name=\"username\" value=\"$username\" ", $username == 'public'
