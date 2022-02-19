@@ -39,18 +39,19 @@ if ($can_view_configuration) {
 				? ' or non-administrators' : '', $_SESSION['can_edit_as_others']
 				&& $can_edit_configuration ? '' : '(noedit)', ".<br/>\n";
 	} else {
-		$result = pgquery("SELECT * FROM configuration, username = {$_SESSION['s_username']}
-				OR username = 'public' AND {$_SESSION['s_can_edit_as_others']} WHERE username
+		$result = pgquery("SELECT *, username = {$_SESSION['s_username']} OR username = 'public'
+				AND {$_SESSION['s_can_edit_as_others']} FROM configuration WHERE username
 				= {$_SESSION['s_username']} OR username = 'public'
 				AND {$_SESSION['s_can_view_as_others']} ORDER BY username ASC;");
 		echo 'You are authorized to view', $can_edit_configuration ? ' (edit)' : '',
-				" configuration for username {$_SESSION['h2username']}", $can_view_as_others
-				? ' or public user' : '', $_SESSION['can_edit_as_others']
-				&& $can_edit_configuration ? '' : '(noedit)', ".<br/>\n";
+				" configuration for username {$_SESSION['h2username']}",
+				$_SESSION['can_view_as_others'] ? ' or public user' : '',
+				$_SESSION['can_edit_as_others'] && $can_edit_configuration ? '' : '(noedit)',
+				".<br/>\n";
 	}
 ?>
 	Viewing table &quot;configuration&quot;.<br/>
-	Table ordered by username ascending.
+	Table ordered by username ascending.<br/><br/>
 	<table border="1">
 		<tbody>
 			<tr>
@@ -154,7 +155,7 @@ if ($can_view_configuration) {
 ?>
 		</tbody>
 	</table>
-	Write default gateway as a binary string, e.g., abababababababab.<br/>
+	<br/>Write default gateway as a binary string, e.g., abababababababab.<br/>
 	Write everything else as an integer, e.g., 11.<br/>
 	Empty field indicates NULL value.<br/><br/>
 	<a href="index.php">Done</a>

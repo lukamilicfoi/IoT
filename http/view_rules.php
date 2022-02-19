@@ -130,7 +130,7 @@ if ($can_view_rules) {
 				? '' : ' (noedit)', ".<br/>\n";
 	} else {
 		$result = pgquery("SELECT rules.*, rules.username = {$_SESSION['s_username']}
-				OR NOT users.is_administrator AND {$_SESSION['s_can_edit_as_others']}, proto_name.name
+				OR rules.username = 'public' AND {$_SESSION['s_can_edit_as_others']}, proto_name.name
 				FROM rules LEFT OUTER JOIN proto_name ON rules.proto_id = proto_name.proto
 				WHERE rules.username = {$_SESSION['s_username']} OR rules.username = 'public'
 				AND {$_SESSION['s_can_view_as_others']} ORDER BY rules.username ASC, rules.id ASC;");
@@ -141,7 +141,7 @@ if ($can_view_rules) {
 	}
 ?>
 	Viewing table &quot;rules&quot;.<br/>
-	Table ordered by username ascending and id ascending.
+	Table ordered by username ascending and id ascending.<br/><br/>
 	<table border="1">
 		<tbody>
 			<tr>
@@ -194,7 +194,7 @@ if ($can_view_rules) {
 						<input form="insert" type="radio" name="send_receive_seconds" value="1"/>
 						on receiving when:<br/>
 						<input form="insert" type="radio" name="send_receive_seconds" value="2"/>
-						every this amount of seconds:
+						every this amount<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;of seconds:
 					</td>
 					<td nowrap="nowrap">
 						<input form="insert" type="text" name="filter" size="10"/>
@@ -205,7 +205,7 @@ if ($can_view_rules) {
 								checked/>
 						drop message<br/>
 						<input form="insert" type="radio" name="drop_modify_nothing" value="1"/>
-						modify message with this:<br/>
+						modify message<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;with this:<br/>
 						<input form="insert" type="radio" name="drop_modify_nothing" value="2"/>
 						do nothing
 					</td>
@@ -338,7 +338,7 @@ if ($can_view_rules) {
 						echo "<input form=$form type=\"radio\" name=\"send_receive_seconds\"
 								value=\"2\"", $row[2] == '2' ? ' checked' : '', "/>\n";
 ?>
-						every this amount of seconds:
+						every this amount<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;of seconds:
 					</td>
 					<td>
 <?php
@@ -357,7 +357,7 @@ if ($can_view_rules) {
 						echo "<input form=$form type=\"radio\" name=\"drop_modify_nothing\"
 								value=\"1\"", $row[4] == '1' ? ' checked' : '', "/>\n";
 ?>
-						modify message with this:<br/>
+						modify message<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;with this:<br/>
 <?php
 						echo "<input form=$form type=\"radio\" name=\"drop_modify_nothing\"
 								value=\"2\"", $row[4] == '2' ? ' checked' : '', "/>\n";
@@ -543,15 +543,18 @@ if ($can_view_rules) {
 ?>
 		</tbody>
 	</table>
-	If &quot;SELECT &lt;filter&gt;&quot; evaluates to TRUE, the filter is triggered. You can use column names HD, ID, LEN, DST, SRC, PL, CRC, CCF, ACF, broadcast, override_implicit_rules, insecure_port and secure_port. Appropriate FROM is automatically appended.<br/>
+	<br/>If &quot;SELECT &lt;filter&gt;&quot; evaluates to TRUE, the filter is triggered.
+	You can use column names HD, ID, LEN, DST, SRC, PL, CRC, CCF, ACF, broadcast, override_implicit_rules, insecure_port and secure_port.
+	Appropriate FROM is automatically appended.<br/>
 	Modification is performed like &quot;UPDATE message SET &lt;semicolon-separated command 1&gt;;
 			UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;&quot;.<br/>
-	During SQL queries the current message is stored in table &quot;formatted_message_for_send_receive&quot; and columns HD, ID, LEN, DST, SRC, PL, CRC, CCF, ACF, broadcast, override_implicit_rules, insecure_port and secure_port.<br/>
+	During SQL queries the current message is stored in table &quot;message&quot; and columns HD, ID, LEN, DST, SRC, PL, CRC, CCF, ACF,
+			broadcast, override_implicit_rules, insecure_port and secure_port.<br/>
 	bash commands are NOT executed as /root/, but as the user who started the database.<br/>
 	Filter can be either a number or a string.<br/>
 	Leaving a field empty indicates NULL value.<br/>
 	Deactivating a rule deletes its timer. Changing a period does not.<br/>
-	Id must be unique. Smaller value indicates bigger priority.<br/>
+	Id must be unique for user. Smaller value indicates bigger priority.<br/>
 	When broadcasting a message any &quot;imm_DST&quot; is ignored.<br/>
 	On send and receive rules &quot;last_run&quot; is meaningless.<br/>
 	Strings are written without excess quotations, e.g., proto = &apos;tcp&apos;.<br/><br/>
