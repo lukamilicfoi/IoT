@@ -131,8 +131,12 @@ if ($can_view_yourself || $can_view_others) {
 		echo 'You are authorized to view', $can_edit_yourself ? ' (edit)' : '',
 				" username {$_SESSION['h2username']}", $can_view_others ? ' or view' : '',
 				$can_edit_others ? ' (edit)' : '', $can_view_others ? ' non-administrators'
-				: '', "<br/>.\n";
-	} else {
+				: '', ".<br/>\n";
+	} elseif ($_SESSION['is_public']) {
+		$result = pgquery("SELECT *, $s_can_edit_yourself FROM users WHERE username = 'public';");
+?>
+		You are authorized to view (edit) public user.
+<?php
 		$result = pgquery("SELECT username, TRUE, is_administrator, $user_fields_joined,
 				can_actually_login, username = {$_SESSION['s_username']} AND $s_can_edit_yourself
 				OR username = 'public' AND $s_can_edit_others FROM users
@@ -141,11 +145,11 @@ if ($can_view_yourself || $can_view_others) {
 		echo 'You are authorized to view', $can_edit_yourself ? ' (edit)' : '',
 				" username {$_SESSION['h2username']}", $can_view_others ? ' or view' : '',
 				$can_edit_others ? ' (edit)' : '', $can_view_others ? ' public user'
-				: '', "<br/>.\n";
+				: '', ".<br/>\n";
 	}
 ?>
 	Viewing table &quot;users&quot;.<br/>
-	Table ordered by username ascending.
+	Table ordered by username ascending.<br/><br/>
 	<table border="1">
 		<tbody>
 			<tr>
@@ -319,7 +323,9 @@ if ($can_view_yourself || $can_view_others) {
 ?>
 		</tbody>
 	</table>
-	<br/>
+	<br/>Users &apos;public&apos; and &apos;root&apos; cannot be renamed or deleted.<br/>
+	Deleting a user also delete his tables.<br/>
+	Only root can delete all users.<br/>
 	<a href="index.php">Done</a>
 <?php
 }

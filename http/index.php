@@ -43,30 +43,39 @@ if ($can_view_tables) {
 		$table_name = 'table_owner.tablename';
 		$can_edit = "table_owner.username = {$_SESSION['s_username']}
 				OR NOT users.is_administrator AND {$_SESSION['s_can_edit_as_others']}";
-		$is_device = "$table_name LIKE 't________________' AND table_name <> 'table_constraints'";
-		$result = pgquery("SELECT $table_name, $can_edit, $is_device FROM table_owner
+		$result = pgquery("SELECT $table_name, $can_edit, $table_name LIKE 't________________'
+				AND $table_name <> 'table_constraints' AS is_device FROM table_owner
 				INNER JOIN users ON table_owner.username = users.username WHERE $can_edit
 				OR EXISTS(SELECT TRUE FROM table_reader INNER JOIN users ON table_reader.username
 				= users.username WHERE table_reader.tablename = $table_name
 				AND (table_reader.username = {$_SESSION['s_username']} OR NOT users.is_administrator
 				AND {$_SESSION['s_can_view_as_others']}))
-				ORDER BY $is_device ASC, $table_name ASC;");
+				ORDER BY is_device ASC, $table_name ASC;");
 		echo 'You are authorized to view', $can_edit_tables ? ' (edit)' : '',
 				" username-{$_SESSION['h2username']}-readable", $can_edit_tables ? ' (-owned)'
 				: '', $_SESSION['can_view_as_others'] ? ' or non-administrator-readable' : '',
 				$_SESSION['can_edit_as_others'] && $can_edit_tables ? ' (-owned)' : '',
 				" tables.\n";
+	} elseif ($_SESSION['is_public']) {
+		$result = pgquery('SELECT tablename, username = \'public\', tablename
+				LIKE \'t________________\' AND tablename <> \'table_constraints\' AS is_device
+				FROM table_owner WHERE username = \'public\' OR EXISTS(SELECT TRUE FROM table_reader
+				WHERE table_reader.tablename = table_owner.tablename AND username = \'public\')
+				ORDER BY is_device ASC, tablename ASC;');
+?>
+		You are authorized to view (edit) public-user-readable (-owned) tables.
+<?php
 	} else {
 		$table_name = 'table_owner.tablename';
 		$can_edit = "table_owner.username = {$_SESSION['s_username']}
 				OR table_owner.username = 'public' AND {$_SESSION['s_can_edit_as_others']}";
-		$is_device = "$table_name LIKE 't________________' AND table_name <> 'table_constraints'";
-		$result = pgquery("SELECT $table_name, $can_edit, $is_device FROM table_owner
+		$result = pgquery("SELECT $table_name, $can_edit, $table_name LIKE 't________________'
+				AND $table_name <> 'table_constraints' AS is_device FROM table_owner
 				INNER JOIN users ON table_owner.username = users.username WHERE $can_edit
 				OR EXISTS(SELECT TRUE FROM table_reader WHERE tablename = $table_name
 				AND (username = {$_SESSION['s_username']} OR username = 'public'
 				AND {$_SESSION['s_can_view_as_others']}))
-				ORDER BY $is_device ASC, $table_name ASC;");
+				ORDER BY is_device ASC, $table_name ASC;");
 		echo 'You are authorized to view', $can_edit_tables ? ' (edit)' : '',
 				" username-{$_SESSION['h2username']}-readable", $can_edit_tables ? ' (-owned)'
 				: '', $_SESSION['can_view_as_others'] ? ' or public-user-readable' : '',
@@ -242,6 +251,10 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 				$_SESSION['can_view_as_others'] ? ' or non-administrator-readable' : '',
 				$_SESSION['can_edit_as_others'] && $can_edit_tables ? ' (-owned)' : '',
 				" tables.\n";
+	} elseif ($_SESSION['is_public']) {
+?>
+		You are authorized to send queries to read (write) public-user-readable (-owned) tables.
+<?php
 	} else {
 		echo 'You are authorized to send queries to read', $can_edit_tables ? ' (write)' : '',
 				"username-{$_SESSION['h2username']}-readable", $can_edit_tables ? ' (-owned)' : '',
@@ -279,6 +292,10 @@ if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
 	} elseif ($_SESSION['is_administrator']) {
 		echo "You are authorized to execute rules for username {$_SESSION['h2username']}
 				or non-administrators.\n";
+	} elseif ($_SESSION['is_public']) {
+?>
+		You are authorized to execute rules for public user.
+<?php
 	} else {
 		echo "You are authorized to execute rules for {$_SESSION['h1username']}
 				or public user.\n";
