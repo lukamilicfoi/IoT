@@ -128,7 +128,13 @@ if ($can_view_rules) {
 				" rules for username {$_SESSION['h2username']}", $_SESSION['can_view_as_others']
 				? ' or non-administrators' : '', $_SESSION['can_edit_as_others'] && $can_edit_rules
 				? '' : ' (noedit)', ".<br/>\n";
-	} else {
+	} elseif ($_SESSION['is_public']) {
+		$result = pgquery('SELECT rules.*, TRUE, proto_name.name FROM rules LEFT OUTER JOIN proto_name
+				ON rules.proto_id = proto_name.proto WHERE rules.username = \'public\'
+				ORDER BY rules.id ASC;');
+?>
+		You are authorized to view (edit) rules for public user.<br/>
+<?php
 		$result = pgquery("SELECT rules.*, rules.username = {$_SESSION['s_username']}
 				OR rules.username = 'public' AND {$_SESSION['s_can_edit_as_others']}, proto_name.name
 				FROM rules LEFT OUTER JOIN proto_name ON rules.proto_id = proto_name.proto
@@ -157,8 +163,8 @@ if ($can_view_rules) {
 				<th>(query/command 2)</th>
 				<th>using protocol</th>
 				<th>and immediate address</th>
-				<th>using custom insecure listen port</th>
-				<th>and custom secure listen port</th>
+				<th>using insecure port</th>
+				<th>and secure port</th>
 				<th>using CCF</th>
 				<th>and ACF</th>
 				<th>using broadcast</th>
@@ -543,11 +549,11 @@ if ($can_view_rules) {
 ?>
 		</tbody>
 	</table>
-	<br/>If &quot;SELECT &lt;filter&gt;&quot; evaluates to TRUE, the filter is triggered.
+	<br/>If &quot;SELECT &lt;filter&gt;;&quot; evaluates to TRUE, the filter is triggered.
 	You can use column names HD, ID, LEN, DST, SRC, PL, CRC, CCF, ACF, broadcast, override_implicit_rules, insecure_port and secure_port.
 	Appropriate FROM is automatically appended.<br/>
 	Modification is performed like &quot;UPDATE message SET &lt;semicolon-separated command 1&gt;;
-			UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;&quot;.<br/>
+			UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;;&quot;.<br/>
 	During SQL queries the current message is stored in table &quot;message&quot; and columns HD, ID, LEN, DST, SRC, PL, CRC, CCF, ACF,
 			broadcast, override_implicit_rules, insecure_port and secure_port.<br/>
 	bash commands are NOT executed as /root/, but as the user who started the database.<br/>

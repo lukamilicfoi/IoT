@@ -8,15 +8,17 @@ if ($can_edit_configuration && !empty($_GET['username']) && isset($_GET['update'
 	if ($_GET['username'] == $_SESSION['username'] || $_GET['username'] == 'public'
 			|| $_SESSION['is_administrator'] && !is_administrator($s_username)
 			&& $_SESSION['can_edit_as_others'] || $_SESSION['is_root']) {
-		pgquery('UPDATE configuration SET (forward_messages, use_internet_switch_algorithm,
-				nsecs_id, nsecs_src, trust_everyone, default_gateway, insecure_port,
+		pgquery('UPDATE configuration SET (forward_messages, use_lan_switch_algorithm, nsecs_id,
+				nsecs_src, trust_sending, default_gateway, my_eui, insecure_port,
 				secure_port) = (' . pgescapebool($_GET['forward_messages']) . ', '
-				. pgescapebool($_GET['use_internet_switch_algorithm']) . ', '
+				. pgescapebool($_GET['use_lan_switch_algorithm']) . ', '
 				. pgescapeinteger($_GET['nsecs_id']) . ', '. pgescapeinteger($_GET['nsecs_src'])
 				. ', ' . pgescapeinteger($_GET['insecure_port']) . ', '
 				. pgescapeinteger($_GET['secure_port']) . ', '
-				. pgescapebool($_GET['trust_everyone']) . ', '
-		   		. pgescapebytea($_GET['default_gateway']) . ") WHERE username = $s_username;");
+				. pgescapebool($_GET['trust_sending']) . ', '
+				. pgescapebool($_GET['trust_receiving']) . ', '
+		   		. pgescapebytea($_GET['default_gateway']) . ', '
+				. pgescapebytea($_GET['my_eui']) . ") WHERE username = $s_username;");
 		pgquery('CALL config();');
 		echo "Configuration updated for username $h_username.<br/>\n";
 	}
@@ -38,7 +40,11 @@ if ($can_view_configuration) {
 				" configuration for username {$_SESSION['h2username']}", $can_view_as_others
 				? ' or non-administrators' : '', $_SESSION['can_edit_as_others']
 				&& $can_edit_configuration ? '' : '(noedit)', ".<br/>\n";
-	} else {
+	} elseif ($_SESSION['is_public']) {
+		$result = pgquery('SELECT *, TRUE FROM configuration WHERE username = \'public\';');
+?>
+		You are authorized to view (edit) configuration for public user.<br/>
+<?php
 		$result = pgquery("SELECT *, username = {$_SESSION['s_username']} OR username = 'public'
 				AND {$_SESSION['s_can_edit_as_others']} FROM configuration WHERE username
 				= {$_SESSION['s_username']} OR username = 'public'
@@ -57,13 +63,15 @@ if ($can_view_configuration) {
 			<tr>
 				<th>Username</th>
 				<th>Forward messages?</th>
-				<th>Use internet switch algorithm?</th>
+				<th>Use LAN switch algorithm?</th>
 				<th>Duplicate expiration in seconds</th>
 				<th>Address expiration in seconds</th>
-				<th>Trust everyone?</th>
+				<th>Trust sending?</th>
+				<th>Trust receiving?</th>
 				<th>Default gateway</th>
-				<th>Custom insecure listen port</th>
-				<th>Custom secure listen port</th>
+				<th>My EUI</th>
+				<th>Insecure port</th>
+				<th>Secure port</th>
 <?php
 				if ($can_edit_configuration) {
 ?>
@@ -93,7 +101,7 @@ if ($can_view_configuration) {
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"checkbox\"
-								name=\"use_internet_switch_algorithm\"",
+								name=\"use_lan_switch_algorithm\"",
 								$row[2] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
@@ -112,29 +120,41 @@ if ($can_view_configuration) {
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"checkbox\"
-								name=\"trust_everyone\"", $row[5] == 't' ? ' checked' : '', "/>\n";
+								name=\"trust_sending\"", $row[5] == 't' ? ' checked' : '', "/>\n";
+?>
+					</td>
+					<td>
+<?php
+						echo "<input form=\"update_$username\" type=\"checkbox\"
+								name=\"trust_receiving\"", $row[6] == 't' ? ' checked' : '', "/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\"
-								name=\"default_gateway\" value=\"", substr($row[6], 2), "\" size=\"16\"/>\n";
+								name=\"default_gateway\" value=\"", substr($row[7], 2), "\" size=\"16\"/>\n";
+?>
+					</td>
+					<td>
+<?php
+						echo "<input form=\"update_$username\" type=\"text\"
+								name=\"my_eui\" value=\"", substr($row[8], 2), "\" size=\"16\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\" name=\"insecure_port\"
-								value=\"", is_null($row[7]) ? '' : $row[7], "\" size=\"8\"/>\n";
+								value=\"", is_null($row[9]) ? '' : $row[9], "\" size=\"8\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\" name=\"secure_port\"
-								value=\"", is_null($row[8]) ? '' : $row[8], "\" size=\"8\"/>\n";
+								value=\"", is_null($row[10]) ? '' : $row[10], "\" size=\"8\"/>\n";
 ?>
 					</td>
 <?php
-					if ($can_edit_configuration && $row[9] == 't') {
+					if ($can_edit_configuration && $row[11] == 't') {
 ?>
 						<td>
 <?php
@@ -155,8 +175,8 @@ if ($can_view_configuration) {
 ?>
 		</tbody>
 	</table>
-	<br/>Write default gateway as a binary string, e.g., abababababababab.<br/>
-	Write everything else as an integer, e.g., 11.<br/>
+	<br/>Write gateway and EUI as a binary string, e.g., abababababababab.<br/>
+	Write numbers as an integer, e.g., 11.<br/>
 	Empty field indicates NULL value.<br/><br/>
 	<a href="index.php">Done</a>
 <?php
