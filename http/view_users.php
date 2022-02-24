@@ -137,6 +137,7 @@ if ($can_view_yourself || $can_view_others) {
 ?>
 		You are authorized to view (edit) public user.
 <?php
+	} else {
 		$result = pgquery("SELECT username, TRUE, is_administrator, $user_fields_joined,
 				can_actually_login, username = {$_SESSION['s_username']} AND $s_can_edit_yourself
 				OR username = 'public' AND $s_can_edit_others FROM users
@@ -324,7 +325,7 @@ if ($can_view_yourself || $can_view_others) {
 		</tbody>
 	</table>
 	<br/>Users &apos;public&apos; and &apos;root&apos; cannot be renamed or deleted.<br/>
-	Deleting a user also delete his tables.<br/>
+	Deleting a user also deletes his tables.<br/>
 	Only root can delete all users.<br/>
 	<a href="index.php">Done</a>
 <?php

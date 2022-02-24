@@ -57,6 +57,7 @@ if ($can_view_tables) {
 				$_SESSION['can_edit_as_others'] && $can_edit_tables ? ' (-owned)' : '',
 				" tables.\n";
 	} elseif ($_SESSION['is_public']) {
+		$table_name = 'table_owner.tablename';
 		$result = pgquery('SELECT tablename, username = \'public\', tablename
 				LIKE \'t________________\' AND tablename <> \'table_constraints\' AS is_device
 				FROM table_owner WHERE username = \'public\' OR EXISTS(SELECT TRUE FROM table_reader
@@ -247,7 +248,7 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 <?php
 	} elseif ($_SESSION['is_administrator']) {
 		echo 'You are authorized to send queries to read', $can_edit_tables ? ' (write)' : '',
-				"username-{$_SESSION['h2username']}-readable", $can_edit_tables ? ' (-owned)' : '',
+				" username-{$_SESSION['h2username']}-readable", $can_edit_tables ? ' (-owned)' : '',
 				$_SESSION['can_view_as_others'] ? ' or non-administrator-readable' : '',
 				$_SESSION['can_edit_as_others'] && $can_edit_tables ? ' (-owned)' : '',
 				" tables.\n";
