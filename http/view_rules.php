@@ -132,9 +132,8 @@ if ($can_view_rules) {
 		$result = pgquery('SELECT rules.*, TRUE, proto_name.name FROM rules LEFT OUTER JOIN proto_name
 				ON rules.proto_id = proto_name.proto WHERE rules.username = \'public\'
 				ORDER BY rules.id ASC;');
-?>
-		You are authorized to view (edit) rules for public user.<br/>
-<?php
+		echo 'You are authorized to view', $can_edit_rules ? ' (edit)' : '',
+				" rules for public user.<br/>\n";
 		$result = pgquery("SELECT rules.*, rules.username = {$_SESSION['s_username']}
 				OR rules.username = 'public' AND {$_SESSION['s_can_edit_as_others']}, proto_name.name
 				FROM rules LEFT OUTER JOIN proto_name ON rules.proto_id = proto_name.proto
@@ -550,11 +549,11 @@ if ($can_view_rules) {
 		</tbody>
 	</table>
 	<br/>If &quot;SELECT &lt;filter&gt;;&quot; evaluates to TRUE, the filter is triggered.
-	You can use column names HD, ID, LEN, DST, SRC, PL, CRC, CCF, ACF, broadcast, override_implicit_rules, insecure_port and secure_port.
+	You can use column names HD, ..., CRC, CCF, ACF, broadcast, override_implicit_rules, insecure_port and secure_port.
 	Appropriate FROM is automatically appended.<br/>
 	Modification is performed like &quot;UPDATE message SET &lt;semicolon-separated command 1&gt;;
 			UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;;&quot;.<br/>
-	During SQL queries the current message is stored in table &quot;message&quot; and columns HD, ID, LEN, DST, SRC, PL, CRC, CCF, ACF,
+	During SQL queries the current message is stored in table &quot;message&quot; and columns HD, ..., CRC, CCF, ACF,
 			broadcast, override_implicit_rules, insecure_port and secure_port.<br/>
 	bash commands are NOT executed as /root/, but as the user who started the database.<br/>
 	Filter can be either a number or a string.<br/>

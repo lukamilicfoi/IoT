@@ -42,9 +42,8 @@ if ($can_view_configuration) {
 				&& $can_edit_configuration ? '' : '(noedit)', ".<br/>\n";
 	} elseif ($_SESSION['is_public']) {
 		$result = pgquery('SELECT *, TRUE FROM configuration WHERE username = \'public\';');
-?>
-		You are authorized to view (edit) configuration for public user.<br/>
-<?php
+		echo 'You are authorized to view', $can_edit_configuration ? ' (edit)' : '',
+				" configuration for public user.<br/>\n";
 		$result = pgquery("SELECT *, username = {$_SESSION['s_username']} OR username = 'public'
 				AND {$_SESSION['s_can_edit_as_others']} FROM configuration WHERE username
 				= {$_SESSION['s_username']} OR username = 'public'
@@ -132,13 +131,15 @@ if ($can_view_configuration) {
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\"
-								name=\"default_gateway\" value=\"", substr($row[7], 2), "\" size=\"16\"/>\n";
+								name=\"default_gateway\" value=\"", is_null($row[7])
+								? '' : substr($row[7], 2), "\" size=\"16\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\"
-								name=\"my_eui\" value=\"", substr($row[8], 2), "\" size=\"16\"/>\n";
+								name=\"my_eui\" value=\"", is_null($row[8])
+								? '' : substr($row[8], 2), "\" size=\"16\"/>\n";
 ?>
 					</td>
 					<td>
