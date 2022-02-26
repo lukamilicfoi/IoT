@@ -78,7 +78,7 @@ if (!vacuous($_GET['tablename'])) {
 		$result = pgquery("TABLE $s2tablename ORDER BY t ASC;");
 		echo "Viewing table $h2tablename.<br/>\n";
 ?>
-		Table ordered by timestamp ascending.
+		Table ordered by timestamp ascending.<br/><br/>
 		<table border="1">
 			<tbody>
 				<tr>
@@ -181,7 +181,8 @@ if (!vacuous($_GET['tablename'])) {
 ?>
 			</tbody>
 		</table>
-		<br/><a href="index.php">Done</a>
+		<br/>Write literals without quotes.<br/><br/>
+		<a href="index.php">Done</a>
 <?php
 	}
 }

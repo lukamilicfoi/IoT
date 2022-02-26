@@ -49,8 +49,7 @@ if ($can_edit_permissions) {
 			$key1_owner = find_owner($s1key1);
 			$key1_owner_is_administrator = is_administrator(pg_escape_literal($key1_owner));
 			$key1_owner_is_user = $key1_owner == $_SESSION['username'];
-			$key1_owner_is_user_or_public = $key1_owner_is_user
-					|| $key1_owner == 'public';
+			$key1_owner_is_user_or_public = $key1_owner_is_user || $key1_owner == 'public';
 			$s1key2 = pg_escape_literal($_GET['key2']);
 			$s2key2 = pg_escape_identifier($_GET['key2']);
 			$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
@@ -134,6 +133,13 @@ if ($can_edit_permissions) {
 				$can_edit_permissions ? ' (-owned)' : '', $_SESSION['can_view_as_others'] ?
 				' or non-administrator-readable' : '', $_SESSION['can_edit_as_others']
 				&& $can_edit_permissions ? ' (-owned)' : '', " tables.<br/>\n";
+	} elseif ($_SESSION['is_public']) {
+		$result = pgquery('SELECT *, TRUE, FALSE AS is_owner FROM table_reader
+				WHERE username = \'public\' UNION ALL SELECT *, TRUE, TRUE AS is_owner
+				FROM table_owner ORDER BY is_owner ASC, tablename ASC;');
+?>
+		You are authorized to view (edit) permissions for public-user-readable (-owned) tables.<br/>
+<?php
 	} else {
 		$can_view = "EXISTS(SELECT TRUE FROM table_reader WHERE tablename = table_name
 				AND (username = {$_SESSION['s_username']} OR username = 'public'
@@ -155,7 +161,7 @@ if ($can_edit_permissions) {
 ?>
 	Viewing tables &quot;table_reader&quot; and &quot;table_owner&quot;,
 			table readers shown first.<br/>
-	Tables ordered by tablename ascending and username ascending.
+	Tables ordered by tablename ascending and username ascending.<br/><br/>
 	<table border="1">
 		<tbody>
 			<tr>
@@ -257,7 +263,7 @@ if ($can_edit_permissions) {
 ?>
 		</tbody>
 	</table>
-	Write tablename and username as a string, e.g., table and root.<br/>
+	<br/>Write tablename and username as a string, e.g., table and root.<br/>
 	<a href="index.php">Done</a>
 <?php
 }
