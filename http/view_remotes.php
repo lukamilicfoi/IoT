@@ -69,6 +69,17 @@ if ($can_view_remotes) {
 					: '', $_SESSION['can_view_as_others'] ? ' or non-administrator-readable' : '',
 					$_SESSION['can_edit_as_others'] && $can_edit_remotes ? ' (-owned)' : '',
 					" remotes.\n";
+		} elseif ($_SESSION['is_public']) {
+			$b_address = 'addr_oID.addr';
+			$can_edit = "EXISTS(SELECT TRUE FROM table_owner WHERE tablename = 't'
+					|| encode($b_address, 'hex') AND username = 'public')";
+			$result = pgquery("SELECT $b_address, $can_edit FROM addr_oID
+					INNER JOIN table_reader ON 't' || encode($b_address, 'hex')
+					= table_reader.tablename WHERE $can_edit OR table_reader.username = 'public'
+					ORDER BY $b_address ASC;");
+?>
+			You are authorized to view (edit) public-user-readable (-owned) tables.
+<?php
 		} else {
 			$result = pgquery("SELECT DISTINCT addr_oID.addr AS b_address, EXISTS(SELECT TRUE
 					FROM table_owner WHERE tablename = 't' || encode(b_address, 'hex')
@@ -110,7 +121,7 @@ if ($can_view_remotes) {
 			}
 ?>
 		</form>
-		Remotes ordered by address ascending.<br/>
+		Remotes ordered by address ascending.<br/><br/>
 		<a href="?load">Reload all remotes from running program</a><br/>
 <?php
 		if ($can_edit_remotes) {
@@ -129,7 +140,7 @@ if ($can_view_remotes) {
 		}
 	}
 ?>
-	<a href="index.php">Done</a>
+	<br/><a href="index.php">Done</a>
 <?php
 }
 ?>

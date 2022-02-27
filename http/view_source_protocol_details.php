@@ -68,12 +68,12 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 				= (SELECT proto FROM proto_name WHERE name = $s_proto) ORDER BY imm_SRC ASC;");
 		echo "Viewing table &quot;iSRC_TWR&quot; for SRC $h2SRC and proto $h2proto.<br/>\n";
 ?>
-		Table ordered by immediate source address ascending.
+		Table ordered by immediate source address ascending.<br/>
 		<table border="1">
 			<tbody>
 				<tr>
-					<th>immediate source address</th>
-					<th>time when received</th>
+					<th>immediate source address (imm_SRC)</th>
+					<th>time when received (TWR)</th>
 <?php
 					if ($can_edit) {
 ?>
@@ -170,7 +170,7 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 ?>
 			</tbody>
 		</table>
-		Write the first column as a binary string, e.g., abababababababab.<br/>
+		<br/>Write the first column as a binary string, e.g., abababababababab.<br/>
 		Write the second column as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
 		You can edit something only if you have edit permissions on this remote.<br/><br/>
 <?php
