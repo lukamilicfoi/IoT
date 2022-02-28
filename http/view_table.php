@@ -78,7 +78,8 @@ if (!vacuous($_GET['tablename'])) {
 		$result = pgquery("TABLE $s2tablename ORDER BY t ASC;");
 		echo "Viewing table $h2tablename.<br/>\n";
 ?>
-		Table ordered by timestamp ascending.<br/><br/>
+		Table ordered by timestamp ascending.<br/>
+		Data types shown in parentheses.<br/><br/>
 		<table border="1">
 			<tbody>
 				<tr>

@@ -121,10 +121,10 @@ if ($can_edit_permissions) {
 				EXISTS(SELECT TRUE FROM table_owner INNER JOIN users ON table_owner.username
 				= users.username WHERE table_owner.tablename = table_name AND (table_owner.username
 				= {$_SESSION['s_username']} OR NOT users.is_administrator
-				AND {$_SESSION['s_can_view_as_others']})) AS can_edit, FALSE AS is_owner
+				AND {$_SESSION['s_can_edit_as_others']})) AS can_edit, FALSE AS is_owner
 				FROM table_reader WHERE can_edit OR $can_view UNION ALL SELECT table_owner.tablename
 				AS table_name, table_reader.username = {$_SESSION['s_username']}
-				OR NOT users.is_administrator AND {$_SESSION['s_can_view_as_others']} AS can_edit,
+				OR NOT users.is_administrator AND {$_SESSION['s_can_edit_as_others']} AS can_edit,
 				TRUE AS is_owner FROM table_owner INNER JOIN users ON table_owner.username
 				= users.username WHERE can_edit OR $can_view
 				ORDER BY is_owner ASC, table_name ASC, table_owner.username ASC;");
@@ -147,10 +147,10 @@ if ($can_edit_permissions) {
 		$result = pgquery("SELECT tablename AS table_name, username, EXISTS(SELECT TRUE
 				FROM table_owner WHERE tablename = table_name AND (username
 				= {$_SESSION['s_username']} OR username = 'public'
-				AND {$_SESSION['s_can_view_as_others']})) AS can_edit, FALSE AS is_owner
+				AND {$_SESSION['s_can_edit_as_others']})) AS can_edit, FALSE AS is_owner
 				FROM table_reader WHERE can_edit OR $can_view UNION ALL SELECT tablename
 				AS table_name, username = {$_SESSION['s_username']} OR username = 'public'
-				AND {$_SESSION['s_can_view_as_others']} AS can_edit, TRUE AS is_owner FROM table_owner
+				AND {$_SESSION['s_can_edit_as_others']} AS can_edit, TRUE AS is_owner FROM table_owner
 				WHERE can_edit OR $can_view ORDER BY is_owner ASC, table_name ASC, username ASC;");
 		echo 'You are authorized to view', $can_edit_permissions ? ' (edit)' : '',
 				" permissions for username-{$_SESSION['h2username']}-readable",
