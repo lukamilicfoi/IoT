@@ -87,7 +87,7 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 ?>
 					<tr>
 						<td>
-							<input form="insert" type="text" name="imm_SRC" required/>
+							<input form="insert" type="text" name="imm_SRC" required autofocus/>
 						</td>
 						<td>
 							<input form="insert" type="text" name="TWR" required/>
@@ -122,7 +122,7 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 <?php
 							$str = substr($row[0], 2);
 							echo "<input form=\"update$str\" type=\"text\" name=\"imm_SRC\"
-									value=\"$str\" required/>\n";
+									value=\"$str\" required autofocus/>\n";
 ?>
 						</td>
 						<td>

@@ -54,16 +54,17 @@ if ($can_view_remotes) {
 			You are authorized to view (edit) all remotes.
 <?php
 		} elseif ($_SESSION['is_administrator']) {
-			$result = pgquery("SELECT DISTINCT addr_oID.addr AS b_address, EXISTS(SELECT TRUE
-					FROM table_owner INNER JOIN users ON table_owner.username = users.username
-					WHERE table_owner.tablename = 't' || encode(b_address, 'hex')
+			$b_address = 'addr_oID.addr';
+			$result = pgquery("SELECT DISTINCT $b_address, EXISTS(SELECT TRUE FROM table_owner
+					INNER JOIN users ON table_owner.username = users.username
+					WHERE table_owner.tablename = 't' || encode($b_address, 'hex')
 					AND (table_owner.username = {$_SESSION['s_username']}
 					OR NOT users.is_administrator AND {$_SESSION['s_can_edit_as_others']}))
 					AS can_edit FROM addr_oID INNER JOIN table_reader ON 't'
-					|| encode(b_address, 'hex') = table_reader.tablename WHERE can_edit
+					|| encode($b_address, 'hex') = table_reader.tablename WHERE can_edit
 					OR table_reader.username = {$_SESSION['s_username']}
 					OR NOT users.is_administrator AND {$_SESSION['s_can_view_as_others']}
-					ORDER BY b_address ASC;");
+					ORDER BY $b_address ASC;");
 			echo 'You are authorized to view', $can_edit_remotes ? ' (edit)' : '',
 					" username-{$_SESSION['h2username']}-readable", $can_edit_remotes ? ' (-owned)'
 					: '', $_SESSION['can_view_as_others'] ? ' or non-administrator-readable' : '',
@@ -81,14 +82,15 @@ if ($can_view_remotes) {
 			You are authorized to view (edit) public-user-readable (-owned) tables.
 <?php
 		} else {
-			$result = pgquery("SELECT DISTINCT addr_oID.addr AS b_address, EXISTS(SELECT TRUE
-					FROM table_owner WHERE tablename = 't' || encode(b_address, 'hex')
+			$b_address = 'addr_oID.addr';
+			$result = pgquery("SELECT DISTINCT $b_address, EXISTS(SELECT TRUE FROM table_owner
+					WHERE tablename = 't' || encode($b_address, 'hex')
 					AND (username = {$_SESSION['username']} OR username = 'public')
 					AND {$_SESSION['s_can_edit_as_others']}) AS can_edit FROM addr_oID.addr
-					INNER JOIN table_reader ON 't' || encode(address, 'hex')
+					INNER JOIN table_reader ON 't' || encode($b_address, 'hex')
 					= table_reader.tablename WHERE can_edit OR table_reader.username
 					= {$_SESSION['s_username']} OR table_reader.username = 'public'
-					AND {$_SESSION['s_can_view_as_others']} ORDER BY b_address ASC;");
+					AND {$_SESSION['s_can_view_as_others']} ORDER BY $b_address ASC;");
 			echo 'You are authorized to view', $can_edit_remotes ? ' (edit)' : '',
 					" username-{$_SESSION['h2username']}-readable", $can_edit_remotes ? ' (-owned)'
 					: '', $_SESSION['can_view_as_others'] ? ' or public-readable' : '',
