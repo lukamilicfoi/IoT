@@ -10,15 +10,15 @@ if ($can_edit_configuration && !empty($_GET['username']) && isset($_GET['update'
 			&& $_SESSION['can_edit_as_others'] || $_SESSION['is_root']) {
 		pgquery('UPDATE configuration SET (forward_messages, use_lan_switch_algorithm, nsecs_id,
 				nsecs_src, trust_sending, default_gateway, my_eui, insecure_port,
-				secure_port) = (' . pgescapebool($_GET['forward_messages']) . ', '
-				. pgescapebool($_GET['use_lan_switch_algorithm']) . ', '
-				. pgescapeinteger($_GET['nsecs_id']) . ', '. pgescapeinteger($_GET['nsecs_src'])
-				. ', ' . pgescapeinteger($_GET['insecure_port']) . ', '
-				. pgescapeinteger($_GET['secure_port']) . ', '
-				. pgescapebool($_GET['trust_sending']) . ', '
-				. pgescapebool($_GET['trust_receiving']) . ', '
-		   		. pgescapebytea($_GET['default_gateway']) . ', '
-				. pgescapebytea($_GET['my_eui']) . ") WHERE username = $s_username;");
+				secure_port) = (' . formescapebool($_GET['forward_messages']) . ', '
+				. formescapebool($_GET['use_lan_switch_algorithm']) . ', '
+				. formescapeinteger($_GET['nsecs_id']) . ', '. formescapeinteger($_GET['nsecs_src'])
+				. ', ' . formescapeinteger($_GET['insecure_port']) . ', '
+				. formescapeinteger($_GET['secure_port']) . ', '
+				. formescapebool($_GET['trust_sending']) . ', '
+				. formescapebool($_GET['trust_receiving']) . ', '
+		   		. formescapebytea($_GET['default_gateway']) . ', '
+				. formescapebytea($_GET['my_eui']) . ") WHERE username = $s_username;");
 		pgquery('CALL config();');
 		echo "Configuration updated for username $h_username.<br/>\n";
 	}
@@ -44,6 +44,7 @@ if ($can_view_configuration) {
 		$result = pgquery('SELECT *, TRUE FROM configuration WHERE username = \'public\';');
 		echo 'You are authorized to view', $can_edit_configuration ? ' (edit)' : '',
 				" configuration for public user.<br/>\n";
+	} else {
 		$result = pgquery("SELECT *, username = {$_SESSION['s_username']} OR username = 'public'
 				AND {$_SESSION['s_can_edit_as_others']} FROM configuration WHERE username
 				= {$_SESSION['s_username']} OR username = 'public'

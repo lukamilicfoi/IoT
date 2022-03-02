@@ -47,7 +47,7 @@ function vacuous(&$var) {
 	return is_null($var) || $var == '';
 }
 
-function pgescapebool(&$boolvar) {
+function formescapebool(&$boolvar) {
 	return is_null($boolvar) ? 'FALSE' : 'TRUE';
 }
 
@@ -65,12 +65,16 @@ function can_view_table($s_tablename) {
 			OR {$_SESSION['s_is_root']});")) != 0;
 }
 
-function pgescapeinteger(&$integervar) {
+function formescapeinteger(&$integervar) {
 	return is_null($integervar) ? 'NULL' : intval($integervar);
 }
 
 function pgescapetimestamp($timestampvar) {
 	return 'TIMESTAMP ' . pg_escape_literal($timestampvar);
+}
+
+function pgescapebool($boolvar) {
+	return $boolvar ? 'TRUE' : 'FALSE';
 }
 
 function postgresql_output_to_my_input($data, $oid) {

@@ -121,10 +121,11 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 		$proto_name = pg_escape_literal($_GET['proto_name']);
 		$imm_DST = pgescapebytea($_GET['imm_DST']);
 		pgquery("SELECT send_inject(TRUE, $s_msgtosend, (SELECT proto FROM proto_name
-				WHERE name = $proto_name), $imm_DST, " . pgescapeinteger($_GET['insecure_port'])
-				. ', ' . pgescapeinteger($_GET['secure_port']) . ', ' . pgescapebool($_GET['CCF'])
-				. ', ' . pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast']) . ', '
-				. pgescapebool($_GET['override_implicit_rules']) . ');');
+				WHERE name = $proto_name), $imm_DST, " . formescapeinteger($_GET['insecure_port'])
+				. ', ' . formescapeinteger($_GET['secure_port']) . ', '
+				. formescapebool($_GET['CCF']) . ', ' . formescapebool($_GET['ACF']) . ', '
+				. formescapebool($_GET['broadcast']) . ', '
+				. formescapebool($_GET['override_implicit_rules']) . ');');
 		echo "Message $h_msgtosend sent.\n";
 	}
 ?>
@@ -162,10 +163,11 @@ if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
 		$proto_name = pg_escape_literal($_GET['proto_name']);
 		$imm_SRC = pgescapebytea($_GET['imm_SRC']);
 		pgquery("SELECT send_inject(FALSE, $s_msgtoinject, (SELECT proto FROM proto_name
-				WHERE name = $proto_name), $imm_SRC, " . pgescapeinteger($_GET['insecure_port'])
-				. ', ' . pgescapeinteger($_GET['secure_port']) . ', ' . pgescapebool($_GET['CCF'])
-				. ', ' . pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast']) . ', '
-				. pgescapebool($_GET['override_implicit_rules']) . ');');
+				WHERE name = $proto_name), $imm_SRC, " . formescapeinteger($_GET['insecure_port'])
+				. ', ' . formescapeinteger($_GET['secure_port']) . ', '
+				. formescapebool($_GET['CCF']) . ', ' . formescapebool($_GET['ACF']) . ', '
+				. formescapebool($_GET['broadcast']) . ', '
+				. formescapebool($_GET['override_implicit_rules']) . ');');
 		echo "Message $h_msgtoinject injected.\n";
 	}
 ?>

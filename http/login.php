@@ -12,12 +12,13 @@ if (!vacuous($_POST['username']) && !vacuous($_POST['password'])) {
 		$_SESSION['h1username'] = htmlspecialchars($_POST['username']);
 		$_SESSION['h2username'] = "&apos;{$_SESSION['h1username']}&apos;";
 		$_SESSION['is_root'] = $_POST['username'] == 'root';
+		$_SESSION['is_public'] = $_POST['username'] == 'public';
 		$_SESSION['can_view_as_others'] = $row[2] == 't';
 		$_SESSION['is_administrator'] = $row[1] == 't';
 		$_SESSION['can_edit_as_others'] = $row[3] == 't';
 		$_SESSION['username'] = $_POST['username'];
-		$_SESSION['s_is_root'] = $_SESSION['is_root'] ? 'TRUE' : 'FALSE';
-		$_SESSION['s_is_administrator'] = $_SESSION['is_administrator'] ? 'TRUE' : 'FALSE';
+		$_SESSION['s_is_root'] = pgescapebool($_SESSION['is_root']);
+		$_SESSION['s_is_administrator'] = pgescapebool($_SESSION['is_administrator']));
 		$_SESSION['s_can_view_as_others'] = $_SESSION['can_view_as_others'] ? 'TRUE' : 'FALSE';
 		$_SESSION['s_can_edit_as_others'] = $_SESSION['can_edit_as_others'] ? 'TRUE' : 'FALSE';
 	}
