@@ -66,7 +66,7 @@ if (!Empty($_GET['addr'])) {
 		}
 	}
 	if ($can_view) {
-		echo 'You are authorized to view ', $can_edit ? '(edit) ' : '', "everything here.\n";
+		echo 'You are authorized to view ', $can_edit ? '(edit) ' : '', "everything here.<br/><br/>\n";
 ?>
 		<form action="" method="GET">
 			View destination for this SRC:
@@ -145,7 +145,7 @@ if (!Empty($_GET['addr'])) {
 ?>
 		</form>
 		Protocols ordered by name ascending.
-		<a href="view_remotes.php">Done</a>
+		<br/><a href="view_remotes.php">Done</a>
 <?php
 	}
 }

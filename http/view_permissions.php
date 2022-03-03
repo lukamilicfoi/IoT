@@ -117,11 +117,12 @@ if ($can_edit_permissions) {
 				ON table_reader.username = users.username WHERE table_reader.tablename = table_name
 				AND (username = {$_SESSION['s_username']} OR NOT users.is_administrator
 				AND {$_SESSION['s_can_view_as_others']}))";
-		$result = pgquery("SELECT table_reader.tablename AS table_name, table_reader.username,
-				EXISTS(SELECT TRUE FROM table_owner INNER JOIN users ON table_owner.username
-				= users.username WHERE table_owner.tablename = table_name AND (table_owner.username
+		$can_edit = "EXISTS(SELECT TRUE FROM table_owner INNER JOIN users ON table_owner.username
+				= users.username WHERE table_owner.tablename = $table_name AND (table_owner.username
 				= {$_SESSION['s_username']} OR NOT users.is_administrator
-				AND {$_SESSION['s_can_edit_as_others']})) AS can_edit, FALSE AS is_owner
+				AND {$_SESSION['s_can_edit_as_others']}))";
+		$result = pgquery("SELECT table_reader.tablename AS table_name, table_reader.username,
+				$can_edit, FALSE AS is_owner
 				FROM table_reader WHERE can_edit OR $can_view UNION ALL SELECT table_owner.tablename
 				AS table_name, table_reader.username = {$_SESSION['s_username']}
 				OR NOT users.is_administrator AND {$_SESSION['s_can_edit_as_others']} AS can_edit,
@@ -144,10 +145,10 @@ if ($can_edit_permissions) {
 		$can_view = "EXISTS(SELECT TRUE FROM table_reader WHERE tablename = table_name
 				AND (username = {$_SESSION['s_username']} OR username = 'public'
 				AND {$_SESSION['s_can_view_as_others']}))";
-		$result = pgquery("SELECT tablename AS table_name, username, EXISTS(SELECT TRUE
-				FROM table_owner WHERE tablename = table_name AND (username
+		$can_edit = "EXISTS(SELECT TRUE FROM table_owner WHERE tablename = $table_name AND (username
 				= {$_SESSION['s_username']} OR username = 'public'
-				AND {$_SESSION['s_can_edit_as_others']})) AS can_edit, FALSE AS is_owner
+				AND {$_SESSION['s_can_edit_as_others']}))";
+		$result = pgquery("SELECT tablename AS table_name, username, $can_edit, FALSE AS is_owner
 				FROM table_reader WHERE can_edit OR $can_view UNION ALL SELECT tablename
 				AS table_name, username = {$_SESSION['s_username']} OR username = 'public'
 				AND {$_SESSION['s_can_edit_as_others']} AS can_edit, TRUE AS is_owner FROM table_owner
