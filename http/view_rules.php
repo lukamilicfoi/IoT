@@ -40,14 +40,14 @@ if ($can_edit_rules) {
 					. (!vacuous($_GET['proto_name']) ? '(SELECT proto FROM proto_name WHERE name = '
 					. pg_escape_literal($_GET['proto_id']) : 'NULL') . ', '
 					. (!vacuous($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL') . ', '
-					. pgescapeinteger($_GET['insecure_port']) . ', '
-					. pgescapeinteger($_GET['secure_port']) . ', '
-					. pgescapebool($_GET['CCF']) . ', ' . pgescapebool($_GET['ACF']) . ', '
-					. pgescapebool($_GET['broadcast']) . ', '
-					. pgescapebool($_GET['override_implicit_rules']) . ', '
-					. pgescapeinteger($_GET['activate']) . ', '
-					. pgescapeinteger($_GET['deactivate']) . ', '
-					. pgescapebool($_GET['is_active']) . ');');
+					. formescapeinteger($_GET['insecure_port']) . ', '
+					. formescapeinteger($_GET['secure_port']) . ', '
+					. formescapebool($_GET['CCF']) . ', ' . formescapebool($_GET['ACF']) . ', '
+					. formescapebool($_GET['broadcast']) . ', '
+					. formescapebool($_GET['override_implicit_rules']) . ', '
+					. formescapeinteger($_GET['activate']) . ', '
+					. formescapeinteger($_GET['deactivate']) . ', '
+					. formescapebool($_GET['is_active']) . ');');
 			echo "For username $h_username rule $id inserted.<br/>\n";
 		} elseif (!vacuous($_GET['key1']) && !vacuous($_GET['key2'])) {
 			$s_key1 = pg_escape_literal($_GET['key1']);
@@ -75,13 +75,13 @@ if ($can_edit_rules) {
 						. (!vacuous($_GET['proto_name']) ? '(SELECT proto FROM proto_name
 						WHERE name = ' . pg_escape_literal($_GET['proto_name']) : 'NULL') . ', '
 						. (!vacuous($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL')
-						. ', ' . pgescapeinteger($_GET['insecure_port']) . ', '
-						. pgescapeinteger($_GET['secure_port']) . pgescapebool($_GET['CCF']) . ', '
-						. pgescapebool($_GET['ACF']) . ', ' . pgescapebool($_GET['broadcast'])
-						. ', ' . pgescapebool($_GET['override_implicit_rules']) . ', '
-						. pgescapeinteger($_GET['activate']) . ', '
-						. pgescapeinteger($_GET['deactivate']) . ', '
-						. pgescapebool($_GET['is_active'])
+						. ', ' . formescapeinteger($_GET['insecure_port']) . ', '
+						. formescapeinteger($_GET['secure_port']) . formescapebool($_GET['CCF']) . ', '
+						. formescapebool($_GET['ACF']) . ', ' . formescapebool($_GET['broadcast'])
+						. ', ' . formescapebool($_GET['override_implicit_rules']) . ', '
+						. formescapeinteger($_GET['activate']) . ', '
+						. formescapeinteger($_GET['deactivate']) . ', '
+						. formescapebool($_GET['is_active'])
 						. ") WHERE username = $s_key1 AND id = $key2;");
 				echo "For username $h_key1 rule $key2 updated.<br/>\n";
 			}
@@ -134,6 +134,7 @@ if ($can_view_rules) {
 				ORDER BY rules.id ASC;');
 		echo 'You are authorized to view', $can_edit_rules ? ' (edit)' : '',
 				" rules for public user.<br/>\n";
+	} else {
 		$result = pgquery("SELECT rules.*, rules.username = {$_SESSION['s_username']}
 				OR rules.username = 'public' AND {$_SESSION['s_can_edit_as_others']}, proto_name.name
 				FROM rules LEFT OUTER JOIN proto_name ON rules.proto_id = proto_name.proto
@@ -184,15 +185,15 @@ if ($can_view_rules) {
 			if ($can_edit_rules) {
 ?>
 				<tr>
-					<td nowrap="nowrap">
+					<td nowrap>
 						<input form="insert" type="text" name="username" size="10" required autofocus/>
 						,
 					</td>
-					<td nowrap="nowrap">
+					<td nowrap>
 						<input form="insert" type="text" name="id" size="10" required/>
 						.
 					</td>
-					<td nowrap="nowrap">
+					<td nowrap>
 						<input form="insert" type="radio" name="send_receive_seconds" value="0"
 								checked/>
 						on sending when:<br/>
@@ -201,11 +202,11 @@ if ($can_view_rules) {
 						<input form="insert" type="radio" name="send_receive_seconds" value="2"/>
 						every this amount<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;of seconds:
 					</td>
-					<td nowrap="nowrap">
+					<td nowrap>
 						<input form="insert" type="text" name="filter" size="10"/>
 						.
 					</td>
-					<td nowrap="nowrap">
+					<td nowrap>
 						<input form="insert" type="radio" name="drop_modify_nothing" value="0"
 								checked/>
 						drop message<br/>
@@ -214,11 +215,11 @@ if ($can_view_rules) {
 						<input form="insert" type="radio" name="drop_modify_nothing" value="2"/>
 						do nothing
 					</td>
-					<td nowrap="nowrap">
+					<td nowrap>
 						<input form="insert" type="text" name="modification" size="10"/>
 						,
 					</td>
-					<td nowrap="nowrap">
+					<td nowrap>
 						<input form="insert" type="radio" name="query_command_nothing" value="0"
 								checked/>
 						SQL query:<br/>
@@ -227,11 +228,11 @@ if ($can_view_rules) {
 						<input form="insert" type="radio" name="query_command_nothing" value="2"/>
 						(execute nothing)
 					</td>
-					<td nowrap="nowrap">
+					<td nowrap>
 						<input form="insert" type="text" name="query_command_1" size="10"/>
 						,
 					</td>
-					<td nowrap="nowrap">
+					<td nowrap=>
 						<input form="insert" type="radio" name="send_inject_query_command_nothing"
 								value="0" checked/>
 						query and send it:<br/>
@@ -272,11 +273,11 @@ if ($can_view_rules) {
 					<td>
 						<input form="insert" type="checkbox" name="broadcast"/>
 					</td>
-					<td nowrap="nowrap">
+					<td nowrap>
 						<input form="insert" type="checkbox" name="override_implicit_rules"/>
 						.
 					</td>
-					<td nowrap="nowrap">
+					<td nowrap>
 						<input form="insert" type="text" name="activate" size="10"/>
 						.
 					</td>
@@ -549,12 +550,12 @@ if ($can_view_rules) {
 		</tbody>
 	</table>
 	<br/>If &quot;SELECT &lt;filter&gt;;&quot; evaluates to TRUE, the filter is triggered.
-	You can use column names HD, ..., CRC, CCF, ACF, broadcast, override_implicit_rules, insecure_port and secure_port.
+	You can use column names HD, ..., CRC, CCF, ACF, broadcast, override, insecure_port and secure_port.
 	Appropriate FROM is automatically appended.<br/>
 	Modification is performed like &quot;UPDATE message SET &lt;semicolon-separated command 1&gt;;
 			UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;;&quot;.<br/>
 	During SQL queries the current message is stored in table &quot;message&quot; and columns HD, ..., CRC, CCF, ACF,
-			broadcast, override_implicit_rules, insecure_port and secure_port.<br/>
+			broadcast, override, insecure_port and secure_port.<br/>
 	bash commands are NOT executed as /root/, but as the user who started the database.<br/>
 	Filter can be either a number or a string.<br/>
 	Leaving a field empty indicates NULL value.<br/>

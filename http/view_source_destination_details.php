@@ -58,12 +58,12 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['DST'])) {
 				ORDER BY ID ASC;");
 		echo "Viewing table &quot;ID_TWR&quot; for SRC $h2SRC and DST $h2DST.<br/>\n";
 ?>
-		Table ordered by identifier ascending.
+		Table ordered by identifier ascending.<br/><br/>
 		<table border="1">
 			<tbody>
 				<tr>
-					<th>identifier</th>
-					<th>time when received</th>
+					<th>identifier (ID)</th>
+					<th>time when received (TWR)</th>
 <?php
 					if ($can_edit) {
 ?>
@@ -157,8 +157,8 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['DST'])) {
 ?>
 			</tbody>
 		</table>
-		Write the first column as an integer, e.g., 11.<br/>
-		Write the second column as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
+		<br/>Write the first column (ID) as an integer, e.g., 11.<br/>
+		Write the second column (TWR) as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
 		You can edit something only if you have edit permissions on this remote.<br/><br/>
 <?php
 		echo "<a href=\"view_remote_details.php?addr=$u_SRC\">Done</a>\n";

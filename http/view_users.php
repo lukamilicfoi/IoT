@@ -3,13 +3,13 @@ require_once 'common.php';
 $user_fields_joined = implode(', ', $user_fields);
 $user_fields_length = count($user_fields);
 $can_view_yourself = check_authorization('can_view_yourself', 'view yourself');
-$s_can_view_yourself = $can_view_yourself ? 'TRUE' : 'FALSE';
+$s_can_view_yourself = pgescapebool($can_view_yourself);
 $can_edit_yourself = check_authorization('can_edit_yourself', 'edit yourself');
-$s_can_edit_yourself = $can_edit_yourself ? 'TRUE' : 'FALSE';
+$s_can_edit_yourself = pgescapebool($can_edit_yourself);
 $can_view_others = check_authorization('can_view_others', 'view others');
-$s_can_view_others = $can_view_others ? 'TRUE' : 'FALSE';
+$s_can_view_others = pgescapebool($can_view_others);
 $can_edit_others = check_authorization('can_edit_others', 'edit others');
-$s_can_edit_others = $can_edit_others ? 'TRUE' : 'FALSE';
+$s_can_edit_others = pgescapebool($can_edit_others);
 if ($can_edit_others) {
 	if (isset($_GET['truncate']) && $_SESSION['is_root']) {
 		if (isset($_GET['confirm'])) {
@@ -39,11 +39,11 @@ if ($can_edit_others) {
 				|| $_SESSION['is_root']) && isset($_POST['insert'])) {
 			$query = "INSERT INTO users(username, password, is_administrator, $user_fields_joined,
 					can_actually_login) VALUES($s1username, '" . password_hash($_POST['password'],
-					PASSWORD_DEFAULT) . '\', ' . pgescapebool($_POST['is_administrator']) . ', ';
+					PASSWORD_DEFAULT) . '\', ' . formescapebool($_POST['is_administrator']) . ', ';
 			foreach ($user_fields as $field) {
-				$query .= pgescapebool($_POST[$field]) . ', ';
+				$query .= formescapebool($_POST[$field]) . ', ';
 			}
-			pgquery($query . pgescapebool($_POST['can_actually_login']) . ');');
+			pgquery($query . formescapebool($_POST['can_actually_login']) . ');');
 			pgquery("INSERT INTO configuration(username, forward_messages,
 					use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone,
 					default_gateway, insecure_port, secure_port) SELECT $s1username,
@@ -65,11 +65,11 @@ if ($can_edit_others) {
 						: '') . ", is_administrator, $user_fields_joined, can_actually_login)
 						= ($s1username" . (!vacuous($_POST['password']) ? ', \''
 						. password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : '') . ', ' .
-						pgescapebool($_POST['is_administrator']) . ', ';
+						formescapebool($_POST['is_administrator']) . ', ';
 				foreach ($user_fields as $field) {
-					$query .= pgescapebool($_POST[$field]) . ', ';
+					$query .= formescapebool($_POST[$field]) . ', ';
 				}
-				pgquery($query . pgescapebool($_POST['can_actually_login'])
+				pgquery($query . formescapebool($_POST['can_actually_login'])
 						. ") WHERE username = $s1key;");
 				if ($s2key != $s2username) {
 					pgquery("ALTER ROLE $s2key RENAME TO $s2username;");
@@ -163,7 +163,13 @@ if ($can_view_yourself || $can_view_others) {
 				}
 ?>
 				<th>Can actually login?</th>
-				<th>Actions</th>
+<?php
+				if ($can_edit_yourself || $can_edit_others) {
+?>
+					<th>Actions</th>
+<?php
+				}
+?>
 			</tr>
 <?php
 			if ($_SESSION['is_administrator'] && $can_edit_others) {
@@ -229,7 +235,7 @@ if ($can_view_yourself || $can_view_others) {
 						$username = htmlspecialchars($row[0]);
 						if ($username == $_SESSION['h1username'] && $can_edit_yourself) {
 							echo "<input form=\"update2\" type=\"text\" name=\"username\"
-									value=\"$username\" ", $username == 'root' ? 'readonly' : 'required', " autofocus/>\n";
+									value=\"$username\" ", $username == 'root' || $username == 'public' ? 'readonly' : 'required', " autofocus/>\n";
 						} elseif ($username != $_SESSION['h1username'] && $can_edit_others) {
 							echo "<input form=\"update1_$username\" type=\"text\"
 									name=\"username\" value=\"$username\" ", $username == 'public'
@@ -326,7 +332,7 @@ if ($can_view_yourself || $can_view_others) {
 	</table>
 	<br/>Users &apos;public&apos; and &apos;root&apos; cannot be renamed or deleted.<br/>
 	Deleting a user also deletes his tables.<br/>
-	Only root can delete all users.<br/>
+	Only root can delete all users.<br/><br/>
 	<a href="index.php">Done</a>
 <?php
 }

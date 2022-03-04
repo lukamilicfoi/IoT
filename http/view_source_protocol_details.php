@@ -16,7 +16,7 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
 				pgquery("DELETE FROM iSRC_TWR WHERE SRC = $s1SRC AND proto
-						= (SELECT proto FROM proto_name WHERE name = $s_proto;");
+						= (SELECT proto FROM proto_name WHERE name = $s_proto);");
 				echo "Table &quot;iSRC_TWR&quot; truncated for SRC $h2SRC
 						and proto $h2proto.<br/>\n";
 			} else {
@@ -68,7 +68,7 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 				= (SELECT proto FROM proto_name WHERE name = $s_proto) ORDER BY imm_SRC ASC;");
 		echo "Viewing table &quot;iSRC_TWR&quot; for SRC $h2SRC and proto $h2proto.<br/>\n";
 ?>
-		Table ordered by immediate source address ascending.<br/>
+		Table ordered by immediate source address ascending.<br/><br/>
 		<table border="1">
 			<tbody>
 				<tr>
@@ -170,8 +170,8 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 ?>
 			</tbody>
 		</table>
-		<br/>Write the first column as a binary string, e.g., abababababababab.<br/>
-		Write the second column as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
+		<br/>Write imm_SRC as a binary string, e.g., abababababababab.<br/>
+		Write TWR as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
 		You can edit something only if you have edit permissions on this remote.<br/><br/>
 <?php
 		echo "<a href=\"view_remote_details.php?addr=$u_SRC\">Done</a>\n";

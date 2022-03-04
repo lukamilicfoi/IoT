@@ -6,9 +6,9 @@ if (!vacuous($_GET['tablename'])) {
 	$h1tablename = htmlspecialchars($_GET['tablename']);
 	$h2tablename = "&quot;$h1tablename&quot;";
 	$u_tablename = urlencode($_GET['tablename']);
-	$can_view = check_authorization('can_view_tables', 'view any tables')
+	$can_view = check_authorization('can_view_tables', 'view tables')
 			&& can_view_table($s1tablename);
-	$can_edit = check_authorization('can_edit_tables', 'edit any tables')
+	$can_edit = check_authorization('can_edit_tables', 'edit tables')
 			&& can_edit_table($s1tablename);
 	if ($can_edit) {
 		if (isset($_GET['truncate'])) {
@@ -153,10 +153,10 @@ if (!vacuous($_GET['tablename'])) {
 							<td>
 <?php
 								echo "<form id=\"update{$row[$t]}\" action=\"\" method=\"GET\">\n";
-									echo "<input type=\"hidden\" name=\"key\"
-											value=\"{$row[$t]}\"/>\n";
-									echo "<input type=\"hidden\" name=\"tablename\"
-											value=\"$h1tablename\"/>\n";
+									echo '<input type="hidden" name="key" value="',
+											$row[$t], "\"/>\n";
+									echo '<input type="hidden" name="tablename" value="',
+											$h1tablename, "\"/>\n";
 ?>
 									<input type="submit" name="update" value="UPDATE"/><br/>
 									<input type="reset" value="reset"/>
