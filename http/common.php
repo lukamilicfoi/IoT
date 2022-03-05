@@ -97,13 +97,13 @@ function postgresql_output_to_my_input($data, $oid) {
 	}
 }
 
-function pgescapeusername2($username) {
-	if ($username == 'root') {
+function pgescaperole1($role) {
+	if ($role == 'root') {
 		return '"postgres"';
-	} else if ($username == 'public') {
+	} else if ($role == 'public') {
 		return '"PUBLIC"';
 	}
-	return pg_escape_identifier($username);
+	return pg_escape_identifier($role);
 }
 
 function find_owner($s_tablename) {
@@ -161,13 +161,13 @@ function my_input_to_postgresql_input($data, $oid) {
 	}
 }
 
-function pgescapeusername3($username) {
-	if ($username == 'root') {
+function pgescaperole2($role) {
+	if ($role == 'root') {
 		return '\'postgres\'';
-	} else if ($username == 'public') {
+	} else if ($role == 'public') {
 		return '\'PUBLIC\'';
 	}
-	return pg_escape_literal($username);
+	return pg_escape_literal($role);
 }
 
 function is_administrator($s_username) {

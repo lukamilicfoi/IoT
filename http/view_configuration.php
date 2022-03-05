@@ -39,7 +39,7 @@ if ($can_view_configuration) {
 		echo 'You are authorized to view', $can_edit_configuration ? ' (edit)' : '',
 				" configuration for username {$_SESSION['h2username']}", $can_view_as_others
 				? ' or non-administrators' : '', $_SESSION['can_edit_as_others']
-				&& $can_edit_configuration ? '' : '(noedit)', ".<br/>\n";
+				&& $can_edit_configuration ? '' : ' (noedit)', ".<br/>\n";
 	} elseif ($_SESSION['is_public']) {
 		$result = pgquery('SELECT *, TRUE FROM configuration WHERE username = \'public\';');
 		echo 'You are authorized to view', $can_edit_configuration ? ' (edit)' : '',
@@ -52,7 +52,7 @@ if ($can_view_configuration) {
 		echo 'You are authorized to view', $can_edit_configuration ? ' (edit)' : '',
 				" configuration for username {$_SESSION['h2username']}",
 				$_SESSION['can_view_as_others'] ? ' or public user' : '',
-				$_SESSION['can_edit_as_others'] && $can_edit_configuration ? '' : '(noedit)',
+				$_SESSION['can_edit_as_others'] && $can_edit_configuration ? '' : ' (noedit)',
 				".<br/>\n";
 	}
 ?>
@@ -88,7 +88,7 @@ if ($can_view_configuration) {
 <?php
 						$username = htmlspecialchars($row[0]);
 						echo "<input form=\"update_$username\" type=\"text\" name=\"username\"
-								value=\"$username\" size=\"16\" readonly autofocus/>\n";
+								value=\"$username\" readonly autofocus/>\n";
 ?>
 					</td>
 					<td>
@@ -162,7 +162,7 @@ if ($can_view_configuration) {
 <?php
 							echo "<form id=\"update_$username\" action=\"\" method=\"GET\">\n";
 ?>
-								<input type="submit" name="update" value="UPDATE"/>
+								<input type="submit" name="update" value="UPDATE"/><br/>
 								<input type="reset" value="reset"/>
 <?php
 							echo "</form>\n";

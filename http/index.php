@@ -7,7 +7,7 @@ if ($can_edit_tables) {
 		$s1add = pg_escape_identifier($_GET['add']);
 		$s2add = pg_escape_literal($_GET['add']);
 		pgquery("CREATE TABLE $s1add(t TIMESTAMP(4) WITHOUT TIME ZONE);");
-		pgquery("ALTER TABLE $s1add OWNER TO {$_SESSION['s2username']};");
+		pgquery("ALTER TABLE $s1add OWNER TO {$_SESSION['s1role']};");
 		pgquery("INSERT INTO table_owner(tablename, username) VALUES($s2add,
 				{$_SESSION['s_username']});");
 	} elseif (!vacuous($_GET['remove'])) {
@@ -125,7 +125,7 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 				. ', ' . formescapeinteger($_GET['secure_port']) . ', '
 				. formescapebool($_GET['CCF']) . ', ' . formescapebool($_GET['ACF']) . ', '
 				. formescapebool($_GET['broadcast']) . ', '
-				. formescapebool($_GET['override_implicit_rules']) . ');');
+				. formescapebool($_GET['override']) . ');');
 		echo "Message $h_msgtosend sent.\n";
 	}
 ?>
@@ -147,7 +147,7 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 		using broadcast
 		<input type="checkbox" name="broadcast"/>
 		and override implicit rules
-		<input type="checkbox" name="override_implicit_rules"/>
+		<input type="checkbox" name="override"/>
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
@@ -167,7 +167,7 @@ if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
 				. ', ' . formescapeinteger($_GET['secure_port']) . ', '
 				. formescapebool($_GET['CCF']) . ', ' . formescapebool($_GET['ACF']) . ', '
 				. formescapebool($_GET['broadcast']) . ', '
-				. formescapebool($_GET['override_implicit_rules']) . ');');
+				. formescapebool($_GET['override']) . ');');
 		echo "Message $h_msgtoinject injected.\n";
 	}
 ?>
@@ -189,7 +189,7 @@ if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
 		using broadcast
 		<input type="checkbox" name="broadcast"/>
 		and override implicit rules
-		<input type="checkbox" name="override_implicit_rules"/>
+		<input type="checkbox" name="override"/>
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
@@ -208,7 +208,7 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 			if (!flock($flock, LOCK_EX)) {
 				exit('cannot flock');
 			}
-			pgquery("SET ROLE {$_SESSION['s3username']};");
+			pgquery("SET ROLE {$_SESSION['s2role']};");
 		}
 		$result = pgquery($_GET['query']);
 		if (!$_SESSION['is_root']) {
