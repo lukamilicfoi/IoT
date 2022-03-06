@@ -29,17 +29,15 @@ if ($can_edit_rules) {
 					activate, deactivate, is_active) VALUES($s_username, $id, "
 					. intval($_GET['send_receive_seconds']) . ', '
 					. pg_escape_literal($_GET['filter']) . ', '
-					. intval($_GET['drop_modify_nothing']) . ', ' . (!vacuous($_GET['modification'])
-					? pg_escape_literal($_GET['modification']) : 'NULL') . ', '
+					. intval($_GET['drop_modify_nothing']) . ', '
+					. formescapeliteral($_GET['modification']) . ', '
 					. intval($_GET['query_command_nothing']) . ', '
-					. (!vacuous($_GET['query_command_1'])
-					? pg_escape_literal($_GET['query_command_1']) : 'NULL') . ', '
+					. formescapeliteral($_GET['query_command_1']) . ', '
 					. intval($_GET['send_inject_query_command_nothing']) . ', '
-					. (!vacuous($_GET['query_command_2'])
-					? pg_escape_literal($_GET['query_command_2']) : 'NULL') . ', '
+					. formescapeliteral($_GET['query_command_2']) . ', '
 					. (!vacuous($_GET['proto_name']) ? '(SELECT proto FROM proto_name WHERE name = '
 					. pg_escape_literal($_GET['proto_id']) : 'NULL') . ', '
-					. (!vacuous($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL') . ', '
+					. formescapebytea($_GET['imm_addr']) . ', '
 					. formescapeinteger($_GET['insecure_port']) . ', '
 					. formescapeinteger($_GET['secure_port']) . ', '
 					. formescapebool($_GET['CCF']) . ', ' . formescapebool($_GET['ACF']) . ', '
@@ -65,16 +63,14 @@ if ($can_edit_rules) {
 						. intval($_GET['send_receive_seconds']) . ', '
 						. pg_escape_literal($_GET['filter']) . ', '
 						. intval($_GET['drop_modify_nothing']) . ', '
-						. (!vacuous($_GET['modification']) ? pg_escape_literal($_GET['modification'])
-						: 'NULL') . ', ' . intval($_GET['query_command_nothing']) . ', '
-						. (!vacuous($_GET['query_command_1'])
-						? pg_escape_literal($_GET['query_command_1']) : 'NULL') . ', '
+						. formescapeliteral($_GET['modification']) . ', '
+						. intval($_GET['query_command_nothing']) . ', '
+						. formescapeliteral($_GET['query_command_1']) . ', '
 						. intval($_GET['send_inject_query_command_nothing']) . ', '
-						. (!vacuous($_GET['query_command_2'])
-						? pg_escape_literal($_GET['query_command_2']) : 'NULL') . ', '
+						. formescapeliteral($_GET['query_command_2']) . ', '
 						. (!vacuous($_GET['proto_name']) ? '(SELECT proto FROM proto_name
 						WHERE name = ' . pg_escape_literal($_GET['proto_name']) : 'NULL') . ', '
-						. (!vacuous($_GET['imm_addr']) ? pgescapebytea($_GET['imm_addr']) : 'NULL')
+						. formescapebytea($_GET['imm_addr'])
 						. ', ' . formescapeinteger($_GET['insecure_port']) . ', '
 						. formescapeinteger($_GET['secure_port']) . formescapebool($_GET['CCF']) . ', '
 						. formescapebool($_GET['ACF']) . ', ' . formescapebool($_GET['broadcast'])
@@ -281,7 +277,7 @@ if ($can_view_rules) {
 						<input form="insert" type="text" name="activate" size="10"/>
 						.
 					</td>
-					<td nowrap="nowrap">
+					<td nowrap=>
 						<input form="insert" type="text" name="deactivate" size="10"/>
 						.
 					</td>
@@ -295,7 +291,7 @@ if ($can_view_rules) {
 					<td>
 						<form id="insert" action="" method="GET">
 							<input type="submit" name="insert" value="INSERT"/><br/>
-							<input form="insert" type="reset" value="reset"/><br/>
+							<input form="insert" type="reset" value="reset"/>
 						</form>
 <?php
 						if ($_SESSION['is_root']) {
@@ -550,12 +546,12 @@ if ($can_view_rules) {
 		</tbody>
 	</table>
 	<br/>If &quot;SELECT &lt;filter&gt;;&quot; evaluates to TRUE, the filter is triggered.
-	You can use column names HD, ..., CRC, CCF, ACF, broadcast, override, insecure_port and secure_port.
+	You can use column names HD, ..., CRC, CCF, ACF, broadcast, override, insecure and secure.
 	Appropriate FROM is automatically appended.<br/>
 	Modification is performed like &quot;UPDATE message SET &lt;semicolon-separated command 1&gt;;
 			UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;;&quot;.<br/>
 	During SQL queries the current message is stored in table &quot;message&quot; and columns HD, ..., CRC, CCF, ACF,
-			broadcast, override, insecure_port and secure_port.<br/>
+			broadcast, override, insecure and secure.<br/>
 	bash commands are NOT executed as /root/, but as the user who started the database.<br/>
 	Filter can be either a number or a string.<br/>
 	Leaving a field empty indicates NULL value.<br/>

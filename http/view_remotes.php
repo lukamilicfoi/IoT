@@ -62,7 +62,7 @@ if ($can_view_remotes) {
 					AND {$_SESSION['s_can_edit_as_others']}))";
 			$result = pgquery("SELECT DISTINCT $b_address, $can_edit FROM addr_oID
 					INNER JOIN table_reader ON 't' || encode($b_address, 'hex')
-					= table_reader.tablename WHERE can_edit OR table_reader.username
+					= table_reader.tablename WHERE $can_edit OR table_reader.username
 					= {$_SESSION['s_username']} OR NOT users.is_administrator
 					AND {$_SESSION['s_can_view_as_others']} ORDER BY $b_address ASC;");
 			echo 'You are authorized to view', $can_edit_remotes ? ' (edit)' : '',
@@ -88,7 +88,7 @@ if ($can_view_remotes) {
 					OR username = 'public') AND {$_SESSION['s_can_edit_as_others']})";
 			$result = pgquery("SELECT DISTINCT $b_address, $can_edit FROM addr_oID.addr
 					INNER JOIN table_reader ON 't' || encode($b_address, 'hex')
-					= table_reader.tablename WHERE can_edit OR table_reader.username
+					= table_reader.tablename WHERE $can_edit OR table_reader.username
 					= {$_SESSION['s_username']} OR table_reader.username = 'public'
 					AND {$_SESSION['s_can_view_as_others']} ORDER BY $b_address ASC;");
 			echo 'You are authorized to view', $can_edit_remotes ? ' (edit)' : '',
