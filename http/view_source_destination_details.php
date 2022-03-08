@@ -54,8 +54,8 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['DST'])) {
 		}
 	}
 	if ($can_view) {
-		$result = pgquery("SELECT ID, TWR FROM ID_TWR WHERE SRC = $s2SRC AND DST = $s_DST
-				ORDER BY ID ASC;");
+		$result = pgquery("SELECT ID, TWR FROM ID_TWR
+				WHERE SRC = $s2SRC AND DST = $s_DST ORDER BY ID ASC;");
 		echo "Viewing table &quot;ID_TWR&quot; for SRC $h2SRC and DST $h2DST.<br/>\n";
 ?>
 		Table ordered by identifier ascending.<br/><br/>
@@ -89,7 +89,8 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['DST'])) {
 								echo "<input type=\"hidden\" name=\"DST\" value=\"$h1DST\"/>\n";
 ?>
 								<input type="submit" name="insert"
-										value="Insert new mapping for this SRC and this DST"/><br/>
+										value="Insert new mapping for this SRC and this DST"/>
+										<br/>
 								<input type="reset" value="reset"/>
 							</form>
 							<form action="" method="GET">

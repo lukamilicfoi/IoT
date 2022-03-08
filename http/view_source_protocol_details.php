@@ -39,8 +39,8 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 			} else if (!vacuous($_GET['key']) && isset($_GET['update'])) {
 				$s_key = pgescapebytea($_GET['key']);
 				$h_key = 'X&apos;' . htmlspecialchars($_GET['key']) . '&apos;';
-				pgquery("UPDATE iSRC_TWR SET (imm_SRC, TWR) = ($s_imm_SRC, $TWR)
-						WHERE SRC = $s2SRC AND proto = (SELECT proto FROM proto_name
+				pgquery("UPDATE iSRC_TWR SET (imm_SRC, TWR) = ($s_imm_SRC, $TWR) WHERE SRC
+						= $s2SRC AND proto = (SELECT proto FROM proto_name
 						WHERE name = $s_proto) AND imm_SRC = $s_imm_SRC;");
 				echo "Mapping $h_key for SRC $h2SRC and proto $h2proto updated.<br/>\n";
 			}
@@ -174,7 +174,7 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 		Write TWR as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
 		You can edit something only if you have edit permissions on this remote.<br/><br/>
 <?php
-		echo "<a href=\"view_remote_details.php?addr=$u_SRC\">Done</a>\n";
+		echo "<a href=\"view_remote_details.php?addr=$u_SRC\">Done, return to $h_SRC</a>\n";
 	}
 }
 ?>
