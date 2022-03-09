@@ -16,7 +16,7 @@ if ($can_edit_others) {
 			$result = pgquery('SELECT username FROM users
 					WHERE username <> \'root\' AND username <> \'public\';');
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
-				pgquery('DROP OWNED BY ' . pgescapeusername2($row[0]) . ' CASCADE;');
+				pgquery('DROP OWNED BY ' . pgescaperole1($row[0]) . ' CASCADE;');
 			}
 			pgquery('DELETE FROM users WHERE username <> \'root\' AND username <> \'public\';');
 ?>
@@ -33,7 +33,7 @@ if ($can_edit_others) {
 		}
 	} elseif (!vacuous($_POST['username'])) {
 		$s1username = pg_escape_literal($_POST['username']);
-		$s2username = pgescapeusername2($_POST['username']);
+		$s2username = pgescaperole1($_POST['username']);
 		$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
 		if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
 				|| $_SESSION['is_root']) && isset($_POST['insert'])) {
@@ -45,9 +45,9 @@ if ($can_edit_others) {
 			}
 			pgquery($query . formescapebool($_POST['can_actually_login']) . ');');
 			pgquery("INSERT INTO configuration(username, forward_messages,
-					use_internet_switch_algorithm, nsecs_id, nsecs_src, trust_everyone,
+					use_lan_switch_algorithm, nsecs_id, nsecs_src, trust_everyone,
 					default_gateway, insecure_port, secure_port) SELECT $s1username,
-					forward_messages, use_internet_switch_algorithm, nsecs_id, nsecs_src,
+					forward_messages, use_lan_switch_algorithm, nsecs_id, nsecs_src,
 					trust_everyone, default_gateway, insecure_port, secure_port FROM configuration
 					WHERE username = {$_SESSION['s_username']};");
 			pgquery("CREATE ROLE $s2username;");
@@ -55,7 +55,7 @@ if ($can_edit_others) {
 			echo "User $h_username inserted.<br/>\n";
 		} elseif (!vacuous($_POST['key'])) {
 			$s1key = pg_escape_literal($_POST['key']);
-			$s2key = pgescapeusername2($_POST['username']);
+			$s2key = pgescaperole1($_POST['username']);
 			if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
 					&& !is_administrator($s1username) || $_SESSION['is_root'])
 					&& isset($_POST['update1']) && ($_POST['key'] != 'root'
@@ -64,8 +64,8 @@ if ($can_edit_others) {
 				$query = 'UPDATE users SET (username' . (!vacuous($_POST['password']) ? ', password'
 						: '') . ", is_administrator, $user_fields_joined, can_actually_login)
 						= ($s1username" . (!vacuous($_POST['password']) ? ', \''
-						. password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : '') . ', ' .
-						formescapebool($_POST['is_administrator']) . ', ';
+						. password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : '') . ', '
+						. formescapebool($_POST['is_administrator']) . ', ';
 				foreach ($user_fields as $field) {
 					$query .= formescapebool($_POST[$field]) . ', ';
 				}
@@ -79,7 +79,7 @@ if ($can_edit_others) {
 		}
 	} elseif (!vacuous($_GET['key'])) {
 		$s1key = pg_escape_literal($_GET['key']);
-		$s2key = pgescapeusername2($_GET['key']);
+		$s2key = pgescaperole1($_GET['key']);
 		$h_key = '&apos;' . htmlspecialchars($_GET['key']) . '&apos;';
 		$u_key = urlencode($_GET['key']);
 		if (($_SESSION['is_administrator'] && !is_administrator($s1key) || $_SESSION['is_root'])
@@ -235,7 +235,9 @@ if ($can_view_yourself || $can_view_others) {
 						$username = htmlspecialchars($row[0]);
 						if ($username == $_SESSION['h1username'] && $can_edit_yourself) {
 							echo "<input form=\"update2\" type=\"text\" name=\"username\"
-									value=\"$username\" ", $username == 'root' || $username == 'public' ? 'readonly' : 'required', " autofocus/>\n";
+									value=\"$username\" ", $username == 'root'
+									|| $username == 'public' ? 'readonly' : 'required',
+									" autofocus/>\n";
 						} elseif ($username != $_SESSION['h1username'] && $can_edit_others) {
 							echo "<input form=\"update1_$username\" type=\"text\"
 									name=\"username\" value=\"$username\" ", $username == 'public'
@@ -248,8 +250,10 @@ if ($can_view_yourself || $can_view_others) {
 					<td>
 <?php
 						if ($username == $_SESSION['h1username'] && $can_edit_yourself) {
-							echo "<input form=\"update2\" type=\"password\" name=\"password\"
-									autocomplete=\"new-password\"/>\n";
+?>
+							<input form="update2" type="password" name="password"
+									autocomplete="new-password"/>
+<?php
 						} elseif ($username != $_SESSION['h1username'] && $can_edit_others) {
 							echo "<input form=\"update1_$username\" type=\"password\"
 									name=\"password\" autocomplete=\"new-password\"/>\n";
