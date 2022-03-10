@@ -51,6 +51,10 @@ function formescapebool(&$boolvar) {
 	return is_null($boolvar) ? 'FALSE' : 'TRUE';
 }
 
+function formescapetext(&$textvar) {
+	return is_null($textvar) ? 'NULL' : pg_escape_literal($textvar);
+}
+
 function can_view_table($s_tablename) {
 	return pg_num_rows(pgquery("SELECT TRUE FROM table_owner INNER JOIN users
 			ON table_owner.username = users.username WHERE table_owner.tablename = $s_tablename
