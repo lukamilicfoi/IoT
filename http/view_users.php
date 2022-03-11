@@ -45,10 +45,10 @@ if ($can_edit_others) {
 			}
 			pgquery($query . formescapebool($_POST['can_actually_login']) . ');');
 			pgquery("INSERT INTO configuration(username, forward_messages,
-					use_lan_switch_algorithm, nsecs_id, nsecs_src, trust_everyone,
-					default_gateway, insecure_port, secure_port) SELECT $s1username,
+					use_lan_switch_algorithm, nsecs_id, nsecs_src, trust_sending,
+					trust_receiving, default_gateway, my_eui, insecure_port, secure_port) SELECT $s1username,
 					forward_messages, use_lan_switch_algorithm, nsecs_id, nsecs_src,
-					trust_everyone, default_gateway, insecure_port, secure_port FROM configuration
+					trust_sending, trust_receving, default_gateway, my_eui, insecure_port, secure_port FROM configuration
 					WHERE username = {$_SESSION['s_username']};");
 			pgquery("CREATE ROLE $s2username;");
 			pgquery("GRANT CREATE ON SCHEMA public TO $s2username;");
