@@ -127,6 +127,10 @@ function pgescapebytea($byteavar) {
 	return '\'\\x' . pg_escape_string($byteavar) . '\'';
 }
 
+function formescapebytea(&$byteavar) {
+	return is_null($byteavar) ? 'NULL' : pgescapebytea($byteavar);
+}
+
 function can_edit_table($s_tablename) {
 	return pg_num_rows(pgquery("SELECT TRUE FROM table_owner INNER JOIN users
 			ON table_owner.username = users.username WHERE table_owner.tablename = $s_tablename

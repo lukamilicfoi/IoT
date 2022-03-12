@@ -20,7 +20,7 @@ if (!vacuous($_POST['username']) && !vacuous($_POST['password'])) {
 		$_SESSION['s_is_root'] = pgescapebool($_SESSION['is_root']);
 		$_SESSION['s_is_administrator'] = pgescapebool($_SESSION['is_administrator']);
 		$_SESSION['s_can_view_as_others'] = pgescapebool($_SESSION['can_view_as_others']);
-		$_SESSION['s_can_edit_as_others'] = pgescapebool($_SESSION['can_edit_as_others']));
+		$_SESSION['s_can_edit_as_others'] = pgescapebool($_SESSION['can_edit_as_others']);
 	}
 } elseif (isset($_GET['logout'])) {
 	unset($_SESSION['username']);
