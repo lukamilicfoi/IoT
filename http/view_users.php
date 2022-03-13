@@ -32,8 +32,8 @@ if ($can_edit_others) {
 			exit(0);
 		}
 	} elseif (!vacuous($_POST['username'])) {
-		$s1username = pg_escape_literal($_POST['username']);
-		$s2username = pgescaperole1($_POST['username']);
+		$s_username = pg_escape_literal($_POST['username']);
+		$s_role = pgescaperole1($_POST['username']);
 		$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
 		if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
 				|| $_SESSION['is_root']) && isset($_POST['insert'])) {
@@ -46,16 +46,16 @@ if ($can_edit_others) {
 			pgquery($query . formescapebool($_POST['can_actually_login']) . ');');
 			pgquery("INSERT INTO configuration(username, forward_messages,
 					use_lan_switch_algorithm, nsecs_id, nsecs_src, trust_sending,
-					trust_receiving, default_gateway, my_eui, insecure_port, secure_port) SELECT $s1username,
+					trust_receiving, default_gateway, my_eui, insecure_port, secure_port) SELECT $s_username,
 					forward_messages, use_lan_switch_algorithm, nsecs_id, nsecs_src,
 					trust_sending, trust_receving, default_gateway, my_eui, insecure_port, secure_port FROM configuration
 					WHERE username = {$_SESSION['s_username']};");
-			pgquery("CREATE ROLE $s2username;");
-			pgquery("GRANT CREATE ON SCHEMA public TO $s2username;");
+			pgquery("CREATE ROLE $s_role;");
+			pgquery("GRANT CREATE ON SCHEMA public TO $s_role;");
 			echo "User $h_username inserted.<br/>\n";
 		} elseif (!vacuous($_POST['key'])) {
-			$s1key = pg_escape_literal($_POST['key']);
-			$s2key = pgescaperole1($_POST['username']);
+			$s_key = pg_escape_literal($_POST['key']);
+			$s_kole = pgescaperole1($_POST['username']);
 			if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
 					&& !is_administrator($s1username) || $_SESSION['is_root'])
 					&& isset($_POST['update1']) && ($_POST['key'] != 'root'
@@ -70,25 +70,25 @@ if ($can_edit_others) {
 					$query .= formescapebool($_POST[$field]) . ', ';
 				}
 				pgquery($query . formescapebool($_POST['can_actually_login'])
-						. ") WHERE username = $s1key;");
-				if ($s2key != $s2username) {
-					pgquery("ALTER ROLE $s2key RENAME TO $s2username;");
+						. ") WHERE username = $s_key;");
+				if ($s_kole != $s_role) {
+					pgquery("ALTER ROLE $s_kole RENAME TO $s_role;");
 				}
 				echo "User $h_key updated.<br/>\n";
 			}
 		}
 	} elseif (!vacuous($_GET['key'])) {
-		$s1key = pg_escape_literal($_GET['key']);
-		$s2key = pgescaperole1($_GET['key']);
+		$s_key = pg_escape_literal($_GET['key']);
+		$s_kole = pgescaperole1($_GET['key']);
 		$h_key = '&apos;' . htmlspecialchars($_GET['key']) . '&apos;';
 		$u_key = urlencode($_GET['key']);
-		if (($_SESSION['is_administrator'] && !is_administrator($s1key) || $_SESSION['is_root'])
+		if (($_SESSION['is_administrator'] && !is_administrator($s_key) || $_SESSION['is_root'])
 				&& isset($_GET['delete']) && $_GET['key'] != 'root' && $_GET['key'] != 'public') {
 			if (isset($_GET['confirm'])) {
-				pgquery("DELETE FROM users WHERE username = $s1key;");
-				pgquery("DROP OWNED BY $s2key CASCADE;");
-				pgquery("DELETE FROM table_owner WHERE username = $s1key;");
-				pgquery("DROP ROLE $s2key;");
+				pgquery("DELETE FROM users WHERE username = $s_key;");
+				pgquery("DROP OWNED BY $s_kole CASCADE;");
+				pgquery("DELETE FROM table_owner WHERE username = $s_key;");
+				pgquery("DROP ROLE $s_kole;");
 				echo "User $h_key deleted.<br/>\n";
 			} else {
 ?>
@@ -104,15 +104,15 @@ if ($can_edit_others) {
 	}
 }
 if ($can_edit_yourself && isset($_POST['update2']) && !vacuous($_POST['username'])) {
-	$s1username = pg_escape_literal($_POST['username']);
-	$s2username = pgescapeusername2($_POST['username']);
+	$s_username = pg_escape_literal($_POST['username']);
+	$s_role = pgescaperole1($_POST['username']);
 	$h_username = '&apos;' . htmlspecialchars($_POST['username']) . '&apos;';
 	pgquery('UPDATE users SET (username' . (!vacuous($_POST['password']) ? ', password' : '')
 			. ') = ROW(' . pg_escape_literal($_POST['username']) . (!vacuous($_POST['password'])
 			? ', \'' . password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : '')
 			. ") WHERE username = {$_SESSION['s_username']};");
-	if ($_SESSION['s2username'] != $s2username) {
-		pgquery("ALTER ROLE {$_SESSION['s2username']} RENAME TO $s2username;");
+	if ($_SESSION['s1role'] != $s_role) {
+		pgquery("ALTER ROLE {$_SESSION['s1role']} RENAME TO $s_role;");
 	}
 	echo "User $h_username updated.<br/>\n";
 }
@@ -176,11 +176,12 @@ if ($can_view_yourself || $can_view_others) {
 ?>
 				<tr>
 					<td>
-						<input form="insert" type="text" name="username" required autofocus/>
+						<input form="insert" type="text" name="username"
+								autocomplete="new-password" required autofocus/>
 					</td>
 					<td>
-						<input form="insert" type="password" name="password" required
-								autocomplete="new-password"/>
+						<input form="insert" type="password" name="password"
+							   autocomplete="new-password" required/>
 					</td>
 					<td>
 <?php
