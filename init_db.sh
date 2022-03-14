@@ -29,20 +29,20 @@ CREATE TABLE ID_TWR(SRC BYTEA, DST BYTEA, ID SMALLINT, TWR TIMESTAMP(0) WITHOUT 
 		ON DELETE CASCADE ON UPDATE CASCADE);
 CREATE TABLE proto_name(proto TEXT, name TEXT NOT NULL, PRIMARY KEY(proto));
 CREATE TABLE formatted_message_for_send_receive(HD BYTEA, ID BYTEA, LEN BYTEA, DST BYTEA, SRC BYTEA,
-		PL BYTEA, CRC BYTEA, ENCRYPTED BOOLEAN, SIGNED BOOLEAN, BROADCAST BOOLEAN, OVERRIDE BOOLEAN,
+		PL BYTEA, CRC BYTEA, ENCRYPTED BOOLEAN, SIGNED BOOLEAN, broadcast BOOLEAN, override BOOLEAN,
 		proto TEXT, imm_addr BYTEA, insecure_port INTEGER, secure_port INTEGER, CCF BOOLEAN,
 		ACF BOOLEAN, FOREIGN KEY(proto) REFERENCES proto_name(proto));
 CREATE TABLE adapter_name(adapter INTEGER, name TEXT NOT NULL, PRIMARY KEY(adapter));
 CREATE TABLE SRC_proto(SRC BYTEA, proto TEXT, PRIMARY KEY(SRC, proto), FOREIGN KEY(SRC)
 		REFERENCES addr_oID(addr) ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY(proto)
 		REFERENCES proto_name(proto) ON DELETE CASCADE ON UPDATE CASCADE);
-CREATE TABLE iSRC_TWR(SRC BYTEA, proto TEXT, imm_SRC BYTEA,
-		TWR TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(SRC, proto, imm_SRC),
-		FOREIGN KEY(SRC, proto) REFERENCES SRC_proto(SRC, proto) ON DELETE CASCADE
-		ON UPDATE CASCADE);
+CREATE TABLE iSRC_TWR(SRC BYTEA, proto TEXT, imm_SRC BYTEA, TWR TIMESTAMP(0) WITHOUT
+		TIME ZONE NOT NULL, PRIMARY KEY(SRC, proto, imm_SRC), FOREIGN KEY(SRC, proto)
+		REFERENCES SRC_proto(SRC, proto) ON DELETE CASCADE ON UPDATE CASCADE);
 CREATE TABLE configuration(username TEXT, forward_messages BOOLEAN NOT NULL,
-		use_internet_switch_algorithm BOOLEAN NOT NULL, nsecs_id INTEGER NOT NULL,
-		nsecs_src INTEGER NOT NULL, trust_everyone BOOLEAN NOT NULL, default_gateway BYTEA NOT NULL,
+		use_lan_switch_algorithm BOOLEAN NOT NULL, nsecs_id INTEGER NOT NULL,
+		nsecs_src INTEGER NOT NULL, trust_sending BOOLEAN NOT NULL,
+		trust_receiving BOOLEAN NOT NULL, default_gateway BYTEA NOT NULL, my_eui BYTEA NOT NULL,
 		insecure_port INTEGER NOT NULL, secure_port INTEGER NOT NULL, PRIMARY KEY(username),
 		FOREIGN KEY(username) REFERENCES users(username) ON DELETE CASCADE ON UPDATE CASCADE);
 CREATE TABLE raw_message_for_query_command(message BYTEA);
@@ -55,18 +55,20 @@ CREATE TABLE table_reader(tablename NAME, username TEXT, PRIMARY KEY(tablename, 
 CREATE USER login;
 GRANT SELECT(username, password, is_administrator, can_view_as_others, can_edit_as_others,
 		can_actually_login) ON TABLE users TO login;
-CREATE ROLE "PUBLIC";
+CREATE ROLE \"PUBLIC\";
 INSERT INTO users(username, password, is_administrator, can_view_tables, can_edit_tables,
 		can_send_messages, can_inject_messages, can_send_queries, can_view_rules, can_edit_rules,
 		can_view_configuration, can_edit_configuration, can_view_permissions, can_edit_permissions,
-		can_view_remotes, can_edit_remotes, can_execute_rules, can_view_users, can_edit_users,
+		can_view_remotes, can_edit_remotes, can_execute_rules, can_view_yourself, can_edit_yourself,
+		can_view_others, can_edit_others, can_view_as_others, can_edit_as_others,
 		can_actually_login) VALUES('root',
 		'`php -r "echo password_hash('root', PASSWORD_DEFAULT);"`',
-		`for a in {1..16}; do echo -n "TRUE, "; done` TRUE), ('public',
+		`for a in {1..21}; do echo -n "TRUE, "; done` TRUE), ('public',
 		'`php -r "echo password_hash('public', PASSWORD_DEFAULT);"`',
-		`for a in {1..16}; do echo -n "FALSE, "; done` FALSE);
-INSERT INTO configuration(username, forward_messages, use_internet_switch_algorithm, nsecs_id,
-		nsecs_src, trust_everyone, default_gateway, insecure_port, secure_port) VALUES('root', TRUE,
-		TRUE, 600, 36000, FALSE, '\\x0000000000000000', 44000, 44001), ('public', TRUE, TRUE, 600,
-		36000, FALSE, '\\x0000000000000000', 44000, 44001);
+		`for a in {1..21}; do echo -n "FALSE, "; done` FALSE);
+INSERT INTO configuration(username, forward_messages, use_lan_switch_algorithm, nsecs_id, nsecs_src,
+		trust_sending, trust_receiving, default_gateway, my_eui, insecure_port, secure_port)
+		VALUES('root', TRUE, TRUE, 600, 36000, FALSE, FALSE, '\\x0000000000000000',
+		'\\x0000000000000000', 44000, 44001), ('public', TRUE, TRUE, 600, 36000, FALSE, FALSE,
+		'\\x0000000000000000', '\\x0000000000000000', 44000, 44001);
 " | psql -U postgres
