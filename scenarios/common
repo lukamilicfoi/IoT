@@ -108,16 +108,16 @@ enable_clock() {
 
 insert_imm_DST() {
 	echo "INSERT INTO SRC_oID(SRC, out_ID) VALUES($2, FLOOR(RANDOM() * 256));
-		INSERT INTO SRC_proto(SRC, proto) VALUES($2, '/my0');
-		INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR)
-		VALUES($2, '/my0', $1, LOCALTIMESTAMP);" | psql -U postgres
+			INSERT INTO SRC_proto(SRC, proto) VALUES($2, '/my0');
+			INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR)
+			VALUES($2, '/my0', $1, LOCALTIMESTAMP);" | psql -U postgres
 }
 
 insert_DST() {
 	echo "INSERT INTO SRC_oID(SRC, out_ID) VALUES($1, FLOOR(RANDOM() * 256));
-		INSERT INTO SRC_proto(SRC, proto) VALUES($1, '/my0');
-		INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR)
-		VALUES($1, '/my0', $1, LOCALTIMESTAMP);" | psql -U postgres
+			INSERT INTO SRC_proto(SRC, proto) VALUES($1, '/my0');
+			INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR)
+			VALUES($1, '/my0', $1, LOCALTIMESTAMP);" | psql -U postgres
 }
 
 block_ctrlc() {
