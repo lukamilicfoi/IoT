@@ -405,11 +405,13 @@ union typedetails {
 
 struct configuration {
 	bool forward_messages;
-	bool use_internet_switch_algorithm;
+	bool use_lan_switch_algorithm;
 	int nsecs_id;
 	int nsecs_src;
-	bool trust_everyone;
+	bool trust_sending;
+	bool trust_receiving;
 	BYTE8 default_gateway;
+	BYTE8 my_eui;
 	int insecure_port;
 	int secure_port;
 };
@@ -3202,19 +3204,21 @@ void config2() {
 	while (--i >= 0) {
 		c = new configuration;
 		c->forward_messages = *PQgetvalue(res, i, 1) == 't';
-		c->use_internet_switch_algorithm = *PQgetvalue(res, i, 2) == 't';
+		c->use_lan_switch_algorithm = *PQgetvalue(res, i, 2) == 't';
 		iss.str(PQgetvalue(res, i, 3));
 		iss >> c->nsecs_id;
 		iss.clear();
 		iss.str(PQgetvalue(res, i, 4));
 		iss >> c->nsecs_src;
 		iss.clear();
-		c->trust_everyone = *PQgetvalue(res, i, 5) == 't';
-		c->default_gateway = c17charp_to_BYTE8(PQgetvalue(res, i, 6) + 2);
-		iss.str(PQgetvalue(res, i, 7));
+		c->trust_sending = *PQgetvalue(res, i, 5) == 't';
+		c->trust_receiving = *PQgetvalue(res, i, 6) == 't';
+		c->default_gateway = c17charp_to_BYTE8(PQgetvalue(res, i, 7) + 2);
+		c->my_eui = c17charp_to_BYTE8(PQgetvalue(res, i, 8) + 2);
+		iss.str(PQgetvalue(res, i, 9));
 		iss >> c->insecure_port;
 		iss.clear();
-		iss.str(PQgetvalue(res, i, 8));
+		iss.str(PQgetvalue(res, i, 10));
 		iss >> c->secure_port;
 		iss.clear();
 		username_configuration.insert(make_pair(PQgetvalue(res, i, 0), c));
@@ -3453,7 +3457,7 @@ string find_owner(BYTE8 address) noexcept {
 }
 
 void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg) {
-	if (username_configuration[find_owner(fmsg.DST)]->trust_everyone) {
+	if (username_configuration[find_owner(fmsg.DST)]->trust_sending) {
 		LOG_CPP("trusting everyone for sending" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding rules for sending" << endl);
@@ -3499,7 +3503,7 @@ void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 }
 
 void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg) {
-	if (username_configuration[find_owner(fmsg.SRC)]->trust_everyone) {
+	if (username_configuration[find_owner(fmsg.SRC)]->trust_receiving) {
 		LOG_CPP("trusting everyone for receiving" << endl);
 	} else if (rmsg.override_implicit_rules) {
 		LOG_CPP("overriding checks for receiving" << endl);
@@ -3531,7 +3535,7 @@ formatted_message *receive_formatted_message() {
 				r->out_ID = uid(dre);
 			}
 			c = username_configuration[find_owner(fmsg->DST)];
-			if (c->use_internet_switch_algorithm) {
+			if (c->use_lan_switch_algorithm) {
 				map<BYTE8, my_time_point> *&iT = r->proto_iSRC_TWR[rmsg->proto];
 				if (iT == nullptr) {
 					iT = new map<BYTE8, my_time_point>;
@@ -4827,9 +4831,9 @@ void send_formatted_message(formatted_message *fmsg) {
 				rmsg.reset(new raw_message(new BYTE[fmsg->LEN + fields_MAX + 4]));
 				rmsg->imm_addr = iter_iDST_TWR->first;
 				rmsg->proto = iter_proto_iDST_TWR->first;
-				rmsg->CCF = !c->trust_everyone && fmsg->HD.C
+				rmsg->CCF = !c->trust_sending && fmsg->HD.C
 						&& rmsg->proto->can_secure_with_C(*rmsg);
-				rmsg->ACF = !c->trust_everyone && fmsg->HD.A
+				rmsg->ACF = !c->trust_sending && fmsg->HD.A
 						&& rmsg->proto->can_secure_with_A(*rmsg);
 				dummy_f.reset(apply_rules(dummy_f.release(), rmsg.get(), true));
 				if (dummy_f == nullptr) {
