@@ -809,7 +809,7 @@ int tls_port = 44001;
 #define TLS_BACKLOG 10
 
 static_assert(sizeof(in_addr) == sizeof(BYTE4), "sizeof(in_addr) != sizeof(BYTE4)");
-//todo sql injection
+
 EVP_CIPHER_CTX *cipherctx;
 
 EVP_MD_CTX *mdctx;
@@ -1002,7 +1002,7 @@ void formatted_message::verify() {
 	delete[] signature;
 	EVP_PKEY_free(senders_public_key);
 }
-//todo message specifications
+
 EVP_PKEY *get_private_key(BYTE8 addr) {
 	FILE *file = fopen(("privateKeys/"s + BYTE8_to_c17charp(addr) + ".pem").c_str(), "rb");
 	EVP_PKEY *retval;
@@ -2349,11 +2349,12 @@ void udp::stop() {
  * suffix strings
  */
 int main(int argc, char *argv[]) {
-	stringstream ss(ss.out | ss.ate);
+	stringstream ss(ss.in | ss.out | ss.ate);
 	PGresult *res;
 	int i, sock = socket(AF_UNIX, SOCK_SEQPACKET, 0);
 	struct sigaction sa;
 	char cwd[PATH_MAX];
+	string tablename("t");
 	ifreq ifr;
 	hci_dev_info hdi;
 
@@ -2371,8 +2372,16 @@ int main(int argc, char *argv[]) {
 	strcpy(cwd, PQescapeString3(getcwd(cwd, PATH_MAX)).c_str());
 	initialize_vars();
 
-	PQclear(execcheckreturn("CREATE TABLE IF NOT EXISTS t"s + BYTE8_to_c17charp(local_addr)
-			+ "(t TIMESTAMP(4) WITHOUT TIME ZONE, PRIMARY KEY(t))"));
+	tablename += BYTE8_to_c17charp(local_addr);
+	res = execcheckreturn("SELECT TRUE FROM pg_class WHERE relname = \'t" + tablename + '\'');
+	if (PQntuples(res) == 0) {
+		PQclear(execcheckreturn("CREATE TABLE t" + tablename
+				+ "(t TIMESTAMP(4) WITHOUT TIME ZONE, PRIMARY KEY(t))"));
+		PQclear(execcheckreturn("INSERT INTO table_owner(tablename, username) "
+				"VALUES(\'t" + tablename + "\', \'public\'"));
+		PQclear(execcheckreturn("ALTER TABLE t" + tablename + " OWNER TO \"PUBLIC\""));
+	}
+	PQclear(res);
 
 	res = execcheckreturn("TABLE proto_name");
 	if (PQntuples(res) == 0) {
@@ -2394,6 +2403,7 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn(ss.str()));
 
 	populate_local_proto_iaddr();
+
 	PQclear(execcheckreturn("TRUNCATE TABLE formatted_message_for_send_receive"));
 
 	res = execcheckreturn("SELECT insecure_port, secure_port FROM configuration "
@@ -2555,12 +2565,6 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CALL config()"));
 	PQclear(execcheckreturn("CALL update_ownerships()"));
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
-	try {
-		PQclear(execcheckreturn("INSERT INTO table_owner(tablename, username) "
-				"VALUES(\'t"s + BYTE8_to_c17charp(local_addr) + "\', \'public\')"));
-	} catch (...) { }
-	PQclear(execcheckreturn("ALTER TABLE t"s + BYTE8_to_c17charp(local_addr)
-			+ " OWNER TO \"PUBLIC\""));
 	main_loop();
 
 	destroy_vars();
