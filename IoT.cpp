@@ -470,6 +470,32 @@ time_t next_timed_rule = 0;
 
 multimap<protocol *, BYTE8> local_proto_iaddr;
 
+EVP_CIPHER_CTX *cipherctx;
+
+EVP_MD_CTX *mdctx;
+
+const EVP_CIPHER *ciphertype;
+
+const EVP_MD *mdtype;
+
+int blocksizetimes2minus1;
+
+int ivlength;
+
+int encrypted_key_max_length;
+
+int formatted_message_max_augment;
+
+#ifdef SIGNAL
+signal_context *global_context;
+
+signal_protocol_store_context *store_context;
+
+pthread_mutex_t global_mutex;
+
+pthread_mutexattr_t global_mutexattr;
+#endif
+
 BYTE8 EUI48_to_EUI64(BYTE8 EUI48) noexcept;
 
 const char *BYTE8_to_c17charp(BYTE8 address);
@@ -809,32 +835,6 @@ int tls_port = 44001;
 #define TLS_BACKLOG 10
 
 static_assert(sizeof(in_addr) == sizeof(BYTE4), "sizeof(in_addr) != sizeof(BYTE4)");
-
-EVP_CIPHER_CTX *cipherctx;
-
-EVP_MD_CTX *mdctx;
-
-const EVP_CIPHER *ciphertype;
-
-const EVP_MD *mdtype;
-
-int blocksizetimes2minus1;
-
-int ivlength;
-
-int encrypted_key_max_length;
-
-int formatted_message_max_augment;
-
-#ifdef SIGNAL
-signal_context *global_context;
-
-signal_protocol_store_context *store_context;
-
-pthread_mutex_t global_mutex;
-
-pthread_mutexattr_t global_mutexattr;
-#endif
 
 in_addr BYTE8_to_ia(BYTE8 address) noexcept {
 	in_addr ia;
@@ -4722,6 +4722,7 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 	map<BYTE8, remote *>::const_iterator iter = addr_remote.find(DST);
 	const char *value;
 	BYTE2 LEN;
+	BYTE8 my_eui = username_configuration[find_owner(DST)]->my_eui;
 
 	opt.header = 1;
 	opt.align = 1;
@@ -4780,6 +4781,9 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 	}
 	data.pop_back();
 	LOG_CPP(" to \"" << data << '\"' << endl);
+	if (my_eui == BROADCAST_PLACEHOLDER) {
+		my_eui = local_addr;
+	}
 	LEN = data.length();
 	fmsg.reset(new(LEN) formatted_message(LEN));
 	fmsg->HD.put_as_byte(0b11111011);//ID,LEN,DST,SRC,CRC,CONF,AUTH
@@ -4787,7 +4791,7 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 	fmsg->ID = iter->second->out_ID++;
 	memcpy_endian(&fmsg->LEN, &LEN, 2);
 	memcpy_endian(&fmsg->DST, &DST, 8);
-	memcpy_endian(&fmsg->SRC, &local_addr, 8);
+	memcpy_endian(&fmsg->SRC, &my_eui, 8);
 	data.copy(reinterpret_cast<char *>(fmsg->PL), LEN);
 	fmsg->HD.put_as_byte(header::reverse_byte(fmsg->HD.get_as_byte()));
 	fmsg->CRC = givecrc32c(reinterpret_cast<BYTE *>(fmsg.get()) + 4, LEN + fields_MAX);
@@ -4796,7 +4800,7 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 	if (little_endian) {
 		fmsg->LEN = LEN;
 		fmsg->DST = DST;
-		fmsg->SRC = local_addr;
+		fmsg->SRC = my_eui;
 	}
 	LOG_CPP("sending " << *fmsg << endl);
 	send_formatted_message(fmsg.release());
