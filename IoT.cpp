@@ -664,6 +664,41 @@ protocol *find_protocol_by_id(const char *id);
 
 protocol *find_protocol_by_name(const char *name);
 
+#ifdef SIGNAL
+void test_lock(void *user_data);
+
+void test_unlock(void *user_data);
+#endif
+
+EVP_PKEY *get_private_key(BYTE8 addr);
+
+EVP_PKEY *get_public_key(BYTE8 addr);
+
+void serialize_digital_envelope(const BYTE *ciphertext, int ciphertext_len,
+		const BYTE *encrypted_key, int encrypted_key_len, const BYTE *iv, BYTE *dst, int &dst_len);
+
+void deserialize_digital_envelope(const BYTE *src, int src_len, BYTE *&ciphertext,
+		int &ciphertext_len, BYTE *&encrypted_key, int &encrypted_key_len, BYTE *&iv);
+
+void serialize_digital_signature(const BYTE *signature, int signature_len, BYTE *dst, int &dst_len);
+
+void deserialize_digital_signature(const BYTE *src, int src_len, BYTE *&signature,
+		int &signature_len);
+
+void seal_digital_envelope(EVP_PKEY *receivers_public_key, const BYTE *plaintext,
+		int plaintext_len, BYTE *&ciphertext, int &ciphertext_len, BYTE *&encrypted_key,
+		int &encrypted_key_len, BYTE *&iv);
+
+void open_digital_envelope(EVP_PKEY *receivers_private_key, const BYTE *ciphertext,
+		int ciphertext_len, const BYTE *encrypted_key, int encrypted_key_len, const BYTE *iv,
+		BYTE *plaintext, int &plaintext_len);
+
+void create_digital_signature(EVP_PKEY *senders_private_key, const BYTE *plaintext,
+		int plaintext_len, BYTE *&signature, int &signature_len);
+
+void verify_digital_signature(EVP_PKEY *senders_public_key, const BYTE *plaintext,
+		int plaintext_len, const BYTE *signature, int signature_len);
+
 class protocol {
 
 private:
@@ -846,41 +881,6 @@ in_addr BYTE8_to_ia(BYTE8 address) noexcept {
 	}
 	return ia;
 }
-
-#ifdef SIGNAL
-void test_lock(void *user_data);
-
-void test_unlock(void *user_data);
-#endif
-
-EVP_PKEY *get_private_key(BYTE8 addr);
-
-EVP_PKEY *get_public_key(BYTE8 addr);
-
-void serialize_digital_envelope(const BYTE *ciphertext, int ciphertext_len,
-		const BYTE *encrypted_key, int encrypted_key_len, const BYTE *iv, BYTE *dst, int &dst_len);
-
-void deserialize_digital_envelope(const BYTE *src, int src_len, BYTE *&ciphertext,
-		int &ciphertext_len, BYTE *&encrypted_key, int &encrypted_key_len, BYTE *&iv);
-
-void serialize_digital_signature(const BYTE *signature, int signature_len, BYTE *dst, int &dst_len);
-
-void deserialize_digital_signature(const BYTE *src, int src_len, BYTE *&signature,
-		int &signature_len);
-
-void seal_digital_envelope(EVP_PKEY *receivers_public_key, const BYTE *plaintext,
-		int plaintext_len, BYTE *&ciphertext, int &ciphertext_len, BYTE *&encrypted_key,
-		int &encrypted_key_len, BYTE *&iv);
-
-void open_digital_envelope(EVP_PKEY *receivers_private_key, const BYTE *ciphertext,
-		int ciphertext_len, const BYTE *encrypted_key, int encrypted_key_len, const BYTE *iv,
-		BYTE *plaintext, int &plaintext_len);
-
-void create_digital_signature(EVP_PKEY *senders_private_key, const BYTE *plaintext,
-		int plaintext_len, BYTE *&signature, int &signature_len);
-
-void verify_digital_signature(EVP_PKEY *senders_public_key, const BYTE *plaintext,
-		int plaintext_len, const BYTE *signature, int signature_len);
 
 BYTE8 ia_to_BYTE8(in_addr ia) noexcept {
 	BYTE8 address = 0x00000000'00000000;
@@ -3594,8 +3594,10 @@ formatted_message *receive_formatted_message() {
 				LOG_CPP("received QUICK " << *fmsg << endl);
 			} else {
 				LOG_CPP("received HELLO " << *fmsg << endl);
-				fmsg->DST = c->default_gateway;
+				if (c->default_gateway != BROADCAST_PLACEHOLDER) {
+					fmsg->DST = c->default_gateway;
 				send_formatted_message(fmsg.release());
+				}
 				continue;
 			}
 			return fmsg.release();
