@@ -549,6 +549,11 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 
 BYTE8 c17charp_to_BYTE8(const char *address);
 
+template<typename type>
+void instantiate_protocol_if_enabled();
+
+const char *get_typename(const type_info &type);
+
 ostream &operator<<(ostream &os, const raw_message &rmsg) noexcept;
 
 ostream &operator<<(ostream &os, const my_time_point &point) noexcept;
@@ -756,11 +761,6 @@ public:
 	virtual ~protocol();
 
 };
-
-template<typename type>
-void instantiate_protocol_if_enabled();
-
-const char *get_typename(const type_info &type);
 
 protocol::protocol() : my_id(unique_id()), recv_all_thread(nullptr), run(true) { }
 
@@ -3342,6 +3342,7 @@ void main_loop() {
 	istringstream iss;
 	ostringstream oss(oss.out | oss.ate);
 	PGresult *res;
+	BYTE8 my_eui;
 
 	do {
 		try {
@@ -3362,8 +3363,13 @@ void main_loop() {
 				case '\xFD'://WITH
 				case '\xBE'://SELECT
 					/* SELECT(_SUBSCRIBE) */
-					convert_select(query, remote_FROM_prefix + BYTE8_to_c17charp(fmsg->SRC) + ' ');
-					format_select(query);
+					my_eui = username_configuration[find_owner(fmsg->SRC)]->my_eui;
+					if (my_eui == BROADCAST_PLACEHOLDER) {
+						my_eui = local_addr;
+					}
+					convert_select(query, remote_FROM_prefix + BYTE8_to_c17charp(fmsg->SRC) + /**/' '
+							+  " t"s + BYTE8_to_c17charp(my_eui) + ' ');/**/
+					format_select(query);//
 					i = query.rfind(" SUBSCRIBE ");
 					if (i != static_cast<int>(string::npos)) {
 						iss.str(query.substr(i + 11));//strlen(" SUBSCRIBE ")=11
