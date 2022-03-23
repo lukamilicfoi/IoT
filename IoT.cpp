@@ -1003,225 +1003,6 @@ void formatted_message::verify() {
 	EVP_PKEY_free(senders_public_key);
 }
 
-EVP_PKEY *get_private_key(BYTE8 addr) {
-	FILE *file = fopen(("privateKeys/"s + BYTE8_to_c17charp(addr) + ".pem").c_str(), "rb");
-	EVP_PKEY *retval;
-
-	THR(file == nullptr, system_exception("cannot find privateKey"));
-	retval = PEM_read_PrivateKey(file, nullptr, nullptr, nullptr);
-	THR(retval == nullptr, system_exception("cannot read privateKey"));
-	fclose(file);
-	return retval;
-}
-
-EVP_PKEY *get_public_key(BYTE8 addr) {
-	FILE *file = fopen(("certificates/"s + BYTE8_to_c17charp(addr) + ".pem").c_str(), "rb");
-	X509 *x509;
-	EVP_PKEY *retval;
-
-	THR(file == nullptr, system_exception("cannot find certificate"));
-	x509 = PEM_read_X509(file, nullptr, nullptr, nullptr);
-	THR(x509 == nullptr, system_exception("cannot read certificate"));
-	fclose(file);
-	retval = X509_get_pubkey(x509);
-	THR(retval == nullptr, system_exception("cannot get pubkey"));
-	X509_free(x509);
-	return retval;
-}
-
-void serialize_digital_envelope(const BYTE *ciphertext, int ciphertext_len,
-		const BYTE *encrypted_key, int encrypted_key_len, const BYTE *iv, BYTE *dst, int &dst_len) {
-	int i = ciphertext_len + encrypted_key_len + ivlength + 5;
-
-	THR(i > dst_len, message_exception("too big an envelope created"));
-	dst_len = i;
-	*dst = '@';
-	if (little_endian) {
-		memcpy_reverse(dst + 1, &ciphertext_len, 2);
-		memcpy_reverse(dst + ciphertext_len + 3, &encrypted_key_len, 2);
-	} else {
-		memcpy(dst + 1, reinterpret_cast<BYTE *>(&ciphertext_len) + sizeof(int) - 2, 2);
-		memcpy(dst + ciphertext_len + 3,
-				reinterpret_cast<BYTE *>(&encrypted_key_len) + sizeof(int) - 2, 2);
-	}
-	memcpy(dst + 3, ciphertext, ciphertext_len);
-	memcpy(dst + ciphertext_len + 5, encrypted_key, encrypted_key_len);
-	memcpy(dst + ciphertext_len + encrypted_key_len + 5, iv, ivlength);
-}
-
-void deserialize_digital_envelope(const BYTE *src, int src_len, BYTE *&ciphertext,
-		int &ciphertext_len, BYTE *&encrypted_key, int &encrypted_key_len, BYTE *&iv) {
-	THR(*src != '@', message_exception("envelope malformed"));
-	THR(3 < src_len, message_exception("3 < src_len"));
-	if (little_endian) {
-		memcpy_reverse(&ciphertext_len, src + 1, 2);
-		THR(ciphertext_len + 5 < src_len, message_exception("ciphertext_len + 5 < src_len"));
-		memcpy_reverse(&encrypted_key_len, src + ciphertext_len + 3, 2);
-	} else {
-		memcpy(reinterpret_cast<BYTE *>(&ciphertext_len) + sizeof(int) - 2, src + 1, 2);
-		THR(ciphertext_len + 5 < src_len, message_exception("ciphertext_len + 5 < src_len"));
-		memcpy(reinterpret_cast<BYTE *>(&encrypted_key_len) + sizeof(int) - 2,
-				src + ciphertext_len + 3, 2);
-	}
-	THR(encrypted_key_len + ciphertext_len + ivlength + 5 < src_len,
-			message_exception("encrypted_key_len + ciphertext_len + ivlength + 5 < src_len"));
-	ciphertext = new BYTE[ciphertext_len];
-	memcpy(ciphertext, src + 3, ciphertext_len);
-	encrypted_key = new BYTE[encrypted_key_len];
-	memcpy(encrypted_key, ciphertext + ciphertext_len + 2, encrypted_key_len);
-	iv = new BYTE[ivlength];
-	memcpy(iv, encrypted_key + encrypted_key_len, ivlength);
-}
-
-void serialize_digital_signature(const BYTE *signature, int signature_len, BYTE *dst,
-		int &dst_len) {
-	int i = signature_len + 1;
-
-	THR(i > dst_len, message_exception("too big a signature created"));
-	dst_len = i;
-	*dst = '#';
-	memcpy(dst + 1, signature, signature_len);
-}
-
-void deserialize_digital_signature(const BYTE *src, int src_len, BYTE *&signature,
-		int &signature_len) {
-	THR(*src != '#', message_exception("signature malformed"));
-	signature_len = src_len - 1;
-	signature = new BYTE[signature_len];
-	memcpy(signature, src + 1, signature_len);
-}
-
-void seal_digital_envelope(EVP_PKEY *receivers_public_key, const BYTE *plaintext,
-		int plaintext_len, BYTE *&ciphertext, int &ciphertext_len, BYTE *&encrypted_key,
-		int &encrypted_key_len, BYTE *&iv) {
-	int len;
-
-	THR(EVP_CIPHER_CTX_reset(cipherctx) == 0, system_exception("cannot reset cipherctx"));
-	encrypted_key = new BYTE[encrypted_key_max_length];
-	iv = new BYTE[ivlength];
-	THR(EVP_SealInit(cipherctx, ciphertype, &encrypted_key, &encrypted_key_len, iv,
-			&receivers_public_key, 1) == 0, message_exception("cannot sealinit"));
-	ciphertext = new BYTE[plaintext_len + blocksizetimes2minus1];
-	THR(EVP_SealUpdate(cipherctx, ciphertext, &len, plaintext, plaintext_len) == 0,
-			message_exception("cannot sealupdate"));
-	ciphertext_len = len;
-	THR(EVP_SealFinal(cipherctx, ciphertext + len, &len) == 0,
-			message_exception("cannot sealfinal"));
-	ciphertext_len += len;
-}
-
-void open_digital_envelope(EVP_PKEY *receivers_private_key, const BYTE *ciphertext,
-		int ciphertext_len, const BYTE *encrypted_key, int encrypted_key_len, const BYTE *iv,
-		BYTE *plaintext, int &plaintext_len) {
-	int len;
-
-	THR(plaintext_len < ciphertext_len + blocksizetimes2minus1,
-			message_exception("no room for plaintext"));
-	THR(EVP_CIPHER_CTX_reset(cipherctx) == 0, system_exception("cannot reset cipherctx"));
-	THR(EVP_OpenInit(cipherctx, ciphertype, encrypted_key, encrypted_key_len, iv,
-			receivers_private_key) == 0, message_exception("cannot openinit"));
-	THR(EVP_OpenUpdate(cipherctx, plaintext, &len, ciphertext, ciphertext_len) == 0,
-			message_exception("cannot openupdate"));
-	plaintext_len = len;
-	THR(EVP_OpenFinal(cipherctx, plaintext + len, &len) == 0,
-			message_exception("cannot openfinal"));
-	plaintext_len += len;
-}
-
-void create_digital_signature(EVP_PKEY *senders_private_key, const BYTE *plaintext,
-		int plaintext_len, BYTE *&signature, int &signature_len) {
-	unsigned long len;
-
-	THR(EVP_MD_CTX_reset(mdctx) == 0, system_exception("cannot reset mdctx"));
-	THR(EVP_DigestSignInit(mdctx, nullptr, mdtype, nullptr, senders_private_key) == 0,
-			message_exception("cannot digestsigninit"));
-	THR(EVP_DigestSignUpdate(mdctx, plaintext, plaintext_len) == 0,
-			message_exception("cannot digestsignupdate"));
-	THR(EVP_DigestSignFinal(mdctx, nullptr, &len) == 0,
-			message_exception("cannot digestsignfinal1"));
-	signature_len = len;
-	signature = new BYTE[signature_len];
-	THR(EVP_DigestSignFinal(mdctx, signature, &len) == 0,
-			message_exception("cannot digestsignfinal2"));
-}
-
-void verify_digital_signature(EVP_PKEY *senders_public_key, const BYTE *plaintext,
-		int plaintext_len, const BYTE *signature, int signature_len) {
-	THR(EVP_MD_CTX_reset(mdctx) == 0, system_exception("cannot reset mdctx"));
-	THR(EVP_DigestVerifyInit(mdctx, nullptr, mdtype, nullptr, senders_public_key) == 0,
-			message_exception("cannot digestverifyinit"));
-	THR(EVP_DigestVerifyUpdate(mdctx, plaintext, plaintext_len) == 0,
-			message_exception("cannot digestverifyupdate"));
-	THR(EVP_DigestVerifyFinal(mdctx, signature, signature_len) == 0,
-			message_exception("cannot digestverifyfinal"));
-}
-
-extern "C" const char *SSL_error_string(int e, char *buf) {
-	const char *retval = "";
-
-	switch (e) {
-	case SSL_ERROR_NONE:
-		retval = "NONE";
-		break;
-	case SSL_ERROR_WANT_READ:
-		retval = "WANT_READ";
-		break;
-	case SSL_ERROR_WANT_WRITE:
-		retval = "WANT_WRITE";
-		break;
-	case SSL_ERROR_WANT_CONNECT:
-		retval = "WANT_CONNECT";
-		break;
-	case SSL_ERROR_WANT_ACCEPT:
-		retval = "WANT_ACCEPT";
-		break;
-	case SSL_ERROR_WANT_X509_LOOKUP:
-		retval = "WANT_X509_LOOKUP";
-		break;
-	case SSL_ERROR_WANT_ASYNC:
-		retval = "WANT_ASYNC";
-		break;
-	case SSL_ERROR_WANT_ASYNC_JOB:
-		retval = "WANT_ASYNC_JOB";
-		break;
-	case SSL_ERROR_SYSCALL:
-		retval = "SYSCALL";
-		break;
-	case SSL_ERROR_SSL:
-		retval = "SSL";
-	}
-	if (buf != NULL) {
-		strcpy(buf, retval);
-	}
-	return retval;
-}
-
-string SSL_give_error(const SSL *ssl, int ret) {
-	string retval(SSL_error_string(SSL_get_error(ssl, ret), nullptr));
-
-	if (retval == "SYSCALL") {
-		retval += strerror(errno);
-	} else if (retval == "SSL") {
-		retval += ERR_error_string(ERR_get_error(), nullptr);
-	}
-	return retval;
-}
-
-extern "C" char *PQescapeString2(PGconn *conn, const char *str, size_t length) {
-	char *buffer = new char[(length << 1) + 1];
-
-	PQescapeStringConn(conn, buffer, str, length, NULL);
-	return buffer;
-}
-
-string PQescapeString3(string str) {
-	char *buffer = PQescapeString2(conn, str.c_str(), str.length());
-
-	str = buffer;
-	delete buffer;
-	return str;
-}
-
 #define ADVERTISING_INTERVAL_MIN 1024
 
 #define ADVERTISING_INTERVAL_MAX 1024
@@ -2819,6 +2600,225 @@ const char *BYTE8_to_c17charp(BYTE8 address) {
 	return ret;
 }
 
+EVP_PKEY *get_private_key(BYTE8 addr) {
+	FILE *file = fopen(("privateKeys/"s + BYTE8_to_c17charp(addr) + ".pem").c_str(), "rb");
+	EVP_PKEY *retval;
+
+	THR(file == nullptr, system_exception("cannot find privateKey"));
+	retval = PEM_read_PrivateKey(file, nullptr, nullptr, nullptr);
+	THR(retval == nullptr, system_exception("cannot read privateKey"));
+	fclose(file);
+	return retval;
+}
+
+EVP_PKEY *get_public_key(BYTE8 addr) {
+	FILE *file = fopen(("certificates/"s + BYTE8_to_c17charp(addr) + ".pem").c_str(), "rb");
+	X509 *x509;
+	EVP_PKEY *retval;
+
+	THR(file == nullptr, system_exception("cannot find certificate"));
+	x509 = PEM_read_X509(file, nullptr, nullptr, nullptr);
+	THR(x509 == nullptr, system_exception("cannot read certificate"));
+	fclose(file);
+	retval = X509_get_pubkey(x509);
+	THR(retval == nullptr, system_exception("cannot get pubkey"));
+	X509_free(x509);
+	return retval;
+}
+
+void serialize_digital_envelope(const BYTE *ciphertext, int ciphertext_len,
+		const BYTE *encrypted_key, int encrypted_key_len, const BYTE *iv, BYTE *dst, int &dst_len) {
+	int i = ciphertext_len + encrypted_key_len + ivlength + 5;
+
+	THR(i > dst_len, message_exception("too big an envelope created"));
+	dst_len = i;
+	*dst = '@';
+	if (little_endian) {
+		memcpy_reverse(dst + 1, &ciphertext_len, 2);
+		memcpy_reverse(dst + ciphertext_len + 3, &encrypted_key_len, 2);
+	} else {
+		memcpy(dst + 1, reinterpret_cast<BYTE *>(&ciphertext_len) + sizeof(int) - 2, 2);
+		memcpy(dst + ciphertext_len + 3,
+				reinterpret_cast<BYTE *>(&encrypted_key_len) + sizeof(int) - 2, 2);
+	}
+	memcpy(dst + 3, ciphertext, ciphertext_len);
+	memcpy(dst + ciphertext_len + 5, encrypted_key, encrypted_key_len);
+	memcpy(dst + ciphertext_len + encrypted_key_len + 5, iv, ivlength);
+}
+
+void deserialize_digital_envelope(const BYTE *src, int src_len, BYTE *&ciphertext,
+		int &ciphertext_len, BYTE *&encrypted_key, int &encrypted_key_len, BYTE *&iv) {
+	THR(*src != '@', message_exception("envelope malformed"));
+	THR(3 < src_len, message_exception("3 < src_len"));
+	if (little_endian) {
+		memcpy_reverse(&ciphertext_len, src + 1, 2);
+		THR(ciphertext_len + 5 < src_len, message_exception("ciphertext_len + 5 < src_len"));
+		memcpy_reverse(&encrypted_key_len, src + ciphertext_len + 3, 2);
+	} else {
+		memcpy(reinterpret_cast<BYTE *>(&ciphertext_len) + sizeof(int) - 2, src + 1, 2);
+		THR(ciphertext_len + 5 < src_len, message_exception("ciphertext_len + 5 < src_len"));
+		memcpy(reinterpret_cast<BYTE *>(&encrypted_key_len) + sizeof(int) - 2,
+				src + ciphertext_len + 3, 2);
+	}
+	THR(encrypted_key_len + ciphertext_len + ivlength + 5 < src_len,
+			message_exception("encrypted_key_len + ciphertext_len + ivlength + 5 < src_len"));
+	ciphertext = new BYTE[ciphertext_len];
+	memcpy(ciphertext, src + 3, ciphertext_len);
+	encrypted_key = new BYTE[encrypted_key_len];
+	memcpy(encrypted_key, ciphertext + ciphertext_len + 2, encrypted_key_len);
+	iv = new BYTE[ivlength];
+	memcpy(iv, encrypted_key + encrypted_key_len, ivlength);
+}
+
+void serialize_digital_signature(const BYTE *signature, int signature_len, BYTE *dst,
+		int &dst_len) {
+	int i = signature_len + 1;
+
+	THR(i > dst_len, message_exception("too big a signature created"));
+	dst_len = i;
+	*dst = '#';
+	memcpy(dst + 1, signature, signature_len);
+}
+
+void deserialize_digital_signature(const BYTE *src, int src_len, BYTE *&signature,
+		int &signature_len) {
+	THR(*src != '#', message_exception("signature malformed"));
+	signature_len = src_len - 1;
+	signature = new BYTE[signature_len];
+	memcpy(signature, src + 1, signature_len);
+}
+
+void seal_digital_envelope(EVP_PKEY *receivers_public_key, const BYTE *plaintext,
+		int plaintext_len, BYTE *&ciphertext, int &ciphertext_len, BYTE *&encrypted_key,
+		int &encrypted_key_len, BYTE *&iv) {
+	int len;
+
+	THR(EVP_CIPHER_CTX_reset(cipherctx) == 0, system_exception("cannot reset cipherctx"));
+	encrypted_key = new BYTE[encrypted_key_max_length];
+	iv = new BYTE[ivlength];
+	THR(EVP_SealInit(cipherctx, ciphertype, &encrypted_key, &encrypted_key_len, iv,
+			&receivers_public_key, 1) == 0, message_exception("cannot sealinit"));
+	ciphertext = new BYTE[plaintext_len + blocksizetimes2minus1];
+	THR(EVP_SealUpdate(cipherctx, ciphertext, &len, plaintext, plaintext_len) == 0,
+			message_exception("cannot sealupdate"));
+	ciphertext_len = len;
+	THR(EVP_SealFinal(cipherctx, ciphertext + len, &len) == 0,
+			message_exception("cannot sealfinal"));
+	ciphertext_len += len;
+}
+
+void open_digital_envelope(EVP_PKEY *receivers_private_key, const BYTE *ciphertext,
+		int ciphertext_len, const BYTE *encrypted_key, int encrypted_key_len, const BYTE *iv,
+		BYTE *plaintext, int &plaintext_len) {
+	int len;
+
+	THR(plaintext_len < ciphertext_len + blocksizetimes2minus1,
+			message_exception("no room for plaintext"));
+	THR(EVP_CIPHER_CTX_reset(cipherctx) == 0, system_exception("cannot reset cipherctx"));
+	THR(EVP_OpenInit(cipherctx, ciphertype, encrypted_key, encrypted_key_len, iv,
+			receivers_private_key) == 0, message_exception("cannot openinit"));
+	THR(EVP_OpenUpdate(cipherctx, plaintext, &len, ciphertext, ciphertext_len) == 0,
+			message_exception("cannot openupdate"));
+	plaintext_len = len;
+	THR(EVP_OpenFinal(cipherctx, plaintext + len, &len) == 0,
+			message_exception("cannot openfinal"));
+	plaintext_len += len;
+}
+
+void create_digital_signature(EVP_PKEY *senders_private_key, const BYTE *plaintext,
+		int plaintext_len, BYTE *&signature, int &signature_len) {
+	unsigned long len;
+
+	THR(EVP_MD_CTX_reset(mdctx) == 0, system_exception("cannot reset mdctx"));
+	THR(EVP_DigestSignInit(mdctx, nullptr, mdtype, nullptr, senders_private_key) == 0,
+			message_exception("cannot digestsigninit"));
+	THR(EVP_DigestSignUpdate(mdctx, plaintext, plaintext_len) == 0,
+			message_exception("cannot digestsignupdate"));
+	THR(EVP_DigestSignFinal(mdctx, nullptr, &len) == 0,
+			message_exception("cannot digestsignfinal1"));
+	signature_len = len;
+	signature = new BYTE[signature_len];
+	THR(EVP_DigestSignFinal(mdctx, signature, &len) == 0,
+			message_exception("cannot digestsignfinal2"));
+}
+
+void verify_digital_signature(EVP_PKEY *senders_public_key, const BYTE *plaintext,
+		int plaintext_len, const BYTE *signature, int signature_len) {
+	THR(EVP_MD_CTX_reset(mdctx) == 0, system_exception("cannot reset mdctx"));
+	THR(EVP_DigestVerifyInit(mdctx, nullptr, mdtype, nullptr, senders_public_key) == 0,
+			message_exception("cannot digestverifyinit"));
+	THR(EVP_DigestVerifyUpdate(mdctx, plaintext, plaintext_len) == 0,
+			message_exception("cannot digestverifyupdate"));
+	THR(EVP_DigestVerifyFinal(mdctx, signature, signature_len) == 0,
+			message_exception("cannot digestverifyfinal"));
+}
+
+extern "C" const char *SSL_error_string(int e, char *buf) {
+	const char *retval = "";
+
+	switch (e) {
+	case SSL_ERROR_NONE:
+		retval = "NONE";
+		break;
+	case SSL_ERROR_WANT_READ:
+		retval = "WANT_READ";
+		break;
+	case SSL_ERROR_WANT_WRITE:
+		retval = "WANT_WRITE";
+		break;
+	case SSL_ERROR_WANT_CONNECT:
+		retval = "WANT_CONNECT";
+		break;
+	case SSL_ERROR_WANT_ACCEPT:
+		retval = "WANT_ACCEPT";
+		break;
+	case SSL_ERROR_WANT_X509_LOOKUP:
+		retval = "WANT_X509_LOOKUP";
+		break;
+	case SSL_ERROR_WANT_ASYNC:
+		retval = "WANT_ASYNC";
+		break;
+	case SSL_ERROR_WANT_ASYNC_JOB:
+		retval = "WANT_ASYNC_JOB";
+		break;
+	case SSL_ERROR_SYSCALL:
+		retval = "SYSCALL";
+		break;
+	case SSL_ERROR_SSL:
+		retval = "SSL";
+	}
+	if (buf != NULL) {
+		strcpy(buf, retval);
+	}
+	return retval;
+}
+
+string SSL_give_error(const SSL *ssl, int ret) {
+	string retval(SSL_error_string(SSL_get_error(ssl, ret), nullptr));
+
+	if (retval == "SYSCALL") {
+		retval += strerror(errno);
+	} else if (retval == "SSL") {
+		retval += ERR_error_string(ERR_get_error(), nullptr);
+	}
+	return retval;
+}
+
+extern "C" char *PQescapeString2(PGconn *conn, const char *str, size_t length) {
+	char *buffer = new char[(length << 1) + 1];
+
+	PQescapeStringConn(conn, buffer, str, length, NULL);
+	return buffer;
+}
+
+string PQescapeString3(string str) {
+	char *buffer = PQescapeString2(conn, str.c_str(), str.length());
+
+	str = buffer;
+	delete buffer;
+	return str;
+}
+
 PGresult *execcheckreturn(string query) {
 	ExecStatusType est;
 	PQprintOpt opt = { 0 };
@@ -3299,8 +3299,6 @@ void decode_message(raw_message &rmsg, formatted_message &fmsg) {
 		THR(i + 7 >= rmsg.TML, message_exception("DST absent"));
 		memcpy_endian(&fmsg.DST, rmsg.msg + i, 8);
 		i += 8;
-	} else {
-		fmsg.DST = local_addr;
 	}
 	if (fmsg.HD.S) {
 		THR(i + 7 >= rmsg.TML, message_exception("SRC absent"));
@@ -3332,6 +3330,12 @@ void decode_message(raw_message &rmsg, formatted_message &fmsg) {
 		LOG_CPP("received LEN " << fmsg.LEN
 				<< " != calculated LEN " << rmsg.TML - i << endl);
 		throw message_exception("wrong LEN");
+	}
+	if (!fmsg.HD.D) {
+		fmsg.DST = username_configuration[find_owner(fmsg.SRC)]->my_eui;
+		if (fmsg.DST == BROADCAST_PLACEHOLDER) {
+			fmsg.DST = local_addr;
+		}
 	}
 }
 
