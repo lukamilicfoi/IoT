@@ -353,7 +353,7 @@ struct remote {
 };
 
 struct send_inject_struct {
-	char proto_id[13];//strlen("my4294967296")=12
+	char proto[5];//strlen("tcp6")=4
 	BYTE imm_addr[8];
 	int insecure_port;
 	int secure_port;
@@ -531,7 +531,7 @@ void execute_semicolon_separated_commands(const char *preamble, formatted_messag
 
 void decode_bytes_from_stream(istream &stream, BYTE *bytes, size_t len);
 
-void send_inject_from_rule(const char *message, const char *proto_id, const char *imm_addr,
+void send_inject_from_rule(const char *message, const char *proto, const char *imm_addr,
 		int insecure_port, int secure_port, bool CCF, bool ACF, bool broadcast,
 		bool override, bool send);
 
@@ -804,7 +804,7 @@ void protocol::recv_all(protocol *proto) {
 	raw_message *rmsg;
 
 	LOG_CPP("started recv_all thread " << this_thread::get_id() << " for class "
-			<< typeid(*proto).name() << " and id " << proto->get_my_id() << endl);
+			<< typeid(*proto).name() << endl);
 	while (true) {
 		rmsg = proto->recv_once();
 		if (!proto->run) {
@@ -822,7 +822,7 @@ void protocol::send_all(protocol *proto) {
 	raw_message *rmsg;
 
 	LOG_CPP("started send_all thread " << this_thread::get_id() << " for class "
-			<< typeid(*proto).name() << " and id " << proto->get_my_id() << endl);
+			<< typeid(*proto).name() << endl);
 	while (true) {
 		if (mq_receive(proto->get_my_mq(),
 				reinterpret_cast<char *>(&rmsg), sizeof(rmsg), nullptr) < 0) {
@@ -2273,7 +2273,7 @@ int main(int argc, char *argv[]) {
 
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS ext(addr_id TEXT) CASCADE"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS send_inject(send BOOLEAN, message BYTEA, "
-			"proto_id TEXT, imm_addr BYTEA, insecure_port INTEGER, secure_port INTEGER, "
+			"proto TEXT, imm_addr BYTEA, insecure_port INTEGER, secure_port INTEGER, "
 			"CCF BOOLEAN, ACF BOOLEAN, broadcast BOOLEAN, override BOOLEAN)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS load_store(load BOOLEAN)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS config()"));
@@ -2286,7 +2286,7 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE PROCEDURE ext(addr_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'ext\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE send_inject(send BOOLEAN, message BYTEA, "
-			"proto_id TEXT, imm_addr BYTEA, insecure_port INTEGER, secure_port INTEGER, "
+			"proto TEXT, imm_addr BYTEA, insecure_port INTEGER, secure_port INTEGER, "
 			"CCF BOOLEAN, ACF BOOLEAN, broadcast BOOLEAN, override BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'send_inject\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE load_store(load BOOLEAN) AS \'"s + cwd
@@ -2887,8 +2887,8 @@ extern "C" Datum send_inject(PG_FUNCTION_ARGS) {
 	bool send = PG_GETARG_BOOL(0), CCF = PG_GETARG_BOOL(6), ACF = PG_GETARG_BOOL(7),
 			broadcast = PG_GETARG_BOOL(8), override = PG_GETARG_BOOL(9);
 	bytea *message = PG_GETARG_BYTEA_PP(1), *imm_addr = PG_GETARG_BYTEA_PP(3);
-	text *proto_id_sql = PG_GETARG_TEXT_PP(2);
-	int message_length = VARSIZE_ANY_EXHDR(message), proto_id_len = VARSIZE_ANY_EXHDR(proto_id_sql),
+	text *proto_sql = PG_GETARG_TEXT_PP(2);
+	int message_length = VARSIZE_ANY_EXHDR(message), proto_len = VARSIZE_ANY_EXHDR(proto_sql),
 			fd = open("/tmp/flock_cpp", O_WRONLY | O_CREAT, 0777),
 			insecure_port = PG_GETARG_INT32(4), secure_port = PG_GETARG_INT32(5);
 	send_inject_struct *sis = new(message_length) send_inject_struct(message_length);
@@ -2900,8 +2900,8 @@ extern "C" Datum send_inject(PG_FUNCTION_ARGS) {
 	THR(prlimit_ack_mq < 0, system_exception("cannot open prlimit_ack_mq"));
 	THR(send_inject_mq < 0, system_exception("cannot open send_inject_mq"));
 	THR(fd < 0, system_exception("cannot open fd"));
-	memset(sis->proto_id, 0, 13);
-	memcpy(sis->proto_id, VARDATA_ANY(proto_id_sql), proto_id_len < 12 ? proto_id_len : 12);
+	memset(sis->proto, 0, 13);
+	memcpy(sis->proto, VARDATA_ANY(proto_sql), proto_len < 12 ? proto_len : 12);
 	memcpy(sis->imm_addr, VARDATA_ANY(imm_addr), 8);
 	sis->insecure_port = insecure_port;
 	sis->secure_port = secure_port;
@@ -2997,14 +2997,14 @@ void send_inject2(const send_inject_struct &sis) {
 	memcpy_endian(&rmsg->imm_addr, sis.imm_addr, 8);
 	LOG_CPP("received for " << (sis.send ? "sending" : "injecting") << ": \"");
 	LOG_CP(print_message_c, sis.message_content, sis.message_length);
-	LOG_CPP("\" with protocol id \"" << sis.proto_id << "\" and imm_" << (sis.send ? "DST" : "SRC")
+	LOG_CPP("\" with protocol \"" << sis.proto << "\" and imm_" << (sis.send ? "DST" : "SRC")
 			<< ' ' << BYTE8_to_c17charp(rmsg->imm_addr) << " and insecure_port = "
 			<< sis.insecure_port << " and secure_port = " << sis.secure_port << " with "
 			<< (sis.CCF ? "CCF" : "!CCF") << " and " << (sis.ACF ? "ACF" : "!ACF")
 			<< " and broadcast = " << BOOLALPHA_UPPERCASE(sis.broadcast)
 			<< " and override = " << BOOLALPHA_UPPERCASE(sis.override) << endl);
 	rmsg->TML = sis.message_length;
-	rmsg->proto = find_protocol_by_id(sis.proto_id);
+	rmsg->proto = find_protocol_by_id(sis.proto);
 	memcpy(rmsg->msg, sis.message_content, rmsg->TML);
 	rmsg->TWR = my_now();
 	rmsg->insecure_port = sis.insecure_port;
@@ -3804,7 +3804,7 @@ raw_message *receive_raw_message() {
 		if (next_timed_rule <= ts.tv_sec++ && next_timed_rule > 0) {
 			LOG_CPP("checking for rules" << endl);
 			ss.str("SELECT username, id, query_command_nothing, query_command_1, "
-					"send_inject_query_command_nothing, query_command_2, proto_id, imm_addr, "
+					"send_inject_query_command_nothing, query_command_2, proto, imm_addr, "
 					"insecure_port, secure_port, CCF, ACF, broadcast, override, activate, "
 					"deactivate, FROM rules WHERE is_active AND next_run <= ");
 			ss.clear();
@@ -3899,7 +3899,7 @@ void decode_bytes_from_stream(istream &stream, BYTE *bytes, size_t len) {
 	}
 }
 
-void send_inject_from_rule(const char *message, const char *proto_id, const char *imm_addr,
+void send_inject_from_rule(const char *message, const char *proto, const char *imm_addr,
 		int insecure_port, int secure_port, bool CCF, bool ACF, bool broadcast,
 		bool override, bool send) {
 	istringstream iss(message);
@@ -3907,7 +3907,7 @@ void send_inject_from_rule(const char *message, const char *proto_id, const char
 	send_inject_struct *sis = new(message_length) send_inject_struct(message_length);
 	BYTE8 imm_addr8 = c17charp_to_BYTE8(imm_addr);
 
-	strcpy(sis->proto_id, proto_id);
+	strcpy(sis->proto, proto);
 	memcpy_endian(sis->imm_addr, &imm_addr8, 8);
 	sis->insecure_port = insecure_port;
 	sis->secure_port = secure_port;
@@ -3940,7 +3940,7 @@ void apply_rule_beginning(PGresult *res_rules, int &current_id, int i, const cha
 
 void insert_message(const formatted_message &fmsg, const raw_message &rmsg) {
 	ostringstream oss("INSERT INTO message(HD, ID, LEN, DST, SRC, PL, CRC, ENCRYPTED, SIGNED, "
-			"broadcast, override, proto_name, imm_addr, insecure_port, secure_port, CCF, ACF) "
+			"broadcast, override, proto, imm_addr, insecure_port, secure_port, CCF, ACF) "
 			"VALUES(\'\\x", oss.out | oss.ate);
 
 	oss << HEX_NOSHOWB(static_cast<int>(fmsg.HD.get_as_byte()), 2) << "\', \'\\x"
@@ -3962,12 +3962,12 @@ formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool 
 	string current_username(PQescapeString3(find_owner(send ? fmsg->DST : fmsg->SRC))), select((send
 			? "SELECT username, id, send_receive_seconds, filter, drop_modify_nothing, "
 			"modification, query_command_nothing, query_command_1, "
-			"send_inject_query_command_nothing, query_command_2, proto_name, imm_addr, "
+			"send_inject_query_command_nothing, query_command_2, proto, imm_addr, "
 			"insecure_port, secure_port, CCF, ACF, broadcast, override, activate, deactivate, "
 			"is_active FROM rules WHERE send_receive_seconds = 0 AND is_active AND username = \'"
 			: "SELECT username, id, send_receive_seconds, filter, drop_modify_nothing, "
 			"modification, query_command_nothing, query_command_1, "
-			"send_inject_query_command_nothing, query_command_2, proto_name, imm_addr, "
+			"send_inject_query_command_nothing, query_command_2, proto, imm_addr, "
 			"insecure_port, secure_port, CCF, ACF, broadcast, override, activate, deactivate, "
 			"is_active FROM rules WHERE send_receive_seconds = 1 AND is_active AND username = \'")
 			+ current_username + '\'');
@@ -4013,7 +4013,7 @@ formatted_message *apply_rules(formatted_message *fmsg, raw_message *rmsg, bool 
 
 void select_message(formatted_message &fmsg, raw_message &rmsg) {
 	PGresult *res = execcheckreturn("SELECT HD, ID, LEN, DST, SRC, PL, CRC, broadcast, override, "
-			"proto_name, imm_addr, insecure_port, secure_port, CCF, ACF FROM message");
+			"proto, imm_addr, insecure_port, secure_port, CCF, ACF FROM message");
 	istringstream iss(PQgetvalue(res, 0, 0) + 2);
 	int i;
 
@@ -4183,7 +4183,7 @@ ostream &operator<<(ostream &os, const raw_message &rmsg) noexcept {
 
 void manually_execute_timed_rule2(const manually_execute_timed_rule_struct &metrs) {
 	ostringstream oss("SELECT username, id, query_command_nothing, query_command_1, "
-			"send_inject_query_command_nothing, query_command_2, proto_name, imm_addr, "
+			"send_inject_query_command_nothing, query_command_2, proto, imm_addr, "
 			"insecure_port, secure_port, CCF, ACF, broadcast, override, activate, deactivate, "
 			"is_active FROM rules WHERE id = ", oss.out | oss.ate);
 	PGresult *res_rules;
