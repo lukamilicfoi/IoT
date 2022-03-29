@@ -349,7 +349,7 @@ struct manually_execute_timed_rule_struct {
 struct remote {
 	map<BYTE8, map<BYTE, my_time_point> *> DST_ID_TWR;
 	BYTE out_ID;
-	map<protocol *, map<BYTE8, my_time_point> *> proto_iSRC_TWR;
+	map<protocol *, map<BYTE8, my_time_point> *> proto_src_TWR;
 };
 
 struct send_inject_struct {
@@ -498,7 +498,7 @@ pthread_mutexattr_t global_mutexattr;
 
 BYTE8 EUI48_to_EUI64(BYTE8 EUI48) noexcept;
 
-const char *BYTE8_to_c17charp(BYTE8 address);
+const char *BYTE8_to_c17charp(BYTE8 eui);
 
 BYTE8 EUI64_to_EUI48(BYTE8 EUI64) noexcept;//not used
 
@@ -547,7 +547,7 @@ void select_message(formatted_message &fmsg, raw_message &rmsg);
 void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int offset,
 		string &select, string &current_username);
 
-BYTE8 c17charp_to_BYTE8(const char *address);
+BYTE8 c17charp_to_BYTE8(const char *eui);
 
 template<typename type>
 void instantiate_protocol_if_enabled();
@@ -637,9 +637,9 @@ void format_insert_body(sti &iter_begin, sti &iter_end, string &temp, vector<dat
 
 bool clean_insert(string data);
 
-void create_table(string address, vector<string> &columns, vector<string> &types);
+void create_table(string eui, vector<string> &columns, vector<string> &types);
 
-void alter_table(string address, vector<string> &columns, const vector<string> &types);
+void alter_table(string eui, vector<string> &columns, const vector<string> &types);
 
 void initialize_vars();
 
@@ -2147,7 +2147,7 @@ int main(int argc, char *argv[]) {
 	}
 	PQclear(res);
 
-	res = execcheckreturn("TABLE proto_name");
+	res = execcheckreturn("TABLE protocols");
 	if (PQntuples(res) == 0) {
 		protocols.push_back(new tcp);
 		protocols.push_back(new udp);
@@ -2158,10 +2158,10 @@ int main(int argc, char *argv[]) {
 		instantiate_protocol_if_enabled<_154>();
 	}
 	PQclear(res);
-	PQclear(execcheckreturn("TRUNCATE TABLE proto_name CASCADE"));//CASCADE needed for table fmforsr
-	ss.str("INSERT INTO proto_name(proto, name) VALUES(");
+	PQclear(execcheckreturn("TRUNCATE TABLE protocols CASCADE"));//CASCADE needed for table fmforsr
+	ss.str("INSERT INTO protocols(proto, enabled) VALUES(");
 	for (const protocol *p : protocols) {
-		ss << '\'' << p->get_my_name() << "\', \'" << get_typename(typeid(*p)) << "\'), (";
+		ss << '\'' << get_typename(typeid(*p)) << "\', TRUE), (";
 	}
 	ss.seekp(-3, ss.end) << '\0';
 	PQclear(execcheckreturn(ss.str()));
@@ -2181,9 +2181,9 @@ int main(int argc, char *argv[]) {
 	dtls_port = tls_port;
 	ss.clear();
 	PQclear(res);
-	res = execcheckreturn("TABLE adapter_name");
+	res = execcheckreturn("TABLE adapters");
 	if (PQntuples(res) == 0) {
-		ss.str("INSERT INTO adapter_name(adapter, name) VALUES(");
+		ss.str("INSERT INTO adapters(adapter, enabled) VALUES(");
 		i = MAX_DEVICE_INDEX;
 		while (find_next_lower_device(sock, ifr, i) >= 0) {
 			THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
@@ -2193,7 +2193,7 @@ int main(int argc, char *argv[]) {
 						system_exception("cannot SIOCSIFFLAGS ioctl"));//privileged operation!!!
 				LOG_CPP("turned on device " << ifr.ifr_name << endl);
 			}
-			ss << i << ", \'" << ifr.ifr_name << "\'), (";
+			ss << '\'' << ifr.ifr_name << "\', TRUE), (";
 		}
 		close(sock);
 		sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
@@ -2204,7 +2204,7 @@ int main(int argc, char *argv[]) {
 					//privileged operation!!!
 			LOG_CPP("turned on device " << hdi.name << endl);
 		}
-		ss << MAX_DEVICE_INDEX << ", \'" << hdi.name << "\'), (";
+		ss << '\'' << hdi.name << "\', TRUE), (";
 		ss.seekp(-3, ss.end) << '\0';
 		PQclear(execcheckreturn(ss.str()));
 	} else {
@@ -2212,7 +2212,7 @@ int main(int argc, char *argv[]) {
 		while (find_next_lower_device(sock, ifr, i) >= 0) {
 			THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
 			PQclear(res);
-			res = execcheckreturn("SELECT TRUE FROM adapter_name WHERE name = \'"s + ifr.ifr_name
+			res = execcheckreturn("SELECT TRUE FROM adapters WHERE adapter = \'"s + ifr.ifr_name
 					+ '\'');
 			if (PQntuples(res) == 0) {
 				if ((ifr.ifr_flags & IFF_UP) != 0) {
@@ -2231,7 +2231,7 @@ int main(int argc, char *argv[]) {
 		PQclear(res);
 		close(sock);
 		sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-		ss.str("SELECT TRUE FROM adapter_name WHERE name = \'");
+		ss.str("SELECT TRUE FROM adapters WHERE adapter = \'");
 		hdi.dev_id = 0;
 		THR(ioctl(sock, HCIGETDEVINFO, &hdi) < 0, system_exception("cannot HCIGETDEVINFO ioctl"));
 		ss << hdi.name;
@@ -2337,7 +2337,7 @@ int main(int argc, char *argv[]) {
 
 template<typename type>
 void instantiate_protocol_if_enabled() {
-	PGresult *res = execcheckreturn("SELECT TRUE FROM proto_name WHERE name = \'"s
+	PGresult *res = execcheckreturn("SELECT TRUE FROM protocols WHERE proto = \'"s
 			+ get_typename(typeid(type)) + '\'');
 
 	if (PQntuples(res) != 0) {
@@ -2462,7 +2462,7 @@ void destroy_vars() {
 		for (auto D_I_T : e_r.second->DST_ID_TWR) {
 			delete D_I_T.second;
 		}
-		for (auto p_i_T : e_r.second->proto_iSRC_TWR) {
+		for (auto p_i_T : e_r.second->proto_src_TWR) {
 			delete p_i_T.second;
 		}
 		delete e_r.second;
@@ -2583,8 +2583,8 @@ const char *BYTE8_to_c17charp(BYTE8 address) {
 	return ret;
 }
 
-EVP_PKEY *get_private_key(BYTE8 addr) {
-	FILE *file = fopen(("privateKeys/"s + BYTE8_to_c17charp(addr) + ".pem").c_str(), "rb");
+EVP_PKEY *get_private_key(BYTE8 eui) {
+	FILE *file = fopen(("privateKeys/"s + BYTE8_to_c17charp(eui) + ".pem").c_str(), "rb");
 	EVP_PKEY *retval;
 
 	THR(file == nullptr, system_exception("cannot find privateKey"));
@@ -2594,8 +2594,8 @@ EVP_PKEY *get_private_key(BYTE8 addr) {
 	return retval;
 }
 
-EVP_PKEY *get_public_key(BYTE8 addr) {
-	FILE *file = fopen(("certificates/"s + BYTE8_to_c17charp(addr) + ".pem").c_str(), "rb");
+EVP_PKEY *get_public_key(BYTE8 eui) {
+	FILE *file = fopen(("certificates/"s + BYTE8_to_c17charp(eui) + ".pem").c_str(), "rb");
 	X509 *x509;
 	EVP_PKEY *retval;
 
@@ -2971,7 +2971,7 @@ void send_inject2(const send_inject_struct &sis) {
 	memcpy_endian(&rmsg->addr, sis.addr, 8);
 	LOG_CPP("received for " << (sis.send ? "sending" : "injecting") << ": \"");
 	LOG_CP(print_message_c, sis.message_content, sis.message_length);
-	LOG_CPP("\" with protocol \"" << sis.proto << "\" and " << (sis.send ? "DST" : "SRC")
+	LOG_CPP("\" with protocol \"" << sis.proto << "\" and " << (sis.send ? "dst" : "src")
 			<< ' ' << BYTE8_to_c17charp(rmsg->addr) << " and insecure_port = "
 			<< sis.insecure_port << " and secure_port = " << sis.secure_port << " with "
 			<< (sis.CCF ? "CCF" : "!CCF") << " and " << (sis.ACF ? "ACF" : "!ACF")
@@ -3061,9 +3061,9 @@ void load_store2_load() {
 	ostringstream oss(oss.out | oss.ate);
 	string addr;
 
-	PQclear(execcheckreturn("TRUNCATE TABLE addr_oID CASCADE"));
+	PQclear(execcheckreturn("TRUNCATE TABLE eui_oID CASCADE"));
 	for (auto e_r : eui_remote) {
-		oss.str("INSERT INTO addr_oID(addr, out_ID) VALUES(\'\\x");
+		oss.str("INSERT INTO eui_oID(eui, out_ID) VALUES(\'\\x");
 		addr = BYTE8_to_c17charp(e_r.first);
 		oss << addr << "\', " << static_cast<int>(e_r.second->out_ID) << ')';
 		PQclear(execcheckreturn(oss.str()));
@@ -3081,12 +3081,12 @@ void load_store2_load() {
 				PQclear(execcheckreturn(oss.str()));
 			}
 		}
-		for (auto p_i_T : e_r.second->proto_iSRC_TWR) {
+		for (auto p_i_T : e_r.second->proto_src_TWR) {
 			oss.str("INSERT INTO SRC_proto(SRC, proto) VALUES(\'\\x");
 			oss << addr << "\', \'" << p_i_T.first->get_my_name() << "\')";
 			PQclear(execcheckreturn(oss.str()));
 			if (!p_i_T.second->empty()) {
-				oss.str("INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR) VALUES(\'\\x");
+				oss.str("INSERT INTO src_TWR(SRC, proto, src, TWR) VALUES(\'\\x");
 				for (auto i_T : *p_i_T.second) {
 					oss << addr << "\', \'" << p_i_T.first->get_my_name() << "\', \'\\x"
 							<< BYTE8_to_c17charp(i_T.first) << "\', TIMESTAMP \'" << i_T.second
@@ -3104,9 +3104,9 @@ void load_store2_store() {
 	const char *temp, *addr;
 	PGresult *res, *res2, *res3;
 	BYTE ID;
-	map<BYTE8, remote *>::iterator iter_a_r;
+	map<BYTE8, remote *>::iterator iter_e_r;
 	map<BYTE8, map<BYTE, my_time_point> *>::iterator iter_D_I_T;
-	map<protocol *, map<BYTE8, my_time_point> *>::iterator iter_p_i_T;
+	map<protocol *, map<BYTE8, my_time_point> *>::iterator iter_p_s_T;
 	my_time_point TWR;
 	int i = 0, j, k, l, m, n, id;
 
@@ -3114,21 +3114,21 @@ void load_store2_store() {
 		for (auto D_I_T : e_r.second->DST_ID_TWR) {
 			delete D_I_T.second;
 		}
-		for (auto p_i_T : e_r.second->proto_iSRC_TWR) {
+		for (auto p_i_T : e_r.second->proto_src_TWR) {
 			delete p_i_T.second;
 		}
 		delete e_r.second;
 	}
 	eui_remote.clear();
-	res = execcheckreturn("TABLE addr_oID ORDER BY addr ASC");
+	res = execcheckreturn("TABLE eui_oID ORDER BY eui ASC");
 	for (j = PQntuples(res); i < j; i++) {
 		addr = PQgetvalue(res, i, 0) + 2;
-		iter_a_r = eui_remote.insert(make_pair(c17charp_to_BYTE8(addr), new remote)).first;
+		iter_e_r = eui_remote.insert(make_pair(c17charp_to_BYTE8(addr), new remote)).first;
 		res2 = execcheckreturn("SELECT DST FROM SRC_DST WHERE SRC = \'\\x"s + addr
 				+ "\' ORDER BY DST ASC");
 		for (k = 0, l = PQntuples(res2); k < l; k++) {
 			temp = PQgetvalue(res2, k, 0) + 2;
-			iter_D_I_T = iter_a_r->second->DST_ID_TWR.insert(make_pair(c17charp_to_BYTE8(
+			iter_D_I_T = iter_e_r->second->DST_ID_TWR.insert(make_pair(c17charp_to_BYTE8(
 					temp), new map<BYTE, my_time_point>)).first;
 			res3 = execcheckreturn("SELECT ID, TWR FROM ID_TWR WHERE SRC = \'\\x"s + addr
 					+ "\' AND DST = \'\\x" + temp + "\' ORDER BY ID ASC");
@@ -3146,21 +3146,21 @@ void load_store2_store() {
 		PQclear(res2);
 		iss.str(PQgetvalue(res, i, 1));
 		iss >> id;
-		iter_a_r->second->out_ID = id;
+		iter_e_r->second->out_ID = id;
 		iss.clear();
 		res2 = execcheckreturn("SELECT proto FROM SRC_proto WHERE SRC = \'\\x"s + addr
 				+ "\' ORDER BY proto ASC");
 		for (k = 0, l = PQntuples(res2); k < l; k++) {
 			temp = PQgetvalue(res2, k, 0);
-			iter_p_i_T = iter_a_r->second->proto_iSRC_TWR.insert(make_pair(find_protocol_by_name(
+			iter_p_s_T = iter_e_r->second->proto_src_TWR.insert(make_pair(find_protocol_by_name(
 					temp), new map<BYTE8, my_time_point>)).first;
-			res3 = execcheckreturn("SELECT imm_SRC, TWR FROM iSRC_TWR WHERE SRC = \'\\x"s
-					+ addr + "\' AND proto = \'" + temp + "\' ORDER BY imm_SRC ASC");
+			res3 = execcheckreturn("SELECT src, TWR FROM src_TWR WHERE SRC = \'\\x"s
+					+ addr + "\' AND proto = \'" + temp + "\' ORDER BY src ASC");
 			for (m = 0, n = PQntuples(res3); m < n; m++) {
 				iss.str(PQgetvalue(res3, m, 1));
 				iss >> TWR;
 				iss.clear();
-				iter_p_i_T->second->insert(make_pair(c17charp_to_BYTE8(PQgetvalue(res3, m, 0) + 2),
+				iter_p_s_T->second->insert(make_pair(c17charp_to_BYTE8(PQgetvalue(res3, m, 0) + 2),
 						TWR));
 			}
 			PQclear(res3);
@@ -3168,7 +3168,7 @@ void load_store2_store() {
 		PQclear(res2);
 	}
 	PQclear(res);
-	PQclear(execcheckreturn("TRUNCATE TABLE addr_oID CASCADE"));
+	PQclear(execcheckreturn("TRUNCATE TABLE src_oID CASCADE"));
 }
 
 void config2() {
@@ -3523,11 +3523,11 @@ formatted_message *receive_formatted_message() {
 			}
 			c = username_configuration[find_owner(fmsg->DST)];
 			if (c->use_lan_switch_algorithm) {
-				map<BYTE8, my_time_point> *&iT = r->proto_iSRC_TWR[rmsg->proto];
-				if (iT == nullptr) {
-					iT = new map<BYTE8, my_time_point>;
+				map<BYTE8, my_time_point> *&sT = r->proto_src_TWR[rmsg->proto];
+				if (sT == nullptr) {
+					sT = new map<BYTE8, my_time_point>;
 				}
-				my_time_point &t1 = (*iT)[rmsg->addr];
+				my_time_point &t1 = (*sT)[rmsg->addr];
 				if (t1.time_since_epoch() == chrono::system_clock::duration::zero()) {
 					t1 = now;
 				}
@@ -3778,7 +3778,7 @@ raw_message *receive_raw_message() {
 		if (next_timed_rule <= ts.tv_sec++ && next_timed_rule > 0) {
 			LOG_CPP("checking for rules" << endl);
 			ss.str("SELECT username, id, query_command_nothing, query_command_1, "
-					"send_inject_query_command_nothing, query_command_2, proto, imm_addr, "
+					"send_inject_query_command_nothing, query_command_2, proto, addr, "
 					"insecure_port, secure_port, CCF, ACF, broadcast, override, activate, "
 					"deactivate, FROM rules WHERE is_active AND next_run <= ");
 			ss.clear();
@@ -4137,7 +4137,7 @@ BYTE8 c17charp_to_BYTE8(const char *address) {
 }
 
 ostream &operator<<(ostream &os, const raw_message &rmsg) noexcept {
-	os << "raw message of TML " << rmsg.TML << " by imm_addr " << BYTE8_to_c17charp(rmsg.addr)
+	os << "raw message of TML " << rmsg.TML << " by addr " << BYTE8_to_c17charp(rmsg.addr)
 			<< " with payload \"";
 	print_message_c(os, rmsg.msg, rmsg.TML);
 	os << "\", relative time "
@@ -4791,11 +4791,11 @@ void send_formatted_message(formatted_message *fmsg) {
 	unique_ptr<raw_message> rmsg;
 	int i;
 	map<BYTE8, remote *>::iterator iter_DST_destination = eui_remote.find(fmsg->DST);
-	multimap<protocol *, BYTE8>::iterator iter_iSRC;
+	multimap<protocol *, BYTE8>::iterator iter_src;
 	bool failed = true;
 	my_time_point now = my_now();
-	map<protocol *, map<BYTE8, my_time_point> *>::iterator iter_proto_iDST_TWR;
-	map<BYTE8, my_time_point>::iterator iter_iDST_TWR;
+	map<protocol *, map<BYTE8, my_time_point> *>::iterator iter_proto_dst_TWR;
+	map<BYTE8, my_time_point>::iterator iter_dst_TWR;
 	regex re("d=[0-9]{1,3}");
 	istringstream iss;
 	chrono::system_clock::rep dt;
@@ -4803,22 +4803,22 @@ void send_formatted_message(formatted_message *fmsg) {
 	configuration *c = username_configuration[find_owner(fmsg->SRC)];
 
 	THR(iter_DST_destination == eui_remote.end(), message_exception("DST does not exist"));
-	for (iter_proto_iDST_TWR = iter_DST_destination->second->proto_iSRC_TWR.begin();
-			iter_proto_iDST_TWR != iter_DST_destination->second->proto_iSRC_TWR.end();
-			iter_proto_iDST_TWR++) {
-		for (iter_iDST_TWR = iter_proto_iDST_TWR->second->begin();
-				iter_iDST_TWR != iter_proto_iDST_TWR->second->end(); iter_iDST_TWR++) {
-			dt = chrono::duration_cast<chrono::seconds>(now - iter_iDST_TWR->second).count();
+	for (iter_proto_dst_TWR = iter_DST_destination->second->proto_src_TWR.begin();
+			iter_proto_dst_TWR != iter_DST_destination->second->proto_src_TWR.end();
+			iter_proto_dst_TWR++) {
+		for (iter_dst_TWR = iter_proto_dst_TWR->second->begin();
+				iter_dst_TWR != iter_proto_dst_TWR->second->end(); iter_dst_TWR++) {
+			dt = chrono::duration_cast<chrono::seconds>(now - iter_dst_TWR->second).count();
 			if (dt > c->nsecs_src) {
-				LOG_CPP("proto " << iter_proto_iDST_TWR->first << " imm_DST "
-						<< BYTE8_to_c17charp(iter_iDST_TWR->first) << " expired by " << dt
+				LOG_CPP("proto " << iter_proto_dst_TWR->first << " dst "
+						<< BYTE8_to_c17charp(iter_dst_TWR->first) << " expired by " << dt
 						<< " seconds" << endl);
-				iter_proto_iDST_TWR->second->erase(iter_iDST_TWR);
+				iter_proto_dst_TWR->second->erase(iter_dst_TWR);
 			} else {
 				copy.reset(new(fmsg->LEN) formatted_message(*fmsg));
 				rmsg.reset(new raw_message(new BYTE[fmsg->LEN + fields_MAX + 4]));
-				rmsg->addr = iter_iDST_TWR->first;
-				rmsg->proto = iter_proto_iDST_TWR->first;
+				rmsg->addr = iter_dst_TWR->first;
+				rmsg->proto = iter_proto_dst_TWR->first;
 				rmsg->CCF = !c->trust_sending && fmsg->HD.C
 						&& rmsg->proto->can_secure_with_C(*rmsg);
 				rmsg->ACF = !c->trust_sending && fmsg->HD.A
@@ -4844,11 +4844,11 @@ void send_formatted_message(formatted_message *fmsg) {
 				failed = false;
 			}
 		}
-		if (iter_proto_iDST_TWR->second->empty()) {
-			iter_DST_destination->second->proto_iSRC_TWR.erase(iter_proto_iDST_TWR);
+		if (iter_proto_dst_TWR->second->empty()) {
+			iter_DST_destination->second->proto_src_TWR.erase(iter_proto_dst_TWR);
 		}
 	}
-	THR(failed, message_exception("imm_DST does not exist"));
+	THR(failed, message_exception("dst does not exist"));
 }
 
 #ifdef OFFLINE
@@ -5454,7 +5454,7 @@ bool clean_insert(string data) {
 	return true;
 }
 
-void create_table(string address, vector<string> &columns, vector<string> &types) {
+void create_table(string eui, vector<string> &columns, vector<string> &types) {
 	string coltyp("(");
 	int i = -1, j = columns.size();
 
@@ -5463,24 +5463,24 @@ void create_table(string address, vector<string> &columns, vector<string> &types
 			coltyp += columns[i] + ' ' + types[i] + ", ";
 		}
 	}
-	PQclear(execcheckreturn("CREATE TABLE " + address + coltyp
+	PQclear(execcheckreturn("CREATE TABLE " + eui + coltyp
 			+ "t TIMESTAMP(4) WITHOUT TIME ZONE, PRIMARY KEY(t))"));//strlen("4294967296") = 10
 	PQclear(execcheckreturn("INSERT INTO table_owner(tablename, username) "
-			"VALUES(\'" + address + "\', \'public\')"));
-	PQclear(execcheckreturn("ALTER TABLE " + address + " OWNER TO \"PUBLIC\""));
+			"VALUES(\'" + eui + "\', \'public\')"));
+	PQclear(execcheckreturn("ALTER TABLE " + eui + " OWNER TO \"PUBLIC\""));
 }
 
 //if the final character of a member of var "columns" is inverted, the column needs altering
-void alter_table(string address, vector<string> &columns, const vector<string> &types) {
+void alter_table(string eui, vector<string> &columns, const vector<string> &types) {
 	int i = -1, j = columns.size();
 
 	while (++i < j) {
 		if (columns[i].back() < 0) {
 			columns[i].back() -= 128;
-			PQclear(execcheckreturn("ALTER TABLE " + address + " ALTER COLUMN " + columns[i]
+			PQclear(execcheckreturn("ALTER TABLE " + eui + " ALTER COLUMN " + columns[i]
 					+ " SET DATA TYPE " + types[i]));
 		} else {
-			PQclear(execcheckreturn("ALTER TABLE " + address + " ADD COLUMN " + columns[i]
+			PQclear(execcheckreturn("ALTER TABLE " + eui + " ADD COLUMN " + columns[i]
 					+ ' ' + types[i]));
 		}
 	}
