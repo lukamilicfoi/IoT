@@ -231,8 +231,8 @@ struct formatted_message {
 	header HD;//message HeaDer
 	BYTE ID;//message IDentifier
 	BYTE2 LEN;//message LENgth
-	BYTE8 DST;//final DeSTination address
-	BYTE8 SRC;//final SouRCE address
+	BYTE8 DST;//final DeSTination eui
+	BYTE8 SRC;//final SouRCE eui
 	BYTE PL[1];//message PayLoad
 	bool is_encrypted() const noexcept;
 	bool is_signed() const;
@@ -590,7 +590,7 @@ void decode_message(raw_message &rmsg, formatted_message &fmsg);
 
 void *memcpy_reverse(void *dst, const void *src, size_t size) noexcept;
 
-string find_owner(BYTE8 address) noexcept;
+string find_owner(BYTE8 eui) noexcept;
 
 void security_check_for_sending(formatted_message &fmsg, raw_message &rmsg);
 
@@ -659,7 +659,7 @@ extern "C" char *PQescapeString2(PGconn *conn, const char *str, size_t length);
 
 string PQescapeString3(string str);
 
-in_addr BYTE8_to_ia(BYTE8 address) noexcept;
+in_addr BYTE8_to_ia(BYTE8 addr) noexcept;
 
 BYTE8 ia_to_BYTE8(in_addr ia) noexcept;
 
@@ -760,7 +760,7 @@ void protocol::start() {
 	mq_attr ma = { 0, 64, sizeof(raw_message *) };
 
 	THR(is_running(), system_exception("starting started protocol"));
-	my_mq = mq_open(my_name.c_str(), O_RDWR | O_CREAT, 0777, &ma);
+	my_mq = mq_open(("/my" + my_name).c_str(), O_RDWR | O_CREAT, 0777, &ma);
 	THR(my_mq < 0, system_exception("cannot open my_mq"));
 	recv_all_thread = new thread(recv_all, this);//@suppress("Symbol is not resolved")
 	send_all_thread = new thread(send_all, this);//@suppress("Symbol is not resolved")
@@ -787,7 +787,7 @@ void protocol::stop() {
 	recv_all_thread->join();
 	LOG_CPP("stopped thread " << recv_all_thread->get_id() << endl);
 	delete recv_all_thread;
-	THR(mq_unlink(my_name.c_str()) < 0, system_exception("cannot unlink my_mq"));
+	THR(mq_unlink(("/my" + my_name).c_str()) < 0, system_exception("cannot unlink my_mq"));
 	recv_all_thread = nullptr;
 }
 
@@ -854,26 +854,26 @@ int tls_port = 44001;
 
 static_assert(sizeof(in_addr) == sizeof(BYTE4), "sizeof(in_addr) != sizeof(BYTE4)");
 
-in_addr BYTE8_to_ia(BYTE8 address) noexcept {
+in_addr BYTE8_to_ia(BYTE8 addr) noexcept {
 	in_addr ia;
 
 	if (little_endian) {
-		memcpy_reverse(&ia, &address, 4);
+		memcpy_reverse(&ia, &addr, 4);
 	} else {
-		memcpy(&ia, reinterpret_cast<BYTE *>(&address) + 4, 4);
+		memcpy(&ia, reinterpret_cast<BYTE *>(&addr) + 4, 4);
 	}
 	return ia;
 }
 
 BYTE8 ia_to_BYTE8(in_addr ia) noexcept {
-	BYTE8 address = 0x00000000'00000000;
+	BYTE8 addr = 0x00000000'00000000;
 
 	if (little_endian) {
-		memcpy_reverse(&address, &ia, 4);
+		memcpy_reverse(&addr, &ia, 4);
 	} else {
-		memcpy(reinterpret_cast<BYTE *>(&address) + 4, &ia, 4);
+		memcpy(reinterpret_cast<BYTE *>(&addr) + 4, &ia, 4);
 	}
-	return address;
+	return addr;
 }
 
 #ifdef SIGNAL
@@ -2462,8 +2462,8 @@ void destroy_vars() {
 		for (auto D_I_T : e_r.second->DST_ID_TWR) {
 			delete D_I_T.second;
 		}
-		for (auto p_i_T : e_r.second->proto_src_TWR) {
-			delete p_i_T.second;
+		for (auto p_s_T : e_r.second->proto_src_TWR) {
+			delete p_s_T.second;
 		}
 		delete e_r.second;
 	}
@@ -2572,12 +2572,12 @@ void determine_local_eui() {
 	close(sock);
 }
 
-const char *BYTE8_to_c17charp(BYTE8 address) {
+const char *BYTE8_to_c17charp(BYTE8 eui) {
 	int i = 16;
 	static char ret[17] = { '\0' };
 
 	while (--i >= 0) {//does not depend on endianness
-		ret[15 - i] = hex_to_text[(address >> (i << 2)) & 0x00000000'0000000F];
+		ret[15 - i] = hex_to_text[(eui >> (i << 2)) & 0x00000000'0000000F];
 	}
 	THR(ret[16] != '\0', system_exception("error in BYTE8_to_c17charp"));
 	return ret;
@@ -2883,8 +2883,8 @@ extern "C" Datum send_inject(PG_FUNCTION_ARGS) {
 	THR(prlimit_ack_mq < 0, system_exception("cannot open prlimit_ack_mq"));
 	THR(send_inject_mq < 0, system_exception("cannot open send_inject_mq"));
 	THR(fd < 0, system_exception("cannot open fd"));
-	memset(sis->proto, 0, 13);
-	memcpy(sis->proto, VARDATA_ANY(proto_sql), proto_len < 12 ? proto_len : 12);
+	memset(sis->proto, 0, 5);
+	memcpy(sis->proto, VARDATA_ANY(proto_sql), proto_len < 5 ? proto_len : 5);
 	memcpy(sis->addr, VARDATA_ANY(addr), 8);
 	sis->insecure_port = insecure_port;
 	sis->secure_port = secure_port;
@@ -3081,15 +3081,15 @@ void load_store2_load() {
 				PQclear(execcheckreturn(oss.str()));
 			}
 		}
-		for (auto p_i_T : e_r.second->proto_src_TWR) {
+		for (auto p_s_T : e_r.second->proto_src_TWR) {
 			oss.str("INSERT INTO SRC_proto(SRC, proto) VALUES(\'\\x");
-			oss << addr << "\', \'" << p_i_T.first->get_my_name() << "\')";
+			oss << addr << "\', \'" << p_s_T.first->get_my_name() << "\')";
 			PQclear(execcheckreturn(oss.str()));
-			if (!p_i_T.second->empty()) {
-				oss.str("INSERT INTO src_TWR(SRC, proto, src, TWR) VALUES(\'\\x");
-				for (auto i_T : *p_i_T.second) {
-					oss << addr << "\', \'" << p_i_T.first->get_my_name() << "\', \'\\x"
-							<< BYTE8_to_c17charp(i_T.first) << "\', TIMESTAMP \'" << i_T.second
+			if (!p_s_T.second->empty()) {
+				oss.str("INSERT INTO src_TWR(\"SRC\", proto, \"src\", TWR) VALUES(\'\\x");
+				for (auto s_T : *p_s_T.second) {
+					oss << addr << "\', \'" << p_s_T.first->get_my_name() << "\', \'\\x"
+							<< BYTE8_to_c17charp(s_T.first) << "\', TIMESTAMP \'" << s_T.second
 							<< "\'), (\'\\x";
 				}
 				oss.seekp(-8, oss.end) << '\0';
@@ -3154,8 +3154,8 @@ void load_store2_store() {
 			temp = PQgetvalue(res2, k, 0);
 			iter_p_s_T = iter_e_r->second->proto_src_TWR.insert(make_pair(find_protocol_by_name(
 					temp), new map<BYTE8, my_time_point>)).first;
-			res3 = execcheckreturn("SELECT src, TWR FROM src_TWR WHERE SRC = \'\\x"s
-					+ addr + "\' AND proto = \'" + temp + "\' ORDER BY src ASC");
+			res3 = execcheckreturn("SELECT \"src\", TWR FROM src_TWR WHERE \"SRC\" = \'\\x"s
+					+ addr + "\' AND proto = \'" + temp + "\' ORDER BY \"src\" ASC");
 			for (m = 0, n = PQntuples(res3); m < n; m++) {
 				iss.str(PQgetvalue(res3, m, 1));
 				iss >> TWR;
@@ -3434,8 +3434,8 @@ ostream &operator<<(ostream &os, const my_time_point &point) noexcept {
 	return os << put_time(localtime(&t), "%Y-%m-%d %H:%M:%S");
 }
 
-string find_owner(BYTE8 address) noexcept {
-	auto t_u_i = table_owner.find("t"s + BYTE8_to_c17charp(address));
+string find_owner(BYTE8 eui) noexcept {
+	auto t_u_i = table_owner.find("t"s + BYTE8_to_c17charp(eui));
 
 	if (t_u_i != table_owner.cend()) {
 		return t_u_i->second;
@@ -3694,7 +3694,7 @@ raw_message *receive_raw_message() {
 	config_struct cs;
 	PGresult *res_rules;
 	stringstream ss(ss.in | ss.out | ss.ate);
-	update_ownerships_struct ups;
+	update_ownerships_struct uos;
 	manually_execute_timed_rule_struct metrs;
 	string current_username;
 
@@ -3761,8 +3761,8 @@ raw_message *receive_raw_message() {
 		} else {
 			refresh_next_timed_rule_time2(rntrts);
 		}
-		if (mq_receive(update_ownerships_mq, reinterpret_cast<char *>(&ups),
-				sizeof(ups), nullptr) < 0) {
+		if (mq_receive(update_ownerships_mq, reinterpret_cast<char *>(&uos),
+				sizeof(uos), nullptr) < 0) {
 			THR(errno != EAGAIN,
 					system_exception("cannot receive from update_ownerships_mq"));
 		} else {
