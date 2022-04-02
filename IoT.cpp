@@ -1347,7 +1347,7 @@ private:
 	(no socket has multiple connections) */
 	map<int, opensock *> sock_opensock;
 
-	/* multimap of all opensock-s, indexable by opensock::imm_addr (same content different index) */
+	/* multimap of all opensock-s, indexable by opensock::addr (same content different index) */
 	multimap<BYTE8, opensock *> addr_opensock;
 
 	/* sigmask for select */
@@ -1733,7 +1733,7 @@ private:
 	(multiple connections on dtls_sock only) */
 	multimap<int, opensock *> sock_opensock;
 
-	/* multimap of all opensock-s, indexable by opensock::imm_addr (same content different index) */
+	/* multimap of all opensock-s, indexable by opensock::addr (same content different index) */
 	multimap<BYTE8, opensock *> addr_opensock;
 
 	/* sigmask for select */
@@ -2213,7 +2213,7 @@ int main(int argc, char *argv[]) {
 			THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
 			PQclear(res);
 			res = execcheckreturn("SELECT TRUE FROM adapters WHERE adapter = \'"s + ifr.ifr_name
-					+ '\'');
+					+ "\' AND enabled");
 			if (PQntuples(res) == 0) {
 				if ((ifr.ifr_flags & IFF_UP) != 0) {
 					ifr.ifr_flags &= ~IFF_UP;
@@ -2235,7 +2235,7 @@ int main(int argc, char *argv[]) {
 		hdi.dev_id = 0;
 		THR(ioctl(sock, HCIGETDEVINFO, &hdi) < 0, system_exception("cannot HCIGETDEVINFO ioctl"));
 		ss << hdi.name;
-		res = execcheckreturn(ss.str() + '\'');
+		res = execcheckreturn(ss.str() + "\' AND enabled");
 		if (PQntuples(res) == 0) {
 			if (!hci_test_bit(HCI_UP, &hdi.flags)) {
 				THR(ioctl(sock, HCIDEVUP, 0) < 0, system_exception("cannot HCIDEVUP ioctl"));
@@ -2338,7 +2338,7 @@ int main(int argc, char *argv[]) {
 template<typename type>
 void instantiate_protocol_if_enabled() {
 	PGresult *res = execcheckreturn("SELECT TRUE FROM protocols WHERE proto = \'"s
-			+ get_typename(typeid(type)) + '\'');
+			+ get_typename(typeid(type)) + "\' AND enabled");
 
 	if (PQntuples(res) != 0) {
 		protocols.push_back(new type);
@@ -2565,7 +2565,7 @@ void determine_local_eui() {
 				memcpy(reinterpret_cast<BYTE *>(&local_eui) + 2, ifr.ifr_hwaddr.sa_data, 6);
 			}
 			local_eui = EUI48_to_EUI64(local_eui);
-			LOG_CPP("determined local_SRC to " << BYTE8_to_c17charp(local_eui) << endl);
+			LOG_CPP("determined local_eui to " << BYTE8_to_c17charp(local_eui) << endl);
 			break;
 		}
 	}
@@ -2633,6 +2633,7 @@ void deserialize_digital_envelope(const BYTE *src, int src_len, BYTE *&ciphertex
 		int &ciphertext_len, BYTE *&encrypted_key, int &encrypted_key_len, BYTE *&iv) {
 	THR(*src != '@', message_exception("envelope malformed"));
 	THR(3 < src_len, message_exception("3 < src_len"));
+
 	if (little_endian) {
 		memcpy_reverse(&ciphertext_len, src + 1, 2);
 		THR(ciphertext_len + 5 < src_len, message_exception("ciphertext_len + 5 < src_len"));
@@ -2665,6 +2666,7 @@ void serialize_digital_signature(const BYTE *signature, int signature_len, BYTE 
 
 void deserialize_digital_signature(const BYTE *src, int src_len, BYTE *&signature,
 		int &signature_len) {
+
 	THR(*src != '#', message_exception("signature malformed"));
 	signature_len = src_len - 1;
 	signature = new BYTE[signature_len];
@@ -2727,6 +2729,7 @@ void create_digital_signature(EVP_PKEY *senders_private_key, const BYTE *plainte
 
 void verify_digital_signature(EVP_PKEY *senders_public_key, const BYTE *plaintext,
 		int plaintext_len, const BYTE *signature, int signature_len) {
+
 	THR(EVP_MD_CTX_reset(mdctx) == 0, system_exception("cannot reset mdctx"));
 	THR(EVP_DigestVerifyInit(mdctx, nullptr, mdtype, nullptr, senders_public_key) == 0,
 			message_exception("cannot digestverifyinit"));
@@ -3114,8 +3117,8 @@ void load_store2_store() {
 		for (auto D_I_T : e_r.second->DST_ID_TWR) {
 			delete D_I_T.second;
 		}
-		for (auto p_i_T : e_r.second->proto_src_TWR) {
-			delete p_i_T.second;
+		for (auto p_s_T : e_r.second->proto_src_TWR) {
+			delete p_s_T.second;
 		}
 		delete e_r.second;
 	}
@@ -3251,6 +3254,7 @@ void update_ownerships2() {
 void decode_message(raw_message &rmsg, formatted_message &fmsg) {
 	int i;
 	BYTE4 CRC;
+
 	if (rmsg.TML > 1) {
 		fmsg.HD.put_as_byte(*rmsg.msg);
 		i = 1;
@@ -3435,10 +3439,10 @@ ostream &operator<<(ostream &os, const my_time_point &point) noexcept {
 }
 
 string find_owner(BYTE8 eui) noexcept {
-	auto t_u_i = table_owner.find("t"s + BYTE8_to_c17charp(eui));
+	auto t_o = table_owner.find("t"s + BYTE8_to_c17charp(eui));
 
-	if (t_u_i != table_owner.cend()) {
-		return t_u_i->second;
+	if (t_o != table_owner.cend()) {
+		return t_o->second;
 	}
 	return "public";
 }
@@ -4125,13 +4129,13 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 	}
 }
 
-BYTE8 c17charp_to_BYTE8(const char *address) {
+BYTE8 c17charp_to_BYTE8(const char *eui) {
 	int i = -1;
 	BYTE8 ret = 0x00000000'00000000;
 
-	THR(address[16] != '\0', system_exception("error in c17charp_to_BYTE8"));
+	THR(eui[16] != '\0', system_exception("error in c17charp_to_BYTE8"));
 	while (++i < 16) {//does not depend on endianness
-		ret = (ret << 4) + text_to_hex[static_cast<int>(address[i])];
+		ret = (ret << 4) + text_to_hex[static_cast<int>(eui[i])];
 	}
 	return ret;
 }
