@@ -2151,6 +2151,8 @@ int main(int argc, char *argv[]) {
 	if (PQntuples(res) == 0) {
 		protocols.push_back(new tcp);
 		protocols.push_back(new udp);
+		PQclear(execcheckreturn("INSERT INTO protocols(proto, enabled) "
+				"VALUES('tcp', TRUE), ('udp', TRUE)"));
 	} else {
 		instantiate_protocol_if_enabled<tcp>();
 		instantiate_protocol_if_enabled<udp>();
@@ -2158,13 +2160,6 @@ int main(int argc, char *argv[]) {
 		instantiate_protocol_if_enabled<_154>();
 	}
 	PQclear(res);
-	PQclear(execcheckreturn("TRUNCATE TABLE protocols CASCADE"));//CASCADE needed for table fmforsr
-	ss.str("INSERT INTO protocols(proto, enabled) VALUES(");
-	for (const protocol *p : protocols) {
-		ss << '\'' << get_typename(typeid(*p)) << "\', TRUE), (";
-	}
-	ss.seekp(-3, ss.end) << '\0';
-	PQclear(execcheckreturn(ss.str()));
 
 	populate_local_proto_addr();
 
@@ -4086,8 +4081,7 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 				*PQgetvalue(res_rules, i, offset + 10) == 't',
 				*PQgetvalue(res_rules, i, offset + 11) == 't',
 				*PQgetvalue(res_rules, i, offset + 12) == 't',
-				*PQgetvalue(res_rules, i, offset + 13) == 't',
-				false);
+				*PQgetvalue(res_rules, i, offset + 13) == 't', false);
 	}
 	PQclear(res_message);
 	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
