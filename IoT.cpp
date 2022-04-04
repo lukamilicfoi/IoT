@@ -2161,8 +2161,6 @@ int main(int argc, char *argv[]) {
 	}
 	PQclear(res);
 
-	populate_local_proto_addr();
-
 	PQclear(execcheckreturn("TRUNCATE TABLE message"));
 
 	res = execcheckreturn("SELECT insecure_port, secure_port FROM configuration "
@@ -2248,6 +2246,8 @@ int main(int argc, char *argv[]) {
 	}
 	PQclear(res);
 	close(sock);
+
+	populate_local_proto_addr();
 
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS ext(eui_id TEXT) CASCADE"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS send_inject(send BOOLEAN, message BYTEA, "
@@ -3043,11 +3043,11 @@ extern "C" Datum refresh_next_timed_rule_time(PG_FUNCTION_ARGS) {
 
 //this function is executed in another process!!!
 extern "C" Datum update_ownerships(PG_FUNCTION_ARGS) {
-	struct update_ownerships_struct ups;
+	struct update_ownerships_struct uos;
 	mqd_t update_ownerships_mq = mq_open("/update_ownerships", O_WRONLY);
 
 	THR(update_ownerships_mq < 0, system_exception("cannot open update_ownerships_mq"));
-	THR(mq_send(update_ownerships_mq, reinterpret_cast<char *>(&ups),
+	THR(mq_send(update_ownerships_mq, reinterpret_cast<char *>(&uos),
 			sizeof(update_ownerships_struct), 0) < 0,
 			system_exception("cannot send to update_ownerships_mq"));
 	THR(mq_close(update_ownerships_mq) < 0,
@@ -3345,7 +3345,7 @@ void main_loop() {
 					}
 					convert_select(query, remote_FROM_prefix + BYTE8_to_c17charp(fmsg->SRC) + /**/' '
 							+  " t"s + BYTE8_to_c17charp(my_eui) + ' ');/**/
-					format_select(query);//
+					format_select(query);
 					i = query.rfind(" SUBSCRIBE ");
 					if (i != static_cast<int>(string::npos)) {
 						iss.str(query.substr(i + 11));//strlen(" SUBSCRIBE ")=11
@@ -3578,7 +3578,7 @@ formatted_message *receive_formatted_message() {
 				LOG_CPP("received HELLO " << *fmsg << endl);
 				if (c->default_gateway != BROADCAST_PLACEHOLDER) {
 					fmsg->DST = c->default_gateway;
-				send_formatted_message(fmsg.release());
+					send_formatted_message(fmsg.release());
 				}
 				continue;
 			}
