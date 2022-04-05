@@ -114,28 +114,26 @@ if ($can_view_tables) {
 <?php
 }
 if (check_authorization('can_send_messages', 'send messages to nodes')) {
-	if (!vacuous($_GET['msgtosend']) && !vacuous($_GET['proto_name'])
-			&& !vacuous($_GET['imm_DST'])) {
+	if (!vacuous($_GET['msgtosend']) && !vacuous($_GET['proto']) && !vacuous($_GET['dst'])) {
 		$s_msgtosend = pgescapebytea($_GET['msgtosend']);
 		$h_msgtosend = 'X&apos;' . htmlspecialchars($_GET['msgtosend']) . '&apos;';
-		$proto_name = pg_escape_literal($_GET['proto_name']);
-		$imm_DST = pgescapebytea($_GET['imm_DST']);
-		pgquery("SELECT send_inject(TRUE, $s_msgtosend, (SELECT proto FROM proto_name
-				WHERE name = $proto_name), $imm_DST, " . formescapeinteger($_GET['insecure_port'])
-				. ', ' . formescapeinteger($_GET['secure_port']) . ', '
-				. formescapebool($_GET['CCF']) . ', ' . formescapebool($_GET['ACF']) . ', '
-				. formescapebool($_GET['broadcast']) . ', '
-				. formescapebool($_GET['override']) . ');');
+		$proto = pg_escape_literal($_GET['proto']);
+		$dst = pgescapebytea($_GET['dst']);
+		pgquery("SELECT send_inject(TRUE, $s_msgtosend, $proto_name, $dst, "
+				. formescapeinteger($_GET['insecure_port']) . ', '
+				. formescapeinteger($_GET['secure_port']) . ', ' . formescapebool($_GET['CCF'])
+				. ', ' . formescapebool($_GET['ACF']) . ', ' . formescapebool($_GET['broadcast'])
+				. ', ' . formescapebool($_GET['override']) . ');');
 		echo "Message $h_msgtosend sent.\n";
 	}
 ?>
 	<form action="" method="GET">
 		Send message
 		<input type="text" name="msgtosend" required autofocus/>
-		using protocol
-		<input type="text" name="proto_name" required/>
-		and imm_DST
-		<input type="text" name="imm_DST" required/>
+		using proto
+		<input type="text" name="proto" required/>
+		and dst
+		<input type="text" name="dst" required/>
 		using custom insecure listen port
 		<input type="text" name="insecure_port"/><br/>
 		and custom secure listen port
@@ -151,33 +149,31 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write message and imm_DST as a binary string, e.g., abababababababab; write protocol
+	Write message and dst as a binary string, e.g., abababababababab; write proto
 			as a string, e.g., tcp; write ports as integers, e.g., 44000 and 44001.<br/><br/><br/>
 <?php
 }
 if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
-	if (!vacuous($_GET['msgtoinject']) && !vacuous($_GET['proto_name'])
-			&& !vacuous($_GET['imm_SRC'])) {
+	if (!vacuous($_GET['msgtoinject']) && !vacuous($_GET['proto']) && !vacuous($_GET['src'])) {
 		$s_msgtoinject = pgescapebytea($_GET['msgtoinject']);
 		$h_msgtoinject = 'X&apos;' . htmlspecialchars($_GET['msgtoinject']) . '&apos;';
-		$proto_name = pg_escape_literal($_GET['proto_name']);
-		$imm_SRC = pgescapebytea($_GET['imm_SRC']);
-		pgquery("SELECT send_inject(FALSE, $s_msgtoinject, (SELECT proto FROM proto_name
-				WHERE name = $proto_name), $imm_SRC, " . formescapeinteger($_GET['insecure_port'])
-				. ', ' . formescapeinteger($_GET['secure_port']) . ', '
-				. formescapebool($_GET['CCF']) . ', ' . formescapebool($_GET['ACF']) . ', '
-				. formescapebool($_GET['broadcast']) . ', '
-				. formescapebool($_GET['override']) . ');');
+		$proto = pg_escape_literal($_GET['proto']);
+		$src = pgescapebytea($_GET['src']);
+		pgquery("SELECT send_inject(FALSE, $s_msgtoinject, $proto_name, $src, "
+				. formescapeinteger($_GET['insecure_port']) . ', '
+				. formescapeinteger($_GET['secure_port']) . ', ' . formescapebool($_GET['CCF'])
+				. ', ' . formescapebool($_GET['ACF']) . ', ' . formescapebool($_GET['broadcast'])
+				. ', ' . formescapebool($_GET['override']) . ');');
 		echo "Message $h_msgtoinject injected.\n";
 	}
 ?>
 	<form action="" method="GET">
 		Inject message
 		<input type="text" name="msgtoinject" required autofocus/>
-		using protocol
-		<input type="text" name="proto_name" required/>
-		and imm_SRC
-		<input type="text" name="imm_SRC" required/>
+		using proto
+		<input type="text" name="proto" required/>
+		and src
+		<input type="text" name="src" required/>
 		using custom insecure listen port
 		<input type="text" name="insecure_port"/><br/>
 		and custom secure listen port
@@ -193,7 +189,7 @@ if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
 		<input type="submit" value="submit"/>
 		<input type="reset" value="reset"/>
 	</form>
-	Write message and imm_SRC as a binary string, e.g., abababababababab; write protocol
+	Write message and src as a binary string, e.g., abababababababab; write proto
 			as a string, e.g., tcp; write ports as integers, e.g., 44000 and 44001.<br/><br/><br/>
 <?php
 }
@@ -322,7 +318,7 @@ if (check_authorization('can_view_rules', 'view rules')) {
 <?php
 }
 ?>
-<a href="view_certificates_and_private_keys.php">View certificates and private keys</a><br/>
+	<a href="view_certificates_and_private_keys.php">View certificates and private keys</a><br/>
 <?php
 if (check_authorization('can_view_yourself', 'view yourself')
 		|| check_authorization('can_view_others', 'view others')) {
@@ -331,7 +327,7 @@ if (check_authorization('can_view_yourself', 'view yourself')
 <?php
 }
 ?>
-<a href="view_adapters_and_underlying_protocols.php">View adapters and underlying protocols</a><br/>
+	<a href="view_adapters_and_underlying_protocols.php">View adapters and underlying protocols</a><br/>
 <?php
 if (check_authorization('can_view_configuration', 'view configuration')) {
 ?>

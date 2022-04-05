@@ -7,6 +7,7 @@ if (!vacuous($_POST['username']) && !vacuous($_POST['password'])) {
 			can_view_as_others, can_edit_as_others FROM users
 			WHERE username = {$_SESSION['s_username']} AND can_actually_login;"));
 	if ($row && password_verify($_POST['password'], $row[0])) {
+		$_SESSION['username'] = $_POST['username'];
 		$_SESSION['s1role'] = pgescaperole1($_POST['username']);
 		$_SESSION['s2role'] = pgescaperole2($_POST['username']);
 		$_SESSION['h1username'] = htmlspecialchars($_POST['username']);
@@ -16,7 +17,6 @@ if (!vacuous($_POST['username']) && !vacuous($_POST['password'])) {
 		$_SESSION['can_view_as_others'] = $row[2] == 't';
 		$_SESSION['is_administrator'] = $row[1] == 't';
 		$_SESSION['can_edit_as_others'] = $row[3] == 't';
-		$_SESSION['username'] = $_POST['username'];
 		$_SESSION['s_is_root'] = pgescapebool($_SESSION['is_root']);
 		$_SESSION['s_is_administrator'] = pgescapebool($_SESSION['is_administrator']);
 		$_SESSION['s_can_view_as_others'] = pgescapebool($_SESSION['can_view_as_others']);

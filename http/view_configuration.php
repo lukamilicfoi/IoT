@@ -5,8 +5,8 @@ $can_edit_configuration = check_authorization('can_edit_configuration', 'edit co
 if ($can_edit_configuration && !empty($_GET['username']) && isset($_GET['update'])) {
 	$s_username = pg_escape_literal($_GET['username']);
 	$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
-	if ($_GET['username'] == $_SESSION['username'] || $_GET['username'] == 'public'
-			|| $_SESSION['is_administrator'] && !is_administrator($s_username)
+	if ($_GET['username'] == $_SESSION['username'] || ($_GET['username'] == 'public'
+			|| $_SESSION['is_administrator'] && !is_administrator($s_username))
 			&& $_SESSION['can_edit_as_others'] || $_SESSION['is_root']) {
 		pgquery('UPDATE configuration SET (forward_messages, use_lan_switch_algorithm, nsecs_id,
 				nsecs_src, trust_sending, default_gateway, my_eui, insecure_port,
@@ -177,7 +177,7 @@ if ($can_view_configuration) {
 ?>
 		</tbody>
 	</table>
-	<br/>Write gateway and EUI as a binary string, e.g., abababababababab.<br/>
+	<br/>Write gateway (empty if unused) and EUI (empty if default) as a binary string, e.g., abababababababab.<br/>
 	Write numbers as an integer, e.g., 11.<br/>
 	Empty field indicates NULL value.<br/><br/>
 	<a href="index.php">Done</a>
