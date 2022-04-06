@@ -25,7 +25,7 @@ if ($can_edit_rules) {
 				&& isset($_GET['insert'])) {
 			pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter,
 					drop_modify_nothing, modification, query_command_nothing, query_command_1,
-					send_inject_query_command_nothing, query_command_2, proto_id, imm_addr,
+					send_inject_query_command_nothing, query_command_2, proto, addr,
 					insecure_port, secure_port, CCF, ACF, broadcast, override_implicit_rules,
 					activate, deactivate, is_active) VALUES($s_username, $id, "
 					. intval($_GET['send_receive_seconds']) . ', '
@@ -36,9 +36,8 @@ if ($can_edit_rules) {
 					. formescapetext($_GET['query_command_1']) . ', '
 					. intval($_GET['send_inject_query_command_nothing']) . ', '
 					. formescapetext($_GET['query_command_2']) . ', '
-					. (!vacuous($_GET['proto_name']) ? '(SELECT proto FROM proto_name WHERE name = '
-					. pg_escape_literal($_GET['proto_id']) : 'NULL') . ', '
-					. formescapebytea($_GET['imm_addr']) . ', '
+					. formescapetext($_GET['proto'])
+					. ', ' . formescapebytea($_GET['imm_addr']) . ', '
 					. formescapeinteger($_GET['insecure_port']) . ', '
 					. formescapeinteger($_GET['secure_port']) . ', '
 					. formescapebool($_GET['CCF']) . ', ' . formescapebool($_GET['ACF']) . ', '
@@ -60,7 +59,7 @@ if ($can_edit_rules) {
 					&& isset($_GET['update'])) {
 				pgquery("UPDATE rules SET (username, id, send_receive_seconds, filter,
 						drop_modify_nothing, modification, query_command_nothing, query_command_1,
-						send_inject_query_command_nothing, query_command_2, proto_id, imm_addr,
+						send_inject_query_command_nothing, query_command_2, proto, addr,
 						insecure_port, secure_port, CCF, ACF, broadcast, override_implicit_rules,
 						activate, deactivate, is_active) = ($s_username, $id, "
 						. intval($_GET['send_receive_seconds']) . ', '
@@ -71,9 +70,8 @@ if ($can_edit_rules) {
 						. formescapetext($_GET['query_command_1']) . ', '
 						. intval($_GET['send_inject_query_command_nothing']) . ', '
 						. formescapetext($_GET['query_command_2']) . ', '
-						. (!vacuous($_GET['proto_name']) ? '(SELECT proto FROM proto_name
-						WHERE name = ' . pg_escape_literal($_GET['proto_name']) : 'NULL') . ', '
-						. formescapebytea($_GET['imm_addr'])
+						. formescapetext($_GET['proto'])
+						. ', ' . formescapebytea($_GET['imm_addr'])
 						. ', ' . formescapeinteger($_GET['insecure_port']) . ', '
 						. formescapeinteger($_GET['secure_port']) . formescapebool($_GET['CCF']) . ', '
 						. formescapebool($_GET['ACF']) . ', ' . formescapebool($_GET['broadcast'])
@@ -112,16 +110,14 @@ if ($can_edit_rules) {
 }
 if ($can_view_rules) {
 	if ($_SESSION['is_root']) {
-		$result = pgquery('SELECT rules.*, TRUE, proto_name.name FROM rules LEFT OUTER JOIN proto_name
-				ON rules.proto_id = proto_name.proto ORDER BY rules.username ASC, rules.id ASC;');
+		$result = pgquery('SELECT *, TRUE FROM rules ORDER BY username ASC, id ASC;');
 ?>
 		You are authorized to view (edit) rules for all users.<br/>
 <?php
 	} elseif ($_SESSION['is_administrator']) {
-		$result = pgquery("SELECT rules.*, rules.username = {$_SESSION['s_username']}
-				OR NOT users.is_administrator AND {$_SESSION['s_can_edit_as_others']}, proto_name.name
-				FROM rules INNER JOIN users ON rules.username = users.username LEFT OUTER JOIN proto_name
-				ON rules.proto_id = proto_name.proto WHERE rules.username
+		$result = pgquery("SELECT rules.*, users.username = {$_SESSION['s_username']}
+				OR NOT users.is_administrator AND {$_SESSION['s_can_edit_as_others']}
+				FROM rules INNER JOIN users ON rules.username = users.username WHERE rules.username
 				= {$_SESSION['s_username']} OR NOT users.is_administrator
 				AND {$_SESSION['s_can_view_as_others']} ORDER BY rules.username ASC, rules.id ASC;");
 		echo 'You are authorized to view', $can_edit_rules ? ' (edit)' : '',
@@ -129,17 +125,15 @@ if ($can_view_rules) {
 				? ' or non-administrators' : '', $_SESSION['can_edit_as_others'] && $can_edit_rules
 				? '' : ' (noedit)', ".<br/>\n";
 	} elseif ($_SESSION['is_public']) {
-		$result = pgquery('SELECT rules.*, TRUE, proto_name.name FROM rules LEFT OUTER JOIN proto_name
-				ON rules.proto_id = proto_name.proto WHERE rules.username = \'public\'
-				ORDER BY rules.id ASC;');
+		$result = pgquery('SELECT *, TRUE FROM rules WHERE rules.username = \'public\'
+				ORDER BY id ASC;');
 		echo 'You are authorized to view', $can_edit_rules ? ' (edit)' : '',
 				" rules for public user.<br/>\n";
 	} else {
-		$result = pgquery("SELECT rules.*, rules.username = {$_SESSION['s_username']}
-				OR rules.username = 'public' AND {$_SESSION['s_can_edit_as_others']}, proto_name.name
-				FROM rules LEFT OUTER JOIN proto_name ON rules.proto_id = proto_name.proto
-				WHERE rules.username = {$_SESSION['s_username']} OR rules.username = 'public'
-				AND {$_SESSION['s_can_view_as_others']} ORDER BY rules.username ASC, rules.id ASC;");
+		$result = pgquery("SELECT *, username = {$_SESSION['s_username']}
+				OR username = 'public' AND {$_SESSION['s_can_edit_as_others']}
+				FROM rules WHERE username = {$_SESSION['s_username']} OR username = 'public'
+				AND {$_SESSION['s_can_view_as_others']} ORDER BY username ASC, id ASC;");
 		echo 'You are authorized to view', $can_edit_rules ? ' (edit)' : '',
 				" rules for username {$_SESSION['h2username']}", $_SESSION['can_view_as_others']
 				? ' or public user' : '', $_SESSION['can_edit_as_others'] && $can_edit_rules ? ''
@@ -162,7 +156,7 @@ if ($can_view_rules) {
 				<th>and to form a new msg from this</th>
 				<th>(query/command 2)</th>
 				<th>using protocol</th>
-				<th>and immediate address</th>
+				<th>and address</th>
 				<th>using insecure port</th>
 				<th>and secure port</th>
 				<th>using CCF</th>
@@ -253,10 +247,10 @@ if ($can_view_rules) {
 						<input form="insert" type="text" name="query_command_2" size="10"/>
 					</td>
 					<td>
-						<input form="insert" type="text" name="proto_id" size="10"/>
+						<input form="insert" type="text" name="proto" size="10"/>
 					</td>
 					<td>
-						<input form="insert" type="text" name="imm_addr" size="10"/>
+						<input form="insert" type="text" name="addr" size="10"/>
 					</td>
 					<td>
 						<input form="insert" type="text" name="insecure_port" size="10"/>
@@ -445,14 +439,14 @@ if ($can_view_rules) {
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"text\" name=\"proto_id\" value=\"",
-								is_null($row[23]) ? '' : htmlspecialchars($row[23]),
+						echo "<input form=$form type=\"text\" name=\"proto\" value=\"",
+								is_null($row[10]) ? '' : htmlspecialchars($row[10]),
 								"\" size=\"10\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"text\" name=\"imm_addr\" value=\"",
+						echo "<input form=$form type=\"text\" name=\"addr\" value=\"",
 								is_null($row[11]) ? '' : htmlspecialchars(substr($row[11], 2)),
 								"\" size=\"10\"/>\n";
 ?>
@@ -551,18 +545,18 @@ if ($can_view_rules) {
 		</tbody>
 	</table>
 	<br/>If &quot;SELECT &lt;filter&gt;;&quot; evaluates to TRUE, the filter is triggered.
-	You can use column names HD, ..., CRC, CCF, ACF, broadcast, override, insecure and secure.
+	You can use column names HD, ..., CRC, proto, addr, CCF, ACF, broadcast, override, insecure and secure.
 	Appropriate FROM is automatically appended.<br/>
 	Modification is performed like &quot;UPDATE message SET &lt;semicolon-separated command 1&gt;;
 			UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;;&quot;.<br/>
 	During SQL queries the current message is stored in table &quot;message&quot; and columns
-			HD, ..., CRC, CCF, ACF, broadcast, override, insecure and secure.<br/>
+			HD, ..., CRC, proto, addr, CCF, ACF, broadcast, override, insecure and secure.<br/>
 	bash commands are NOT executed as /root/, but as the user who started the database.<br/>
 	Filter can be either a number or a string.<br/>
 	Leaving a field empty indicates NULL value.<br/>
 	Deactivating a rule deletes its timer. Changing a period does not.<br/>
 	Id must be unique for user. Smaller value indicates bigger priority.<br/>
-	When broadcasting a message any &quot;imm_DST&quot; is ignored.<br/>
+	When broadcasting a message any &quot;DST&quot; is ignored.<br/>
 	On send and receive rules &quot;last_run&quot; is meaningless.<br/>
 	Strings are written without excess quotations, e.g., proto = &apos;tcp&apos;.<br/><br/>
 	<a href="index.php">Done</a>

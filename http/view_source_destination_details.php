@@ -58,7 +58,7 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['DST'])) {
 				WHERE SRC = $s2SRC AND DST = $s_DST ORDER BY ID ASC;");
 		echo "Viewing table &quot;ID_TWR&quot; for SRC $h2SRC and DST $h2DST.<br/>\n";
 ?>
-		Table ordered by identifier ascending.<br/><br/>
+		Table ordered by ID ascending.<br/><br/>
 		<table border="1">
 			<tbody>
 				<tr>
@@ -162,7 +162,7 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['DST'])) {
 		Write the second column (TWR) as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
 		You can edit something only if you have edit permissions on this remote.<br/><br/>
 <?php
-		echo "<a href=\"view_remote_details.php?addr=$u_SRC\">Done</a>\n";
+		echo "<a href=\"view_remote_details.php?eui=$u_SRC\">Done</a>\n";
 	}
 }
 ?>
