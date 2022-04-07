@@ -44,11 +44,11 @@ if ($can_edit_others) {
 				$query .= formescapebool($_POST[$field]) . ', ';
 			}
 			pgquery($query . formescapebool($_POST['can_actually_login']) . ');');
-			pgquery("INSERT INTO configuration(username, forward_messages,
-					use_lan_switch_algorithm, nsecs_id, nsecs_src, trust_sending,
-					trust_receiving, default_gateway, my_eui, insecure_port, secure_port) SELECT $s_username,
-					forward_messages, use_lan_switch_algorithm, nsecs_id, nsecs_src,
-					trust_sending, trust_receving, default_gateway, my_eui, insecure_port, secure_port FROM configuration
+			pgquery("INSERT INTO configuration(username, forward_messages, use_lan_switch_algorithm,
+					nsecs_id, nsecs_src, trust_sending, trust_receiving, default_gateway, my_eui,
+					insecure_port, secure_port) SELECT $s_username, forward_messages,
+					use_lan_switch_algorithm, nsecs_id, nsecs_src, trust_sending, trust_receving,
+					default_gateway, my_eui, insecure_port, secure_port FROM configuration
 					WHERE username = {$_SESSION['s_username']};");
 			pgquery("CREATE ROLE $s_role;");
 			pgquery("GRANT CREATE ON SCHEMA public TO $s_role;");
@@ -130,8 +130,8 @@ if ($can_view_yourself || $can_view_others) {
 				OR NOT is_administrator AND $s_can_view_others ORDER BY username ASC;");
 		echo 'You are authorized to view', $can_edit_yourself ? ' (edit)' : '',
 				" username {$_SESSION['h2username']}", $can_view_others ? ' or view' : '',
-				$can_edit_others ? ' (edit)' : '', $can_view_others ? ' non-administrators'
-				: '', ".<br/>\n";
+				$can_edit_others ? ' (edit)' : '', $can_view_others ? ' non-administrators' : '',
+				".<br/>\n";
 	} elseif ($_SESSION['is_public']) {
 		$result = pgquery("SELECT *, $s_can_edit_yourself FROM users WHERE username = 'public';");
 ?>
@@ -145,8 +145,8 @@ if ($can_view_yourself || $can_view_others) {
 				OR username = 'public' AND $s_can_view_others ORDER BY username ASC;");
 		echo 'You are authorized to view', $can_edit_yourself ? ' (edit)' : '',
 				" username {$_SESSION['h2username']}", $can_view_others ? ' or view' : '',
-				$can_edit_others ? ' (edit)' : '', $can_view_others ? ' public user'
-				: '', ".<br/>\n";
+				$can_edit_others ? ' (edit)' : '', $can_view_others ? ' public user' : '',
+				".<br/>\n";
 	}
 ?>
 	Viewing table &quot;users&quot;.<br/>
@@ -337,7 +337,7 @@ if ($can_view_yourself || $can_view_others) {
 	</table>
 	<br/>Users &apos;public&apos; and &apos;root&apos; cannot be renamed or deleted.<br/>
 	Deleting a user also deletes his tables.<br/>
-	Only root can delete all users.<br/><br/>
+	Only &quot;root&quot; can delete all users.<br/><br/>
 	<a href="index.php">Done</a>
 <?php
 }

@@ -15,9 +15,8 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 	if ($can_edit) {
 		if (isset($_GET['truncate'])) {
 			if (isset($_GET['confirm'])) {
-				pgquery("DELETE FROM iSRC_TWR WHERE SRC = $s1SRC AND proto
-						= (SELECT proto FROM proto_name WHERE name = $s_proto);");
-				echo "Table &quot;iSRC_TWR&quot; truncated for SRC $h2SRC
+				pgquery("DELETE FROM src_TWR WHERE SRC = $s1SRC AND proto = $s_proto;");
+				echo "Table &quot;src_TWR&quot; truncated for SRC $h2SRC
 						and proto $h2proto.<br/>\n";
 			} else {
 ?>
@@ -28,20 +27,19 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 				echo "<a href=\"?SRC=$u_SRC&amp;proto=$u_proto\">No</a>\n";
 				exit(0);
 			}
-		} elseif (!vacuous($_GET['imm_SRC']) && !vacuous($_GET['TWR'])) {
-			$s_imm_SRC = pgescapebytea($_GET['imm_SRC']);
-			$h_imm_SRC = 'X&apos;' . htmlspecialchars($_GET['imm_SRC']) . '&apos;';
+		} elseif (!vacuous($_GET['src']) && !vacuous($_GET['TWR'])) {
+			$s_src = pgescapebytea($_GET['src']);
+			$h_src = 'X&apos;' . htmlspecialchars($_GET['src']) . '&apos;';
 			$TWR = pgescapetimestamp($_GET['TWR']);
 			if (isset($_GET['insert'])) {
-				pgquery("INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR) VALUES($s2SRC,
-						(SELECT proto FROM proto_name WHERE name = $s_proto), $s_imm_SRC, $TWR);");
-				echo "Mapping $h_imm_SRC for SRC $h2SRC and proto $h2proto inserted.<br/>\n";
+				pgquery("INSERT INTO src_TWR(\"SRC\", proto, \"src\", TWR) VALUES($s2SRC,
+						$s_proto, $s_imm_SRC, $TWR);");
+				echo "Mapping $h_src for SRC $h2SRC and proto $h2proto inserted.<br/>\n";
 			} else if (!vacuous($_GET['key']) && isset($_GET['update'])) {
 				$s_key = pgescapebytea($_GET['key']);
 				$h_key = 'X&apos;' . htmlspecialchars($_GET['key']) . '&apos;';
-				pgquery("UPDATE iSRC_TWR SET (imm_SRC, TWR) = ($s_imm_SRC, $TWR) WHERE SRC
-						= $s2SRC AND proto = (SELECT proto FROM proto_name
-						WHERE name = $s_proto) AND imm_SRC = $s_imm_SRC;");
+				pgquery("UPDATE src_TWR SET (\"src\", TWR) = ($s_src, $TWR) WHERE SRC
+						= $s2SRC AND proto = $s_proto AND \"src\" = $s_src;");
 				echo "Mapping $h_key for SRC $h2SRC and proto $h2proto updated.<br/>\n";
 			}
 		} elseif (!vacuous($_GET['key']) && isset($_GET['delete'])) {
@@ -49,8 +47,8 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 			$h_key = 'X&apos;' . htmlspecialchars($_GET['key']) . '&apos;';
 			$u_key = urlencode($_GET['key']);
 			if (isset($_GET['confirm'])) {
-				pgquery("DELETE FROM iSRC_TWR WHERE SRC = $s2SRC AND proto = (SELECT proto
-						FROM proto_name WHERE name = $s_proto) AND imm_SRC = $s_key;"));
+				pgquery("DELETE FROM src_TWR WHERE SRC = $s2SRC
+						AND proto = $s_proto AND src = $s_key;"));
 				echo "Mapping $h_key for SRC $h2SRC and proto $h2proto deleted.<br/>\n";
 			} else {
 ?>
@@ -64,15 +62,15 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 		}
 	}
 	if ($can_view) {
-		$result = pgquery("SELECT imm_SRC, TWR FROM iSRC_TWR WHERE SRC = $s2SRC AND proto
-				= (SELECT proto FROM proto_name WHERE name = $s_proto) ORDER BY imm_SRC ASC;");
-		echo "Viewing table &quot;iSRC_TWR&quot; for SRC $h2SRC and proto $h2proto.<br/>\n";
+		$result = pgquery("SELECT \"src\", TWR FROM src_TWR WHERE \"SRC\" = $s2SRC AND proto
+				= $s_proto ORDER BY \"src\" ASC;");
+		echo "Viewing table &quot;src_TWR&quot; for SRC $h2SRC and proto $h2proto.<br/>\n";
 ?>
-		Table ordered by immediate source address ascending.<br/><br/>
+		Table ordered by source ascending.<br/><br/>
 		<table border="1">
 			<tbody>
 				<tr>
-					<th>immediate source address (imm_SRC)</th>
+					<th>source (src)</th>
 					<th>time when received (TWR)</th>
 <?php
 					if ($can_edit) {
@@ -87,7 +85,7 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 ?>
 					<tr>
 						<td>
-							<input form="insert" type="text" name="imm_SRC" required autofocus/>
+							<input form="insert" type="text" name="src" required autofocus/>
 						</td>
 						<td>
 							<input form="insert" type="text" name="TWR" required/>
@@ -121,7 +119,7 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 						<td>
 <?php
 							$str = substr($row[0], 2);
-							echo "<input form=\"update$str\" type=\"text\" name=\"imm_SRC\"
+							echo "<input form=\"update$str\" type=\"text\" name=\"src\"
 									value=\"$str\" required autofocus/>\n";
 ?>
 						</td>
@@ -170,11 +168,11 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['proto'])) {
 ?>
 			</tbody>
 		</table>
-		<br/>Write imm_SRC as a binary string, e.g., abababababababab.<br/>
+		<br/>Write src as a binary string, e.g., abababababababab.<br/>
 		Write TWR as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
 		You can edit something only if you have edit permissions on this remote.<br/><br/>
 <?php
-		echo "<a href=\"view_remote_details.php?addr=$u_SRC\">Done, return to $h_SRC</a>\n";
+		echo "<a href=\"view_remote_details.php?eui=$u_SRC\">Done, return to $h_SRC</a>\n";
 	}
 }
 ?>
