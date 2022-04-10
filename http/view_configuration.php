@@ -9,11 +9,12 @@ if ($can_edit_configuration && !empty($_GET['username']) && isset($_GET['update'
 			|| $_SESSION['is_administrator'] && !is_administrator($s_username))
 			&& $_SESSION['can_edit_as_others'] || $_SESSION['is_root']) {
 		pgquery('UPDATE configuration SET (forward_messages, use_lan_switch_algorithm, nsecs_id,
-				nsecs_src, trust_sending, default_gateway, my_eui, insecure_port,
-				secure_port) = (' . formescapebool($_GET['forward_messages']) . ', '
+				nsecs_src, trust_sending, default_gateway, my_eui, insecure_port, secure_port) = ('
+				. formescapebool($_GET['forward_messages']) . ', '
 				. formescapebool($_GET['use_lan_switch_algorithm']) . ', '
-				. formescapeinteger($_GET['nsecs_id']) . ', '. formescapeinteger($_GET['nsecs_src'])
-				. ', ' . formescapeinteger($_GET['insecure_port']) . ', '
+				. formescapeinteger($_GET['nsecs_id']) . ', '
+				. formescapeinteger($_GET['nsecs_src']) . ', '
+				. formescapeinteger($_GET['insecure_port']) . ', '
 				. formescapeinteger($_GET['secure_port']) . ', '
 				. formescapebool($_GET['trust_sending']) . ', '
 				. formescapebool($_GET['trust_receiving']) . ', '
@@ -132,15 +133,15 @@ if ($can_view_configuration) {
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\"
-								name=\"default_gateway\" value=\"", is_null($row[7])
-								? '' : substr($row[7], 2), "\" size=\"16\"/>\n";
+								name=\"default_gateway\" value=\"",
+								is_null($row[7]) ? '' : substr($row[7], 2), "\" size=\"16\"/>\n";
 ?>
 					</td>
 					<td>
 <?php
 						echo "<input form=\"update_$username\" type=\"text\"
-								name=\"my_eui\" value=\"", is_null($row[8])
-								? '' : substr($row[8], 2), "\" size=\"16\"/>\n";
+								name=\"my_eui\" value=\"",
+								is_null($row[8]) ? '' : substr($row[8], 2), "\" size=\"16\"/>\n";
 ?>
 					</td>
 					<td>

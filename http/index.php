@@ -119,7 +119,7 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 		$h_msgtosend = 'X&apos;' . htmlspecialchars($_GET['msgtosend']) . '&apos;';
 		$proto = pg_escape_literal($_GET['proto']);
 		$dst = pgescapebytea($_GET['dst']);
-		pgquery("SELECT send_inject(TRUE, $s_msgtosend, $proto_name, $dst, "
+		pgquery("CALL send_inject(TRUE, $s_msgtosend, $proto_name, $dst, "
 				. formescapeinteger($_GET['insecure_port']) . ', '
 				. formescapeinteger($_GET['secure_port']) . ', ' . formescapebool($_GET['CCF'])
 				. ', ' . formescapebool($_GET['ACF']) . ', ' . formescapebool($_GET['broadcast'])
@@ -159,7 +159,7 @@ if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
 		$h_msgtoinject = 'X&apos;' . htmlspecialchars($_GET['msgtoinject']) . '&apos;';
 		$proto = pg_escape_literal($_GET['proto']);
 		$src = pgescapebytea($_GET['src']);
-		pgquery("SELECT send_inject(FALSE, $s_msgtoinject, $proto_name, $src, "
+		pgquery("CALL send_inject(FALSE, $s_msgtoinject, $proto_name, $src, "
 				. formescapeinteger($_GET['insecure_port']) . ', '
 				. formescapeinteger($_GET['secure_port']) . ', ' . formescapebool($_GET['CCF'])
 				. ', ' . formescapebool($_GET['ACF']) . ', ' . formescapebool($_GET['broadcast'])
@@ -317,18 +317,24 @@ if (check_authorization('can_view_rules', 'view rules')) {
 	<a href="view_rules.php">View rules</a><br/>
 <?php
 }
+if (check_authorization('can_view_certificates_and_private_keys',
+		'view certificates and private keys')) {
 ?>
 	<a href="view_certificates_and_private_keys.php">View certificates and private keys</a><br/>
 <?php
+}
 if (check_authorization('can_view_yourself', 'view yourself')
 		|| check_authorization('can_view_others', 'view others')) {
 ?>
 	<a href="view_users.php">View users</a><br/>
 <?php
 }
+if (check_authorization('can_view_adapters_and_underlying_protocols',
+		'view adapters and underlying protocols')) {
 ?>
 	<a href="view_adapters_and_underlying_protocols.php">View adapters and underlying protocols</a><br/>
 <?php
+}
 if (check_authorization('can_view_configuration', 'view configuration')) {
 ?>
 	<a href="view_configuration.php">View configuration</a><br/>
