@@ -67,7 +67,8 @@ if (!vacuous($_GET['eui'])) {
 		echo 'You are authorized to view ', $can_edit ? ' (edit) ' : '', "everything here.<br/><br/>\n";
 ?>
 		<form action="" method="GET">
-			View destination for this SRC:
+			View destination for this SRC (and when was the last message with which ID<br/>
+			received for that DST, used for duplicates):
 <?php
 			$result = pgquery("SELECT DST FROM SRC_DST WHERE SRC = $s2eui ORDER BY DST ASC;");
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
@@ -115,7 +116,8 @@ if (!vacuous($_GET['eui'])) {
 		}
 ?>
 		<br/><br/><form action="" method="GET">
-			View protocol for this SRC:
+			View protocol for this SRC (and when was the last message with which src<br/>
+			received over that proto, used for routes):
 <?php
 			$result = pgquery("SELECT proto FROM SRC_proto
 					WHERE SRC = $s2eui ORDER BY proto ASC;");

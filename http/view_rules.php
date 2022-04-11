@@ -26,7 +26,7 @@ if ($can_edit_rules) {
 			pgquery("INSERT INTO rules(username, id, send_receive_seconds, filter,
 					drop_modify_nothing, modification, query_command_nothing, query_command_1,
 					send_inject_query_command_nothing, query_command_2, proto, addr,
-					insecure_port, secure_port, CCF, ACF, broadcast, override_implicit_rules,
+					insecure_port, secure_port, CCF, ACF, broadcast, override,
 					activate, deactivate, is_active) VALUES($s_username, $id, "
 					. intval($_GET['send_receive_seconds']) . ', '
 					. pg_escape_literal($_GET['filter']) . ', '
@@ -37,12 +37,12 @@ if ($can_edit_rules) {
 					. intval($_GET['send_inject_query_command_nothing']) . ', '
 					. formescapetext($_GET['query_command_2']) . ', '
 					. formescapetext($_GET['proto'])
-					. ', ' . formescapebytea($_GET['imm_addr']) . ', '
+					. ', ' . formescapebytea($_GET['addr']) . ', '
 					. formescapeinteger($_GET['insecure_port']) . ', '
 					. formescapeinteger($_GET['secure_port']) . ', '
 					. formescapebool($_GET['CCF']) . ', ' . formescapebool($_GET['ACF']) . ', '
 					. formescapebool($_GET['broadcast']) . ', '
-					. formescapebool($_GET['override_implicit_rules']) . ', '
+					. formescapebool($_GET['override']) . ', '
 					. formescapeinteger($_GET['activate']) . ', '
 					. formescapeinteger($_GET['deactivate']) . ', '
 					. formescapebool($_GET['is_active']) . ');');
@@ -60,7 +60,7 @@ if ($can_edit_rules) {
 				pgquery("UPDATE rules SET (username, id, send_receive_seconds, filter,
 						drop_modify_nothing, modification, query_command_nothing, query_command_1,
 						send_inject_query_command_nothing, query_command_2, proto, addr,
-						insecure_port, secure_port, CCF, ACF, broadcast, override_implicit_rules,
+						insecure_port, secure_port, CCF, ACF, broadcast, override,
 						activate, deactivate, is_active) = ($s_username, $id, "
 						. intval($_GET['send_receive_seconds']) . ', '
 						. pg_escape_literal($_GET['filter']) . ', '
@@ -71,11 +71,11 @@ if ($can_edit_rules) {
 						. intval($_GET['send_inject_query_command_nothing']) . ', '
 						. formescapetext($_GET['query_command_2']) . ', '
 						. formescapetext($_GET['proto'])
-						. ', ' . formescapebytea($_GET['imm_addr'])
+						. ', ' . formescapebytea($_GET['addr'])
 						. ', ' . formescapeinteger($_GET['insecure_port']) . ', '
 						. formescapeinteger($_GET['secure_port']) . formescapebool($_GET['CCF']) . ', '
 						. formescapebool($_GET['ACF']) . ', ' . formescapebool($_GET['broadcast'])
-						. ', ' . formescapebool($_GET['override_implicit_rules']) . ', '
+						. ', ' . formescapebool($_GET['override']) . ', '
 						. formescapeinteger($_GET['activate']) . ', '
 						. formescapeinteger($_GET['deactivate']) . ', '
 						. formescapebool($_GET['is_active'])
@@ -268,7 +268,7 @@ if ($can_view_rules) {
 						<input form="insert" type="checkbox" name="broadcast"/>
 					</td>
 					<td nowrap>
-						<input form="insert" type="checkbox" name="override_implicit_rules"/>
+						<input form="insert" type="checkbox" name="override"/>
 						.
 					</td>
 					<td nowrap>
@@ -483,7 +483,7 @@ if ($can_view_rules) {
 					</td>
 					<td>
 <?php
-						echo "<input form=$form type=\"checkbox\" name=\"override_implicit_rules\"",
+						echo "<input form=$form type=\"checkbox\" name=\"override\"",
 								$row[17] == 't' ? ' checked' : '', "/>\n";
 ?>
 						.
@@ -545,12 +545,12 @@ if ($can_view_rules) {
 		</tbody>
 	</table>
 	<br/>If &quot;SELECT &lt;filter&gt;;&quot; evaluates to TRUE, the filter is triggered.
-	You can use column names HD, ..., CRC, proto, addr, CCF, ACF, broadcast, override, insecure and secure.
+	You can use column names HD, ID, LEN, DST, SRC, PL, CRC, proto, addr, CCF, ACF, encrypted (read-only), signed (read-only), broadcast, override, insecure and secure.
 	Appropriate FROM is automatically appended.<br/>
 	Modification is performed like &quot;UPDATE message SET &lt;semicolon-separated command 1&gt;;
 			UPDATE message SET &lt;semicolon-separated command 2&gt;; &lt;...&gt;;&quot;.<br/>
 	During SQL queries the current message is stored in table &quot;message&quot; and columns
-			HD, ..., CRC, proto, addr, CCF, ACF, broadcast, override, insecure and secure.<br/>
+			HD, ID, LEN, DST, SRC, PL, CRC, proto, addr, CCF, ACF, encrpyted (read-only), signed (read-only), broadcast, override, insecure and secure.<br/>
 	bash commands are NOT executed as /root/, but as the user who started the database.<br/>
 	Filter can be either a number or a string.<br/>
 	Leaving a field empty indicates NULL value.<br/>

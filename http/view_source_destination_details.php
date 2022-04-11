@@ -77,7 +77,7 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['DST'])) {
 ?>
 					<tr>
 						<td>
-							<input form="insert" type="text" name="ID" required/>
+							<input form="insert" type="text" name="ID" required autofocus/>
 						</td>
 						<td>
 							<input form="insert" type="text" name="TWR" required/>
@@ -162,7 +162,7 @@ if (!vacuous($_GET['SRC']) && !vacuous($_GET['DST'])) {
 		Write the second column (TWR) as a timestamp, e.g., 1111-11-11 11:11:11.<br/>
 		You can edit something only if you have edit permissions on this remote.<br/><br/>
 <?php
-		echo "<a href=\"view_remote_details.php?eui=$u_SRC\">Done</a>\n";
+		echo "<a href=\"view_remote_details.php?eui=$u_SRC\">Done, return to $h1SRC</a>\n";
 	}
 }
 ?>

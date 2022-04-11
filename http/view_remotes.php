@@ -1,7 +1,7 @@
 <?php
 require_once 'common.php';
-$can_view_remotes = check_authorization('can_view_remotes', 'view remotes');
-$can_edit_remotes = check_authorization('can_edit_remotes', 'edit remotes');
+$can_view_remotes = check_authorization('can_view_remotes', 'view remotes at all');
+$can_edit_remotes = check_authorization('can_edit_remotes', 'edit remotes at all');
 if ($can_view_remotes && isset($_GET['load'])) {
 	pgquery('CALL load_store(TRUE);');
 	$_SESSION['loaded'] = true;
@@ -21,7 +21,7 @@ if ($can_edit_remotes) {
 		$s2add = pgescapebytea($_GET['add']);
 		$h_add = 'X&apos;' . htmlspecialchars($_GET['add']) . '&apos;';
 		if (can_edit_table($s1add)) {
-			pgquery("INSERT INTO eui_oID(eui, out_ID) VALUES($s2eui, " . rand(0, 255) . ');');
+			pgquery("INSERT INTO eui_oID(eui, out_ID) VALUES($s2add, " . rand(0, 255) . ');');
 			echo "Remote $h_add added.<br/>\n";
 		}
 	} elseif (!vacuous($_GET['remove'])) {
@@ -74,10 +74,9 @@ if ($can_view_remotes) {
 			$bin_eui = 'eui_oID.eui';
 			$can_edit = "EXISTS(SELECT TRUE FROM table_owner WHERE tablename = 't'
 					|| encode($bin_eui, 'hex') AND username = 'public')";
-			$result = pgquery("SELECT $bin_eui, $can_edit FROM eui_oID
-					INNER JOIN table_reader ON 't' || encode($bin_eui, 'hex')
-					= table_reader.tablename WHERE $can_edit OR table_reader.username = 'public'
-					ORDER BY $bin_eui ASC;");
+			$result = pgquery("SELECT $bin_eui, $can_edit FROM eui_oID INNER JOIN table_reader
+					ON 't' || encode($bin_eui, 'hex') = table_reader.tablename WHERE $can_edit
+					OR table_reader.username = 'public' ORDER BY $bin_eui ASC;");
 ?>
 			You are authorized to view (edit) public-user-readable (-owned) tables.
 <?php
@@ -86,7 +85,7 @@ if ($can_view_remotes) {
 			$can_edit = "EXISTS(SELECT TRUE FROM table_owner WHERE tablename
 					= 't' || encode($bin_eui, 'hex') AND (username = {$_SESSION['s_username']}
 					OR username = 'public') AND {$_SESSION['s_can_edit_as_others']})";
-			$result = pgquery("SELECT DISTINCT $bin_eui, $can_edit FROM eui_oID.eui
+			$result = pgquery("SELECT DISTINCT $bin_eui, $can_edit FROM eui_oID
 					INNER JOIN table_reader ON 't' || encode($bin_eui, 'hex')
 					= table_reader.tablename WHERE $can_edit OR table_reader.username
 					= {$_SESSION['s_username']} OR table_reader.username = 'public'
@@ -102,11 +101,10 @@ if ($can_view_remotes) {
 			View remotes:
 <?php
 			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
-				$h_eui = substr($row[0], 2);
-				$s_eui = pgescapename($h_eui);
+				$h_eui = htmlspecialchars(substr($row[0], 2));
 				echo "<a href=\"view_remote_details.php?eui=$h_eui\">$h_eui</a>\n";
 				if ($can_edit_remotes && $row[1] == 't') {
-					echo "<a href=\"?remove=$str\">(remove)</a>\n";
+					echo "<a href=\"?remove=$h_eui\">(remove)</a>\n";
 				}
 			}
 			if (pg_num_rows($result) == 0) {
