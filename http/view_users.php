@@ -56,11 +56,11 @@ if ($can_edit_others) {
 		} elseif (!vacuous($_POST['key'])) {
 			$s_key = pg_escape_literal($_POST['key']);
 			$s_kole = pgescaperole1($_POST['username']);
+			$h_key = htmlspecialchars($_POST['key']);
 			if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
 					&& !is_administrator($s1username) || $_SESSION['is_root'])
 					&& isset($_POST['update1']) && ($_POST['key'] != 'root'
 					&& $_POST['key'] != 'public' || $_POST['key'] == $_POST['username'])) {
-				$h_key = htmlspecialchars($_POST['key']);
 				$query = 'UPDATE users SET (username' . (!vacuous($_POST['password']) ? ', password'
 						: '') . ", is_administrator, $user_fields_joined, can_actually_login)
 						= ($s1username" . (!vacuous($_POST['password']) ? ', \''
@@ -337,7 +337,7 @@ if ($can_view_yourself || $can_view_others) {
 	</table>
 	<br/>Users &apos;public&apos; and &apos;root&apos; cannot be renamed or deleted.<br/>
 	Deleting a user also deletes his tables.<br/>
-	Only &quot;root&quot; can delete all users.<br/><br/>
+	Only &quot;root&quot; can truncate all users.<br/><br/>
 	<a href="index.php">Done</a>
 <?php
 }
