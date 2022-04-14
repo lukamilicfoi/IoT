@@ -24,6 +24,7 @@ determine_hex_bash() {
 		declare -g $hex_bash=${!hex_bash}\\x`printf %02X $a`
 	done
 	echo $hex_bash=${!hex_bash}
+	sleep 0.5
 }
 
 determine_hex_bytea() {
@@ -44,7 +45,7 @@ determine_hex_bytea() {
 
 send_udp() {
 	echo "Sending $1..."
-	echo -en "$2" | ncat -4u $3 60000
+	echo -en "$2" | ncat -4u $3 44000
 	echo "Sending complete."
 }
 
@@ -52,7 +53,7 @@ send_tcp_text() {
 	echo "Sending $1..."
 	local LEN=`echo -n "$2" | wc -m`
 	echo LEN=$LEN
-	echo -en "\\x40\\0\\x`printf %02X $LEN`$2" | ncat -4 $3 60000
+	echo -en "\\x40\\0\\x`printf %02X $LEN`$2" | ncat -4 $3 44000
 	echo "Sending complete."
 }
 
@@ -90,7 +91,7 @@ send_tcp_binary() {
 	echo -en "\\x`printf %02X $header`$ID\\0\\x`printf %02X $LEN`" > /tmp/msg2
 	echo -en `printf \\\\\\\\x%02X \`cat /tmp/PL \\\\
 			| hexdump -ve "/1 \\\\"%d \\\\"" | cut -d \\\\  -f $fieldtobegin-\`` >> /tmp/msg2
-	cat /tmp/msg2 | ncat -4 $3 60000
+	cat /tmp/msg2 | ncat -4 $3 44000
 	echo "Sending complete."
 }
 
@@ -106,18 +107,18 @@ enable_clock() {
 	sleep 1
 }
 
-insert_imm_DST() {
-	echo "INSERT INTO SRC_oID(SRC, out_ID) VALUES($2, FLOOR(RANDOM() * 256));
-			INSERT INTO SRC_proto(SRC, proto) VALUES($2, '/my0');
-			INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR)
-			VALUES($2, '/my0', $1, LOCALTIMESTAMP);" | psql -U postgres
+insert_dst() {
+	echo "INSERT INTO eui_oID(eui, out_ID) VALUES($2, FLOOR(RANDOM() * 256));
+			INSERT INTO SRC_proto(SRC, proto) VALUES($2, 'tcp');
+			INSERT INTO src_TWR(\"SRC\", proto, \"src\", TWR)
+			VALUES($2, 'tcp', $1, LOCALTIMESTAMP);" | psql -U postgres
 }
 
 insert_DST() {
-	echo "INSERT INTO SRC_oID(SRC, out_ID) VALUES($1, FLOOR(RANDOM() * 256));
-			INSERT INTO SRC_proto(SRC, proto) VALUES($1, '/my0');
-			INSERT INTO iSRC_TWR(SRC, proto, imm_SRC, TWR)
-			VALUES($1, '/my0', $1, LOCALTIMESTAMP);" | psql -U postgres
+	echo "INSERT INTO eui_oID(eui, out_ID) VALUES($1, FLOOR(RANDOM() * 256));
+			INSERT INTO SRC_proto(SRC, proto) VALUES($1, 'tcp');
+			INSERT INTO src_TWR(\"SRC\", proto, \"src\", TWR)
+			VALUES($1, 'tcp', $1, LOCALTIMESTAMP);" | psql -U postgres
 }
 
 block_ctrlc() {
@@ -175,12 +176,13 @@ process_message() {
 }
 
 run_IoT() {
+	echo "TRUNCATE TABLE eui_oID CASCADE;" | psql -U postgres
 	../eclipse-workspace/IoT/Debug/IoT &
 	sleep 3
 }
 
 update_IoT() {
-	echo "SELECT load_store(FALSE);" | psql -U postgres
+	echo "CALL load_store(FALSE);" | psql -U postgres
 	sleep 1
 }
 
@@ -206,8 +208,8 @@ if [ $# -eq 0 ]; then
 	disable_clock
 	sleep 1; enable_clock
 
-	insert_imm_DST "E'\\\\x00000000000000AB'" "E'\\\\x00000000000000CD'"
-	insert_DST "E'\\\\x00000000000000EF'"
+	insert_dst "'\\x00000000000000AB'" "'\\x00000000000000CD'"
+	insert_DST "'\\x00000000000000EF'"
 
 	block_ctrlc
 	wait_ctrld
