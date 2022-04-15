@@ -318,6 +318,60 @@ struct load_ack_struct { };
 
 struct config_struct { };
 
+class protocol {
+
+private:
+
+	string my_name;
+
+	thread *recv_all_thread;
+
+	thread *send_all_thread;
+
+	mqd_t my_mq;
+
+	static void recv_all(protocol *proto);
+
+	static void send_all(protocol *proto);
+
+protected:
+
+	static atomic_int highest_sock;
+
+	atomic_bool run;
+
+	static void check_sock(int new_sock) noexcept;
+
+	virtual raw_message *recv_once() = 0;
+
+	virtual void send_once(raw_message *rmsg) = 0;
+
+	protocol(const protocol &p) = delete;
+
+	protocol &operator=(const protocol &p) = delete;
+
+public:
+
+	string get_my_name() const noexcept { return my_name; }
+
+	mqd_t get_my_mq() const noexcept { return my_mq; }
+
+	bool is_running() const noexcept { return recv_all_thread != nullptr; }
+
+	virtual bool can_secure_with_C(raw_message &rmsg) const noexcept = 0;
+
+	virtual bool can_secure_with_A(raw_message &rmsg) const noexcept = 0;
+
+	virtual void start();
+
+	virtual void stop();
+
+	protocol();
+
+	virtual ~protocol();
+
+};
+
 struct refresh_next_timed_rule_time_struct {
 	time_t next_timed_rule;
 };
@@ -699,60 +753,6 @@ void create_digital_signature(EVP_PKEY *senders_private_key, const BYTE *plainte
 
 void verify_digital_signature(EVP_PKEY *senders_public_key, const BYTE *plaintext,
 		int plaintext_len, const BYTE *signature, int signature_len);
-
-class protocol {
-
-private:
-
-	string my_name;
-
-	thread *recv_all_thread;
-
-	thread *send_all_thread;
-
-	mqd_t my_mq;
-
-	static void recv_all(protocol *proto);
-
-	static void send_all(protocol *proto);
-
-protected:
-
-	static atomic_int highest_sock;
-
-	atomic_bool run;
-
-	static void check_sock(int new_sock) noexcept;
-
-	virtual raw_message *recv_once() = 0;
-
-	virtual void send_once(raw_message *rmsg) = 0;
-
-	protocol(const protocol &p) = delete;
-
-	protocol &operator=(const protocol &p) = delete;
-
-public:
-
-	string get_my_name() const noexcept { return my_name; }
-
-	mqd_t get_my_mq() const noexcept { return my_mq; }
-
-	bool is_running() const noexcept { return recv_all_thread != nullptr; }
-
-	virtual bool can_secure_with_C(raw_message &rmsg) const noexcept = 0;
-
-	virtual bool can_secure_with_A(raw_message &rmsg) const noexcept = 0;
-
-	virtual void start();
-
-	virtual void stop();
-
-	protocol();
-
-	virtual ~protocol();
-
-};
 
 protocol::protocol() : my_name(get_typename(typeid(*this))), my_mq(), recv_all_thread(nullptr), send_all_thread(), run(true) { }
 
@@ -3188,7 +3188,8 @@ void config2() {
 		iss.clear();
 		c->trust_sending = *PQgetvalue(res, i, 5) == 't';
 		c->trust_receiving = *PQgetvalue(res, i, 6) == 't';
-		c->default_gateway = c17charp_to_BYTE8(PQgetvalue(res, i, 7) + 2);
+		c->default_gateway = PQgetisnull(res, i, 7) ? BROADCAST_PLACEHOLDER
+				: c17charp_to_BYTE8(PQgetvalue(res, i, 7) + 2);
 		c->my_eui = c17charp_to_BYTE8(PQgetvalue(res, i, 8) + 2);
 		iss.str(PQgetvalue(res, i, 9));
 		iss >> c->insecure_port;
