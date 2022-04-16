@@ -470,6 +470,14 @@ struct configuration {
 	int secure_port;
 };
 
+struct opensock {
+	bool CCF;
+	bool ACF;
+	int sock;
+	BYTE8 addr;
+	SSL *ssl;
+};
+
 map<string, configuration *> username_configuration;
 
 my_time_point beginning;
@@ -835,14 +843,6 @@ void protocol::check_sock(int new_sock) noexcept {
 		highest_sock = new_sock;
 	}
 }
-
-struct opensock {
-	bool CCF;
-	bool ACF;
-	int sock;
-	BYTE8 addr;
-	SSL *ssl;
-};
 
 int tcp_port = 44000;
 
@@ -3190,7 +3190,8 @@ void config2() {
 		c->trust_receiving = *PQgetvalue(res, i, 6) == 't';
 		c->default_gateway = PQgetisnull(res, i, 7) ? BROADCAST_PLACEHOLDER
 				: c17charp_to_BYTE8(PQgetvalue(res, i, 7) + 2);
-		c->my_eui = c17charp_to_BYTE8(PQgetvalue(res, i, 8) + 2);
+		c->my_eui = PQgetisnull(res, i, 8) ? BROADCAST_PLACEHOLDER
+				: c17charp_to_BYTE8(PQgetvalue(res, i, 8) + 2);
 		iss.str(PQgetvalue(res, i, 9));
 		iss >> c->insecure_port;
 		iss.clear();
