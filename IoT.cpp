@@ -204,28 +204,6 @@ struct header {
 	void put_as_byte(BYTE B) noexcept;
 };
 
-static_assert(sizeof(header) == sizeof(BYTE), "sizeof(header) != sizeof(BYTE)");
-
-const BYTE header::lookup_table[16] = {
-		0b0000, 0b1000, 0b0100, 0b1100, 0b0010, 0b1010, 0b0110, 0b1110,
-		0b0001, 0b1001, 0b0101, 0b1101, 0b0011, 0b1011, 0b0111, 0b1111
-};
-
-BYTE header::reverse_byte(BYTE B) noexcept {
-	return lookup_table[B & 0x0F] << 4 | lookup_table[(B & 0xF0) >> 4];
-}
-
-bool little_endian = true;
-
-BYTE header::get_as_byte() const noexcept {
-	return little_endian ? reverse_byte(*reinterpret_cast<const BYTE *>(this))
-			: *reinterpret_cast<const BYTE *>(this);
-}
-
-void header::put_as_byte(BYTE B) noexcept {
-	*reinterpret_cast<BYTE *>(this) = little_endian ? reverse_byte(B) : B;
-}
-
 struct formatted_message {
 	BYTE4 CRC;//Cyclic Redundancy Check
 	header HD;//message HeaDer
@@ -847,6 +825,28 @@ void protocol::check_sock(int new_sock) noexcept {
 int tcp_port = 44000;
 
 int tls_port = 44001;
+
+static_assert(sizeof(header) == sizeof(BYTE), "sizeof(header) != sizeof(BYTE)");
+
+const BYTE header::lookup_table[16] = {
+		0b0000, 0b1000, 0b0100, 0b1100, 0b0010, 0b1010, 0b0110, 0b1110,
+		0b0001, 0b1001, 0b0101, 0b1101, 0b0011, 0b1011, 0b0111, 0b1111
+};
+
+BYTE header::reverse_byte(BYTE B) noexcept {
+	return lookup_table[B & 0x0F] << 4 | lookup_table[(B & 0xF0) >> 4];
+}
+
+bool little_endian = true;
+
+BYTE header::get_as_byte() const noexcept {
+	return little_endian ? reverse_byte(*reinterpret_cast<const BYTE *>(this))
+			: *reinterpret_cast<const BYTE *>(this);
+}
+
+void header::put_as_byte(BYTE B) noexcept {
+	*reinterpret_cast<BYTE *>(this) = little_endian ? reverse_byte(B) : B;
+}
 
 #define TCP_BACKLOG 10
 
@@ -4790,20 +4790,19 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 void send_formatted_message(formatted_message *fmsg) {
 	unique_ptr<raw_message> rmsg;
 	int i;
-	map<BYTE8, remote *>::iterator iter_DST_destination = eui_remote.find(fmsg->DST);
 	multimap<protocol *, BYTE8>::iterator iter_src;
 	bool failed = true;
 	my_time_point now = my_now();
-	map<protocol *, map<BYTE8, my_time_point> *>::iterator iter_proto_dst_TWR;
 	map<BYTE8, my_time_point>::iterator iter_dst_TWR;
 	regex re("d=[0-9]{1,3}");
 	istringstream iss;
 	chrono::system_clock::rep dt;
 	unique_ptr<formatted_message> copy, dummy_f(fmsg);
 	configuration *c = username_configuration[find_owner(fmsg->SRC)];
+	map<BYTE8, remote *>::iterator iter_DST_destination = eui_remote.find(fmsg->DST);
 
 	THR(iter_DST_destination == eui_remote.end(), message_exception("DST does not exist"));
-	for (iter_proto_dst_TWR = iter_DST_destination->second->proto_src_TWR.begin();
+	for (auto iter_proto_dst_TWR = iter_DST_destination->second->proto_src_TWR.begin();
 			iter_proto_dst_TWR != iter_DST_destination->second->proto_src_TWR.end();
 			iter_proto_dst_TWR++) {
 		for (iter_dst_TWR = iter_proto_dst_TWR->second->begin();
