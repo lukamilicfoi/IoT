@@ -224,39 +224,6 @@ struct formatted_message {
 	void verify();
 };
 
-static_assert(offsetof(formatted_message, DST) == 8, "offsetof(formatted_message, DST) != 8");
-
-bool formatted_message::is_encrypted() const noexcept {
-	return LEN > 1 && PL[0] == '@';
-}
-
-void *memcpy_endian(void *dst, const void *src, size_t len) noexcept;
-
-bool formatted_message::is_signed() const {
-	regex re(RE_STRING);
-	string str;
-	BYTE2 envelope_len = 0, encrypted_key_len;
-
-	if (is_encrypted()) {
-		THR(LEN < 3, message_exception("LEN < 3"));
-		memcpy_endian(&envelope_len, PL + 1, 2);
-		envelope_len += 3;
-		THR(LEN < envelope_len, message_exception("LEN < 3 + ciphertext_len"));
-		memcpy_endian(&encrypted_key_len, PL + envelope_len, 2);
-		envelope_len += encrypted_key_len;
-		THR(LEN < envelope_len, message_exception("LEN < 3 + len + encrypted_key_len"));
-	}
-
-	str.assign(reinterpret_cast<const char *>(PL + envelope_len), LEN - envelope_len);
-	sti iter_begin(str.cbegin(), str.cend(), re, -1), iter_end;
-	do {
-		if (iter_begin->str().find('#') != string::npos) {
-			return true;
-		}
-	} while (++iter_begin != iter_end);
-	return false;
-}
-
 class protocol;//forward declaration
 
 struct raw_message {
@@ -851,6 +818,39 @@ void header::put_as_byte(BYTE B) noexcept {
 #define TCP_BACKLOG 10
 
 #define TLS_BACKLOG 10
+
+static_assert(offsetof(formatted_message, DST) == 8, "offsetof(formatted_message, DST) != 8");
+
+bool formatted_message::is_encrypted() const noexcept {
+	return LEN > 1 && PL[0] == '@';
+}
+
+void *memcpy_endian(void *dst, const void *src, size_t len) noexcept;
+
+bool formatted_message::is_signed() const {
+	regex re(RE_STRING);
+	string str;
+	BYTE2 envelope_len = 0, encrypted_key_len;
+
+	if (is_encrypted()) {
+		THR(LEN < 3, message_exception("LEN < 3"));
+		memcpy_endian(&envelope_len, PL + 1, 2);
+		envelope_len += 3;
+		THR(LEN < envelope_len, message_exception("LEN < 3 + ciphertext_len"));
+		memcpy_endian(&encrypted_key_len, PL + envelope_len, 2);
+		envelope_len += encrypted_key_len;
+		THR(LEN < envelope_len, message_exception("LEN < 3 + len + encrypted_key_len"));
+	}
+
+	str.assign(reinterpret_cast<const char *>(PL + envelope_len), LEN - envelope_len);
+	sti iter_begin(str.cbegin(), str.cend(), re, -1), iter_end;
+	do {
+		if (iter_begin->str().find('#') != string::npos) {
+			return true;
+		}
+	} while (++iter_begin != iter_end);
+	return false;
+}
 
 static_assert(sizeof(in_addr) == sizeof(BYTE4), "sizeof(in_addr) != sizeof(BYTE4)");
 
@@ -4790,10 +4790,8 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 void send_formatted_message(formatted_message *fmsg) {
 	unique_ptr<raw_message> rmsg;
 	int i;
-	multimap<protocol *, BYTE8>::iterator iter_src;
 	bool failed = true;
 	my_time_point now = my_now();
-	map<BYTE8, my_time_point>::iterator iter_dst_TWR;
 	regex re("d=[0-9]{1,3}");
 	istringstream iss;
 	chrono::system_clock::rep dt;
@@ -4801,11 +4799,14 @@ void send_formatted_message(formatted_message *fmsg) {
 	configuration *c = username_configuration[find_owner(fmsg->SRC)];
 	map<BYTE8, remote *>::iterator iter_DST_destination = eui_remote.find(fmsg->DST);
 
+	if (iter_DST_destination == eui_remote.end()) {
+		iter_DST_destination = eui_remote.find(c->default_gateway);
+	}
 	THR(iter_DST_destination == eui_remote.end(), message_exception("DST does not exist"));
 	for (auto iter_proto_dst_TWR = iter_DST_destination->second->proto_src_TWR.begin();
 			iter_proto_dst_TWR != iter_DST_destination->second->proto_src_TWR.end();
 			iter_proto_dst_TWR++) {
-		for (iter_dst_TWR = iter_proto_dst_TWR->second->begin();
+		for (auto iter_dst_TWR = iter_proto_dst_TWR->second->begin();
 				iter_dst_TWR != iter_proto_dst_TWR->second->end(); iter_dst_TWR++) {
 			dt = chrono::duration_cast<chrono::seconds>(now - iter_dst_TWR->second).count();
 			if (dt > c->nsecs_src) {
