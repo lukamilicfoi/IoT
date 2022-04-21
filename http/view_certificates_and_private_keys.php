@@ -9,7 +9,7 @@ if ($can_edit) {
 		$type = $_GET['type'] == 'certificate' ? 'certificate' : 'privateKey';
 		if (isset($_GET['confirm'])) {
 			array_map('unlink', glob('/home/luka/{$type}s/*'));
-			echo "{$type}s truncated.<br/>
+			echo "{$type}s truncated.<br/>\n";
 		} else {
 ?>
 			Are you sure?
@@ -44,7 +44,7 @@ if ($can_edit) {
 			move_uploaded_file($_FILES['file']['tmp_name'], $p_eui);
 			echo "$type $h_eui updated.<br/>\n";
 		}
-	} elseif (!vacuous($_GET['eui']) && !vacuous($_GET['type])) {
+	} elseif (!vacuous($_GET['eui']) && !vacuous($_GET['type'])) {
 		$type = $_GET['type'] == 'certificate' ? 'certificate' : 'privateKey';
 		$h_eui = 'X&apos;' . htmlspecialchars($_GET['eui']) . '&apos;';
 		$p_eui = "/home/luka/{$type}s/" . str_replace($_GET['eui'], '/', '\\/') . '.pem';
@@ -53,7 +53,7 @@ if ($can_edit) {
 		if ($eui_owner == $_SESSION['username'] || ($eui_owner == 'public'
 				|| $_SESSION['is_administrator'] && !is_administrator(pg_escape_literal($eui_owner))
 				&& $_SESSION['can_edit_as_others'] || $_SESSION['is_root']
-				$$ isset($_GET['delete']) && file_exists($p_eui) {
+				&& isset($_GET['delete']) && file_exists($p_eui))) {
 			if (isset($_GET['confirm'])) {
 				unlink($p_eui);
 				echo "$type $h_eui deleted.<br/>\n";
@@ -109,7 +109,7 @@ if ($can_view) {
 		echo "You are authorized to <br>\n";
 	}
 ?>
-	Viewing certificates.<br/>
+	<br/>Viewing certificates.<br/>
 	Ordered by EUI ascending.<br/>
 	<a href="?truncate&amp;type=certificate">TRUNCATE</a>
 	<table border="1">
@@ -133,22 +133,22 @@ if ($can_view) {
 					<tr>
 						<td>
 <?php
-							$h_eui = htmlspecialchars($row[0]);
+							$h_eui = htmlspecialchars(substr($row[0], 1));
 							$form1 = "\"{$h_eui}get1\"";
 							$form2 = "\"{$h_eui}post1\"";
 							echo "<input form=$form1 type=\"text\" name=\"eui\"
-									value=\"$h_eui\"" readonly/>\n";
+									value=\"$h_eui\" readonly/>\n";
 							echo "<input form=$form1 type=\"hidden\" name=\"type\"
 									value=\"certificate\"/>\n";
 							echo "<input form=$form2 type=\"hidden\" name=\"eui\"
-									value=\"$h_eui\""/>\n";
+									value=\"$h_eui\"/>\n";
 							echo "<input form=$form2 type=\"hidden\" name=\"type\"
 									value=\"privateKey\"/>\n";
 ?>
 						</td>
 						<td>
 <?php
-							$exists = file_exists("/home/luka/certificates/{$row[0]}.pem");
+							$exists = file_exists("/home/luka/certificates/$h_eui.pem");
 							if ($exists) {
 								echo "<a href=\"?eui=$h_eui&amp;type=certificate&amp;view\"
 										/>View</a>\n";
@@ -188,10 +188,7 @@ if ($can_view) {
 			}
 ?>
 		</tbody>
-	</table>
-<?php
-	}
-?>
+	</table><br/>
 	Viewing private keys.<br/>
 	Ordered by EUI ascending.<br/>
 	<a href="?truncate&amp;type=privateKey">TRUNCATE</a>
@@ -203,28 +200,28 @@ if ($can_view) {
 <?php
 				if ($can_edit) {
 ?>
-					<th>Actions</th>
+					<th>(actions)</th>
 <?php
 				}
 ?>
 			</tr>
 <?php
 			$last = '';
-			for ($row = pg_fetch_row($result); $row; $row = pg_fetch_row($result)) {
+			for ($row = pg_fetch_row($result, 0); $row; $row = pg_fetch_row($result)) {
 				if ($row[0] != $last) {
 ?>
 					<tr>
 						<td>
 <?php
-							$h_eui = htmlspecialchars($row[0]);
+							$h_eui = htmlspecialchars(substr($row[0], 1));
 							$form1 = "\"{$h_eui}get2\"";
 							$form2 = "\"{$h_eui}post2\"";
 							echo "<input form=$form1 type=\"text\" name=\"eui\"
-									value=\"$h_eui\"" readonly/>\n";
+									value=\"$h_eui\" readonly/>\n";
 							echo "<input form=$form1 type=\"hidden\" name=\"type\"
 									value=\"privateKey\"/>\n";
 							echo "<input form=$form2 type=\"hidden\" name=\"eui\"
-									value=\"$h_eui\""/>\n";
+									value=\"$h_eui\"/>\n";
 							echo "<input form=$form2 type=\"hidden\" name=\"type\"
 									value=\"privateKey\"/>\n";
 ?>
@@ -269,8 +266,9 @@ if ($can_view) {
 					$last = $row[0];
 				}
 			}
+?>
 		</tbody>
-	</table>
+	</table><br/>
 	<a href="index.php">Done</a>
 <?php
 }
