@@ -1,9 +1,9 @@
 <?php
 require_once 'common.php';
 $can_view = check_authorization('can_view_adapters_and_underlying_protocols',
-		'view adapters and underlying protocols);
+		'view adapters and underlying protocols');
 $can_edit = check_authorization('can_edit_adapters_and_underlying_protocols',
-		'edit adapters and underlying protocols);
+		'edit adapters and underlying protocols');
 if ($can_edit) {
 	if (!vacuous($_GET['proto'])) {
 		$s_proto = pg_escape_literal($_GET['proto']);
@@ -15,7 +15,7 @@ if ($can_edit) {
 			pgquery("CALL enable_disable_protocol();");
 			echo "Protocol $h_proto disabled.<br/>\n";
 		}
-	} elsif (!vacuous($_GET['adapter'])) {
+	} elseif (!vacuous($_GET['adapter'])) {
 		$s_adapter = pg_escape_literal($_GET['adapter']);
 		$h_adapter = '&apos;' . htmlspecialchars($_GET['adapter']) . '&apos;';
 		if (isset($_GET['enable'])) {
@@ -28,12 +28,12 @@ if ($can_edit) {
 	}
 }
 if ($can_view) {
-	$result = pgquery('SELECT *, TRUE FROM adapters ORDER BY adapter
-			UNION ALL SELECT *, FALSE FROM protocols ORDER BY proto;');
+	$result = pgquery('SELECT *, TRUE AS a_p FROM adapters
+			UNION ALL SELECT *, FALSE AS a_p FROM protocols ORDER BY a_p DESC;');
 	echo 'You are authorized to view', $can_edit ? ' (edit)' : '',
 			" all adapters and underlying protocols.<br/>\n";
 ?>
-	Viewing adapters ordered by name.
+	<br/>Viewing adapters ordered by name.
 	<table border="1">
 		<tbody>
 			<tr>
@@ -54,7 +54,7 @@ if ($can_view) {
 				<tr>
 					<td>
 <?php
-						$adapter = htmlescapechars($row[0]);
+						$adapter = htmlspecialchars($row[0]);
 						$form = "\"$adapter\"";
 						echo "<input form=$form type=\"text\" name=\"adapter\" value=$form
 								readonly/>\n";
@@ -63,7 +63,7 @@ if ($can_view) {
 					<td>
 <?php
 						echo '<input type="checkbox"', $row[1] == 't' ? ' checked' : '',
-								" readonly/>\n";
+								" disabled/>\n";
 ?>
 					</td>
 <?php
@@ -84,7 +84,7 @@ if ($can_view) {
 ?>
 		</tbody>
 	</table>
-	Viewing underlying protocols ordered by name.
+	<br/>Viewing underlying protocols ordered by name.
 	<table border="1">
 		<tbody>
 			<tr>
@@ -99,12 +99,12 @@ if ($can_view) {
 ?>
 			</tr>
 <?php
-			while ($row && $row[2] == 't') {
+			while ($row) {
 ?>
 				<tr>
 					<td>
 <?php
-						$proto = htmlescapechars($row[0]);
+						$proto = htmlspecialchars($row[0]);
 						$form = "\"$proto\"";
 						echo "<input form=$form type=\"text\" name=\"proto\" value=$form
 								readonly/>\n";
@@ -113,7 +113,7 @@ if ($can_view) {
 					<td>
 <?php
 						echo '<input type="checkbox"', $row[1] == 't' ? 'checked' : '',
-								" readonly/>\n";
+								" disabled/>\n";
 ?>
 					</td>
 <?php
@@ -135,7 +135,7 @@ if ($can_view) {
 ?>
 		</tbody>
 	</table>
-	<a href="index.php">Done</a>
+	<br/><a href="index.php">Done</a>
 <?php
 }
 ?>
