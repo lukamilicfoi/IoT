@@ -31,13 +31,10 @@ if ($can_edit_permissions) {
 		$h_username = '&apos;' . htmlspecialchars($_GET['username']) . '&apos;';
 		$tablename_owner = find_owner($s1tablename);
 		$tablename_owner_is_administrator = is_administrator(pg_escape_literal($tablename_owner));
-		$tablename_owner_is_user = $tablename_owner == $_SESSION['username'];
-		$tablename_owner_is_user_or_public = $tablename_owner_is_user
-				|| $tablename_owner == 'public';
-		if (($tablename_owner_is_user_or_public || $_SESSION['is_administrator']
-				&& !$tablename_owner_is_administrator && $_SESSION['can_edit_as_others']
-			 	|| $_SESSION['is_root']) && $tablename_owner != $_GET['username']
-				&& isset($_GET['insert'])) {
+		if (($tablename_owner == $_SESSION['username'] || ($tablename_owner == 'public'
+				|| $_SESSION['is_administrator'] &&  !$tablename_owner_is_administrator) 
+			 	&& $_SESSION['can_edit_as_others'] || $_SESSION['is_root'])
+				&& $tablename_owner != $_GET['username'] && isset($_GET['insert'])) {
 			pgquery("INSERT INTO table_reader(tablename, username)
 					VALUES($s1tablename, $s_username);");
 			pgquery("GRANT SELECT, TRIGGER, REFERENCES ON $s2tablename TO $s_role;");
@@ -48,15 +45,15 @@ if ($can_edit_permissions) {
 			$h_key1 = '&apos;' . htmlspecialchars($_GET['key1']) . '&apos;';
 			$key1_owner = find_owner($s1key1);
 			$key1_owner_is_administrator = is_administrator(pg_escape_literal($key1_owner));
-			$key1_owner_is_user = $key1_owner == $_SESSION['username'];
-			$key1_owner_is_user_or_public = $key1_owner_is_user || $key1_owner == 'public';
 			$s1key2 = pg_escape_literal($_GET['key2']);
 			$s2key2 = pgescaperole2($_GET['key2']);
 			$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
-			if (($key1_owner_is_user_or_public && $tablename_owner_is_user_or_public
-					|| $_SESSION['is_administrator'] && ($key1_owner_is_user
-					|| !$key1_owner_is_administrator) && ($tablename_owner_is_user
-					|| !$tablename_owner_is_administrator) && $_SESSION['can_edit_as_others']
+			if (($key1_owner == $_SESSION['username'] && $tablename_owner == $_SESSION['username']
+					|| ($key1_owner == $_SESSION['username'] && $tablename_owner == 'public'
+					|| $tablename_owner == $_SESSION['username'] && $key1_owner == 'public'
+					|| $_SESSION['is_administrator'] && ($key1_owner == $_SESSION['username']
+					|| !$key1_owner_is_administrator) && ($tablename_owner == $_SESSION['username']
+					|| !$tablename_owner_is_administrator)) && $_SESSION['can_edit_as_others']
 				 	|| $_SESSION['is_root']) && $tablename_owner != $_GET['username']
 					&& isset($_GET['update1'])) {
 				pgquery("UPDATE table_reader SET (tablename, username) = ($s1tablename, $s_username)
@@ -82,8 +79,9 @@ if ($can_edit_permissions) {
 		$s2key2 = pgescaperole2($_GET['key2']);
 		$h_key2 = '&apos;' . htmlspecialchars($_GET['key2']) . '&apos;';
 		$u_key2 = urlencode($_GET['key2']);
-		if (($key1_owner == $_SESSION['username'] || $key1_owner == 'public'
-				|| $_SESSION['is_administrator'] && !is_administrator(pg_escape_literal($key1_owner))
+		if (($key1_owner == $_SESSION['username'] || ($key1_owner == 'public'
+				|| $_SESSION['is_administrator']
+				&& !is_administrator(pg_escape_literal($key1_owner)))
 				&& $_SESSION['can_edit_as_others'] || $_SESSION['is_root'])
 				&& isset($_GET['delete'])) {
 			if (isset($_GET['confirm'])) {

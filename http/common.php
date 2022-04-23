@@ -146,8 +146,8 @@ $user_fields = array('can_view_tables', 'can_edit_tables', 'can_send_messages',
 		'can_edit_permissions', 'can_view_remotes', 'can_edit_remotes', 'can_execute_rules',
 		'can_view_yourself', 'can_edit_yourself', 'can_view_certificates_and_private_keys',
 		'can_edit_certificates_and_private_keys', 'can_view_others', 'can_edit_others',
-		'can_view_as_others', 'can_edit_as_others', 'can_view_adapters_and_underlying_protocols',
-		'can_edit_adapters_and_underlying_protocols');
+		'can_view_adapters_and_underlying_protocols', 'can_edit_adapters_and_underlying_protocols',
+		'can_view_as_others', 'can_edit_as_others');
 
 function my_input_to_postgresql_input($data, $oid) {
 	if ($data == '') {
