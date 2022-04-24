@@ -38,7 +38,7 @@ if ($can_edit_others) {
 		if (($_SESSION['is_administrator'] && !isset($_POST['is_administrator'])
 				|| $_SESSION['is_root']) && isset($_POST['insert'])) {
 			$query = "INSERT INTO users(username, password, is_administrator, $user_fields_joined,
-					can_actually_login) VALUES($s1username, '" . password_hash($_POST['password'],
+					can_actually_login) VALUES($s_username, '" . password_hash($_POST['password'],
 					PASSWORD_DEFAULT) . '\', ' . formescapebool($_POST['is_administrator']) . ', ';
 			foreach ($user_fields as $field) {
 				$query .= formescapebool($_POST[$field]) . ', ';
@@ -63,7 +63,7 @@ if ($can_edit_others) {
 					&& $_POST['key'] != 'public' || $_POST['key'] == $_POST['username'])) {
 				$query = 'UPDATE users SET (username' . (!vacuous($_POST['password']) ? ', password'
 						: '') . ", is_administrator, $user_fields_joined, can_actually_login)
-						= ($s1username" . (!vacuous($_POST['password']) ? ', \''
+						= ($s_username" . (!vacuous($_POST['password']) ? ', \''
 						. password_hash($_POST['password'], PASSWORD_DEFAULT) . '\'' : '') . ', '
 						. formescapebool($_POST['is_administrator']) . ', ';
 				foreach ($user_fields as $field) {
