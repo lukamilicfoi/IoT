@@ -5,26 +5,28 @@ $can_view = check_authorization('can_view_adapters_and_underlying_protocols',
 $can_edit = check_authorization('can_edit_adapters_and_underlying_protocols',
 		'edit adapters and underlying protocols');
 if ($can_edit) {
-	if (!vacuous($_GET['proto'])) {
-		$s_proto = pg_escape_literal($_GET['proto']);
-		$h_proto = '&apos;' . htmlspecialchars($_GET['proto']) . '&apos;';
-		if (isset($_GET['enable'])) {
-			pgquery("CALL enable_disable_protocol();");
-			echo "Protocol $h_proto enabled.<br/>\n";
-		} elseif (isset($_GET['disable'])) {
-			pgquery("CALL enable_disable_protocol();");
-			echo "Protocol $h_proto disabled.<br/>\n";
-		}
-	} elseif (!vacuous($_GET['adapter'])) {
+	if (!vacuous($_GET['adapter'])) {
 		$s_adapter = pg_escape_literal($_GET['adapter']);
 		$h_adapter = '&apos;' . htmlspecialchars($_GET['adapter']) . '&apos;';
 		if (isset($_GET['enable'])) {
-			pgquery("CALL enable_disable_adapter();");
+			pgquery("UPDATE adapters SET enabled = TRUE WHERE adapter = $s_adapter;");
 			echo "Adapter $h_adapter enabled.<br/>\n";
 		} elseif (isset($_GET['disable'])) {
-			pgquery("CALL enable_disable_adapter();");
-			echo "Adapter $s_adapter disabled.<br/>\n";
+			pgquery("UPDATE adapters SET enabled = FALSE WHERE adapter = $s_adapter;");
+			echo "Adapter $h_adapter disabled.<br/>\n";
 		}
+		pgquery("CALL refresh_adapters();");
+	} elseif (!vacuous($_GET['proto'])) {
+		$s_proto = pg_escape_literal($_GET['proto']);
+		$h_proto = '&apos;' . htmlspecialchars($_GET['proto']) . '&apos;';
+		if (isset($_GET['enable'])) {
+			pgquery("UPDATE protocols SET enabled = TRUE WHERE proto = $s_proto;");
+			echo "Protocol $h_proto enabled.<br/>\n";
+		} elseif (isset($_GET['disable'])) {
+			pgquery("UPDATE protocols SET enabled = FALSE WHERE proto = $s_proto;");
+			echo "Protocol $s_proto disabled.<br/>\n";
+		}
+		pgquery("CALL refresh_protocols();");
 	}
 }
 if ($can_view) {

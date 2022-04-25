@@ -26,10 +26,6 @@ if ($can_edit) {
 		$p_eui = "/home/luka/{$type}s/" . str_replace($_POST['eui'], '/', '\\/') . '.pem';
 		$eui_owner = find_owner(pg_escape_literal('t' . $_POST['eui']));
 		$eui_owner_is_administrator = is_administrator(pg_escape_literal($eui_owner));
-
-			readfile($p_eui);
-			exit(0);
-
 		if ($eui_owner == $_SESSION['username'] || ($eui_owner == 'public'
 				|| $_SESSION['is_administrator'] && !$eui_owner_is_administrator)
 				&& $_SESSION['can_edit_as_others'] || $_SESSION['is_root']
@@ -71,6 +67,18 @@ if ($can_edit) {
 	}
 }
 if ($can_view) {
+	if (!vacuous($_GET['eui']) && !vacuous($_GET['type'])) {
+		$type = $_GET['type'] == 'certificate' ? 'certificate' : 'privateKey';
+		$eui = "/home/luka/{$type}s/" . str_replace($_GET['eui'], '/', '\\') . '.pem';
+		$eui_owner = find_owner(pg_escape_literal('t' . $_GET['eui']));
+		if ($eui_owner == $_SESSION['username'] || ($eui_owner == 'public'
+				|| $_SESSION['is_administrator'] && !is_administrator(pg_escape_literal($eui_owner))
+				&& $_SESSION['can_edit_as_others'] || $_SESSION['is_root']
+				&& isset($_GET['view']) && file_exists($p_eui)) {
+			readfile($eui);
+			exit(0);
+		}
+	}
 	if ($_SESSION['is_root']) {
 		$result = pgquery('SELECT tablename, TRUE FROM table_owner
 				WHERE tablename LIKE \'t________________\' ORDER BY tablename ASC;');
@@ -80,12 +88,12 @@ if ($can_view) {
 	} elseif ($_SESSION['is_administrator']) {
 		$result = pgquery("SELECT DISTINCT table_owner.tablename, TRUE FROM table_owner
 				INNER JOIN users ON table_owner.username = users.username
-				WHERE table_owner.tablename LIKE \'t________________\'
+				WHERE table_owner.tablename LIKE 't________________'
 				AND (table_owner.username = {$_SESSION['s_username']}
 				OR NOT users.is_administrator AND {$_SESSION['s_can_edit_as_others']}) UNION ALL
 				SELECT DISTINCT table_reader.tablename, FALSE FROM table_reader INNER JOIN users
 				ON table_reader.username = users.username
-				WHERE table_reader.tablename LIKE \'t________________\'
+				WHERE table_reader.tablename LIKE 't________________'
 				AND (table_reader.username = {$_SESSION['s_username']}
 				OR NOT users.is_administrator AND {$_SESSION['s_can_view_as_others']})
 				ORDER BY tablename ASC;");
@@ -99,10 +107,10 @@ if ($can_view) {
 		echo "You are authorized to <br>\n";
 	} else {
 		$result = pgquery("SELECT DISTINCT tablename, TRUE FROM table_owner
-				WHERE tablename LIKE \'t________________\'
+				WHERE tablename LIKE 't________________'
 				AND (username = {$_SESSION['s_username']} OR username = \'public\'
 				AND {$_SESSION['s_can_edit_as_others']}) UNION ALL SELECT DISTINCT tablename,
-				FALSE FROM table_reader WHERE tablename LIKE \'t________________\'
+				FALSE FROM table_reader WHERE tablename LIKE 't________________'
 				AND (username = {$_SESSION['s_username']}
 				OR username = \'public\' AND {$_SESSION['s_can_view_as_others']})
 				ORDER BY tablename ASC;");
