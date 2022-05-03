@@ -431,6 +431,8 @@ map<string, string> table_owner;
 
 PGconn *conn;
 
+bool little_endian = true;
+
 string local_FROM(" FROM t");
 
 BYTE8 local_eui = 0xBABADEDA'DECACECA;
@@ -803,8 +805,6 @@ const BYTE header::lookup_table[16] = {
 BYTE header::reverse_byte(BYTE B) noexcept {
 	return lookup_table[B & 0x0F] << 4 | lookup_table[(B & 0xF0) >> 4];
 }
-
-bool little_endian = true;
 
 BYTE header::get_as_byte() const noexcept {
 	return little_endian ? reverse_byte(*reinterpret_cast<const BYTE *>(this))
@@ -2137,13 +2137,13 @@ int main(int argc, char *argv[]) {
 	initialize_vars();
 
 	tablename += BYTE8_to_c17charp(local_eui);
-	res = execcheckreturn("SELECT TRUE FROM pg_class WHERE relname = \'t" + tablename + '\'');
+	res = execcheckreturn("SELECT TRUE FROM pg_class WHERE relname = \'" + tablename + '\'');
 	if (PQntuples(res) == 0) {
-		PQclear(execcheckreturn("CREATE TABLE t" + tablename
+		PQclear(execcheckreturn("CREATE TABLE " + tablename
 				+ "(t TIMESTAMP(4) WITHOUT TIME ZONE, PRIMARY KEY(t))"));
 		PQclear(execcheckreturn("INSERT INTO table_owner(tablename, username) "
-				"VALUES(\'t" + tablename + "\', \'public\'"));
-		PQclear(execcheckreturn("ALTER TABLE t" + tablename + " OWNER TO \"PUBLIC\""));
+				"VALUES(\'" + tablename + "\', \'public\'"));
+		PQclear(execcheckreturn("ALTER TABLE " + tablename + " OWNER TO \"PUBLIC\""));
 	}
 	PQclear(res);
 
