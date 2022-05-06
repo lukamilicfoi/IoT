@@ -513,6 +513,8 @@ BYTE8 EUI64_to_EUI48(BYTE8 EUI64) noexcept;//not used
 
 void populate_local_proto_addr();
 
+void *memcpy_endian(void *dst, const void *src, size_t len) noexcept;
+
 void determine_local_eui();
 
 PGresult *execcheckreturn(string query);
@@ -824,8 +826,6 @@ static_assert(offsetof(formatted_message, DST) == 8, "offsetof(formatted_message
 bool formatted_message::is_encrypted() const noexcept {
 	return LEN > 1 && PL[0] == '@';
 }
-
-void *memcpy_endian(void *dst, const void *src, size_t len) noexcept;
 
 bool formatted_message::is_signed() const {
 	regex re(RE_STRING);
@@ -2297,8 +2297,8 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE TRIGGER insert_timer AFTER INSERT ON rules FOR ROW "
 			"WHEN (NEW.send_receive_seconds = 2 AND NEW.is_active) "
 			"EXECUTE PROCEDURE insert_timer()"));
-	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS update_timer() CASCADE"));
 
+	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS update_timer() CASCADE"));
 	PQclear(execcheckreturn("CREATE FUNCTION update_timer() RETURNS trigger AS \'DECLARE "
 			"lastrun TIMESTAMP(0) WITH TIME ZONE; runperiod INTERVAL SECOND(0); BEGIN "
 			"lastrun = CURRENT_TIMESTAMP(0); "
@@ -2318,9 +2318,9 @@ int main(int argc, char *argv[]) {
 			"END;\' LANGUAGE PLPGSQL"));
 	PQclear(execcheckreturn("CREATE TRIGGER update_timer AFTER UPDATE ON rules FOR ROW "
 			"EXECUTE PROCEDURE update_timer()"));
+
 	PQclear(execcheckreturn("SELECT refresh_next_timed_rule_time(("
 			"SELECT MIN(next_run) FROM rules))"));
-
 	PQclear(execcheckreturn("CALL config()"));
 	PQclear(execcheckreturn("CALL update_ownerships()"));
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
