@@ -423,6 +423,10 @@ struct opensock {
 	SSL *ssl;
 };
 
+int tcp_port = 44000;
+
+int tls_port = 44001;
+
 map<string, configuration *> username_configuration;
 
 my_time_point beginning;
@@ -792,10 +796,6 @@ void protocol::check_sock(int new_sock) noexcept {
 		highest_sock = new_sock;
 	}
 }
-
-int tcp_port = 44000;
-
-int tls_port = 44001;
 
 static_assert(sizeof(header) == sizeof(BYTE), "sizeof(header) != sizeof(BYTE)");
 
@@ -2162,6 +2162,7 @@ int main(int argc, char *argv[]) {
 	PQclear(res);
 
 	PQclear(execcheckreturn("TRUNCATE TABLE message"));
+	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
 
 	res = execcheckreturn("SELECT insecure_port, secure_port FROM configuration "
 			"WHERE username = \'root\'");
@@ -2260,7 +2261,6 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS update_ownerships()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS manually_execute_timed_rule(username TEXT, "
 			"id INTEGER)"));
-	PQclear(execcheckreturn("TRUNCATE TABLE raw_message_for_query_command"));
 	PQclear(execcheckreturn("CREATE PROCEDURE ext(eui_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'ext\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE send_inject(send BOOLEAN, message BYTEA, "
