@@ -431,6 +431,10 @@ map<string, configuration *> username_configuration;
 
 my_time_point beginning;
 
+int udp_port = 44000;
+
+int dtls_port = 44001;
+
 map<string, string> table_owner;
 
 PGconn *conn;
@@ -1710,10 +1714,6 @@ void tcp::stop() {
 
 #define MAX_DEVICE_INDEX 10
 
-int udp_port = 44000;
-
-int dtls_port = 44001;
-
 #define PRLIMIT 16777216
 
 class udp : public protocol {
@@ -2142,7 +2142,7 @@ int main(int argc, char *argv[]) {
 		PQclear(execcheckreturn("CREATE TABLE " + tablename
 				+ "(t TIMESTAMP(4) WITHOUT TIME ZONE, PRIMARY KEY(t))"));
 		PQclear(execcheckreturn("INSERT INTO table_owner(tablename, username) "
-				"VALUES(\'" + tablename + "\', \'public\'"));
+				"VALUES(\'" + tablename + "\', \'public\')"));
 		PQclear(execcheckreturn("ALTER TABLE " + tablename + " OWNER TO \"PUBLIC\""));
 	}
 	PQclear(res);
@@ -2152,7 +2152,7 @@ int main(int argc, char *argv[]) {
 		protocols.push_back(new tcp);
 		protocols.push_back(new udp);
 		PQclear(execcheckreturn("INSERT INTO protocols(proto, enabled) "
-				"VALUES('tcp', TRUE), ('udp', TRUE)"));
+				"VALUES('tcp', TRUE), ('udp', TRUE), ('ble', FALSE), ('_154', FALSE)"));
 	} else {
 		instantiate_protocol_if_enabled<tcp>();
 		instantiate_protocol_if_enabled<udp>();
