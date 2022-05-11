@@ -263,6 +263,10 @@ struct load_ack_struct { };
 
 struct config_struct { };
 
+struct refresh_adapters_struct { };
+
+struct refresh_protocols_struct { };
+
 class protocol {
 
 private:
@@ -2254,6 +2258,8 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS send_inject(send BOOLEAN, message BYTEA, "
 			"proto TEXT, addr BYTEA, insecure_port INTEGER, secure_port INTEGER, "
 			"CCF BOOLEAN, ACF BOOLEAN, broadcast BOOLEAN, override BOOLEAN)"));
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_adpaters()"));
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_protocols()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS load_store(load BOOLEAN)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS config()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS refresh_next_timed_rule_time("
