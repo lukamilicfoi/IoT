@@ -595,6 +595,10 @@ extern "C" { PG_FUNCTION_INFO_V1(update_ownerships); }
 
 extern "C" { PG_FUNCTION_INFO_V1(manually_execute_timed_rule); }
 
+extern "C" { PG_FUNCTION_INFO_V1(refresh_adapters); }
+
+extern "C" { PG_FUNCTION_INFO_V1(refresh_protocols); }
+
 void load_store2_load();
 
 void load_store2_store();
@@ -2273,6 +2277,8 @@ int main(int argc, char *argv[]) {
 			"proto TEXT, addr BYTEA, insecure_port INTEGER, secure_port INTEGER, "
 			"CCF BOOLEAN, ACF BOOLEAN, broadcast BOOLEAN, override BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'send_inject\' LANGUAGE C"));
+	PQclear(execcheckreturn("CREATE PROCEDURE refresh_adatpers AS \'"s + cwd + "/libIoT\', \'refresh_adapters\' LANGUAGE C"));
+	PQclear(execcheckreturn("CREATE PROCEDURE refresh_protocols AS \'"s + cwd + "/libIoT\', \'refresh_protocols\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE load_store(load BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'load_store\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE config() AS \'"s + cwd
