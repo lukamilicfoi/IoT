@@ -244,13 +244,6 @@ struct raw_message {
 	~raw_message();
 };
 
-raw_message::raw_message(BYTE *msg) : addr(), TML(), TWR(), proto(), CCF(), ACF(), msg(msg),
-		insecure_port(), secure_port(), broadcast(), override() { }
-
-raw_message::~raw_message() {
-	delete[] msg;
-}
-
 struct ext_struct {
 	char eui_id[28];//strlen("4294967296")=27
 };
@@ -726,6 +719,13 @@ void create_digital_signature(EVP_PKEY *senders_private_key, const BYTE *plainte
 
 void verify_digital_signature(EVP_PKEY *senders_public_key, const BYTE *plaintext,
 		int plaintext_len, const BYTE *signature, int signature_len);
+
+raw_message::raw_message(BYTE *msg) : addr(), TML(), TWR(), proto(), CCF(), ACF(), msg(msg),
+		insecure_port(), secure_port(), broadcast(), override() { }
+
+raw_message::~raw_message() {
+	delete[] msg;
+}
 
 protocol::protocol() : my_name(get_typename(typeid(*this))), my_mq(), recv_all_thread(nullptr), send_all_thread(), run(true) { }
 
@@ -2127,8 +2127,10 @@ int main(int argc, char *argv[]) {
 	struct sigaction sa;
 	char cwd[PATH_MAX];
 	string tablename("t");
+	refresh_adapters_struct ras;
 	ifreq ifr;
 	hci_dev_info hdi;
+	refresh_protocols_struct rps;
 
 	conn = PQconnectdb("dbname=postgres user=postgres client_encoding=UTF8");
 			//must be run with pg_ctl -D <loc> initdb -o "-E UTF8"
