@@ -129,6 +129,10 @@ extern "C" { PG_MODULE_MAGIC; }
 #define LOG_C(fun, ...) ((void)0)
 #endif
 
+#define TCP_BACKLOG 10
+
+#define TLS_BACKLOG 10
+
 #define PL_MAX 65535
 
 #define msg_MAX 65559
@@ -828,10 +832,6 @@ BYTE header::get_as_byte() const noexcept {
 void header::put_as_byte(BYTE B) noexcept {
 	*reinterpret_cast<BYTE *>(this) = little_endian ? reverse_byte(B) : B;
 }
-
-#define TCP_BACKLOG 10
-
-#define TLS_BACKLOG 10
 
 static_assert(offsetof(formatted_message, DST) == 8, "offsetof(formatted_message, DST) != 8");
 
@@ -2293,6 +2293,7 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE PROCEDURE manually_execute_timed_rule(username TEXT, "
 			"id INTEGER) AS\'"s + cwd + "/libIoT\', \'manually_execute_timed_rule\' "
 			"LANGUAGE C"));
+
 	/*
 	 * in SQL standard only RETURNS NULL ON NULL INPUT function specifier exists
 	 *
@@ -2338,6 +2339,7 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CALL config()"));
 	PQclear(execcheckreturn("CALL update_ownerships()"));
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
+
 	main_loop();
 
 	destroy_vars();
