@@ -137,6 +137,20 @@ extern "C" { PG_MODULE_MAGIC; }
 
 #define msg_MAX 65559
 
+#define ADVERTISING_INTERVAL_MIN 1024
+
+#define ADVERTISING_INTERVAL_MAX 1024
+
+#define LE_SCAN_INTERVAL 4096
+
+#define LE_SCAN_WINDOW 4096
+
+#define EN_ADV_TO_DIS_ADV 10000us
+
+#define CHAN_MAP 0b00000001
+
+#define BROADCAST_PLACEHOLDER 0xFFFFFFFF'FFFFFFFF
+
 /*
  * finds single-quoted SQL strings
  *         (can have "\'\'" to indicate "\'" or "\'\\s+\'" to indicate "")
@@ -997,20 +1011,6 @@ void formatted_message::verify() {
 	delete[] signature;
 	EVP_PKEY_free(senders_public_key);
 }
-
-#define ADVERTISING_INTERVAL_MIN 1024
-
-#define ADVERTISING_INTERVAL_MAX 1024
-
-#define LE_SCAN_INTERVAL 4096
-
-#define LE_SCAN_WINDOW 4096
-
-#define EN_ADV_TO_DIS_ADV 10000us
-
-#define CHAN_MAP 0b00000001
-
-#define BROADCAST_PLACEHOLDER 0xFFFFFFFF'FFFFFFFF
 
 class ble : public protocol {
 
@@ -2264,7 +2264,7 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS send_inject(send BOOLEAN, message BYTEA, "
 			"proto TEXT, addr BYTEA, insecure_port INTEGER, secure_port INTEGER, "
 			"CCF BOOLEAN, ACF BOOLEAN, broadcast BOOLEAN, override BOOLEAN)"));
-	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_adpaters()"));
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_adapters()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_protocols()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS load_store(load BOOLEAN)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS config()"));
@@ -2279,7 +2279,7 @@ int main(int argc, char *argv[]) {
 			"proto TEXT, addr BYTEA, insecure_port INTEGER, secure_port INTEGER, "
 			"CCF BOOLEAN, ACF BOOLEAN, broadcast BOOLEAN, override BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'send_inject\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE refresh_adatpers AS \'"s + cwd + "/libIoT\', \'refresh_adapters\' LANGUAGE C"));
+	PQclear(execcheckreturn("CREATE PROCEDURE refresh_adapters AS \'"s + cwd + "/libIoT\', \'refresh_adapters\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE refresh_protocols AS \'"s + cwd + "/libIoT\', \'refresh_protocols\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE load_store(load BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'load_store\' LANGUAGE C"));
