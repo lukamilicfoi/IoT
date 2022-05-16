@@ -161,6 +161,10 @@ extern "C" { PG_MODULE_MAGIC; }
 
 #define fields_MAX 20
 
+#define MAX_DEVICE_INDEX 10
+
+#define PRLIMIT 16777216
+
 #undef strerror
 
 typedef uint8_t BYTE;//these types are not mandatory by the standard
@@ -1720,10 +1724,6 @@ void tcp::stop() {
 	SSL_CTX_free(server_ctx);
 }
 
-#define MAX_DEVICE_INDEX 10
-
-#define PRLIMIT 16777216
-
 class udp : public protocol {
 
 private:
@@ -2279,8 +2279,10 @@ int main(int argc, char *argv[]) {
 			"proto TEXT, addr BYTEA, insecure_port INTEGER, secure_port INTEGER, "
 			"CCF BOOLEAN, ACF BOOLEAN, broadcast BOOLEAN, override BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'send_inject\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE refresh_adapters AS \'"s + cwd + "/libIoT\', \'refresh_adapters\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE refresh_protocols AS \'"s + cwd + "/libIoT\', \'refresh_protocols\' LANGUAGE C"));
+	PQclear(execcheckreturn("CREATE PROCEDURE refresh_adapters AS \'"s + cwd
+			+ "/libIoT\', \'refresh_adapters\' LANGUAGE C"));
+	PQclear(execcheckreturn("CREATE PROCEDURE refresh_protocols AS \'"s + cwd
+			+ "/libIoT\', \'refresh_protocols\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE load_store(load BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'load_store\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE config() AS \'"s + cwd
