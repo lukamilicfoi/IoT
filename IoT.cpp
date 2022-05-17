@@ -500,6 +500,10 @@ mqd_t refresh_next_timed_rule_time_mq;
 
 mqd_t manually_execute_timed_rule_mq;
 
+mqd_t refresh_adapters_mq;
+
+mqd_t refresh_protocols_mq;
+
 vector<protocol *> protocols;
 
 time_t next_timed_rule = 0;
@@ -2368,6 +2372,14 @@ const char *get_typename(const type_info &type) {
 	THR(status != 0, system_exception("cannot demangle function"));
 #endif
 	return name;
+}
+
+void refresh_adapters() {
+
+}
+
+void refresh_protocols() {
+
 }
 
 void initialize_vars() {
