@@ -687,6 +687,10 @@ void create_table(string eui, vector<string> &columns, vector<string> &types);
 
 void alter_table(string eui, vector<string> &columns, const vector<string> &types);
 
+void refresh_adapters();
+
+void refresh_protocols();
+
 void initialize_vars();
 
 void destroy_vars();
@@ -3722,6 +3726,8 @@ raw_message *receive_raw_message() {
 	rlimit rl;
 	load_store_struct lss;
 	load_ack_struct las;
+	refresh_adapters_struct ras;
+	refresh_protocols_struct rps;
 	config_struct cs;
 	PGresult *res_rules;
 	stringstream ss(ss.in | ss.out | ss.ate);
