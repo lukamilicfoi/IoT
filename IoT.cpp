@@ -757,6 +757,8 @@ raw_message::~raw_message() {
 	delete[] msg;
 }
 
+atomic_int protocol::highest_sock(0);
+
 protocol::protocol() : my_name(get_typename(typeid(*this))), my_mq(), recv_all_thread(nullptr), send_all_thread(), run(true) { }
 
 void protocol::start() {
@@ -830,8 +832,6 @@ void protocol::send_all(protocol *proto) {
 		proto->send_once(rmsg);
 	}
 }
-
-atomic_int protocol::highest_sock(0);
 
 void protocol::check_sock(int new_sock) noexcept {
 	if (new_sock > highest_sock) {
@@ -2442,6 +2442,14 @@ void initialize_vars() {
 	update_ownerships_mq = mq_open("/update_ownerships",
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(update_ownerships_mq < 0, system_exception("cannot open update_ownerships_mq"));
+	ma.mq_msgsize = sizeof(refresh_adapters_struct);
+	refresh_adapters_mq = mq_open("/refresh_adapters",
+			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
+	THR(refresh_adapters_mq < 0, system_exception("cannot open refresh_adapters_mq"));
+	ma.mq_msgsize = sizeof(refresh_protocols_struct);
+	refresh_protocols_mq = mq_open("/refresh_protocols",
+			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
+	THR(refresh_protocols_mq < 0, system_exception("cannot open refresh_protocols_mq"));
 	ma.mq_msgsize = sizeof(manually_execute_timed_rule_struct);
 	manually_execute_timed_rule_mq = mq_open("/manually_execute_timed_rule",
 			O_RDWR | O_CREAT | O_NONBLOCK, 0777, &ma);
