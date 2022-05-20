@@ -890,40 +890,6 @@ bool formatted_message::is_signed() const {
 	return false;
 }
 
-static_assert(sizeof(in_addr) == sizeof(BYTE4), "sizeof(in_addr) != sizeof(BYTE4)");
-
-in_addr BYTE8_to_ia(BYTE8 addr) noexcept {
-	in_addr ia;
-
-	if (little_endian) {
-		memcpy_reverse(&ia, &addr, 4);
-	} else {
-		memcpy(&ia, reinterpret_cast<BYTE *>(&addr) + 4, 4);
-	}
-	return ia;
-}
-
-BYTE8 ia_to_BYTE8(in_addr ia) noexcept {
-	BYTE8 addr = 0x00000000'00000000;
-
-	if (little_endian) {
-		memcpy_reverse(&addr, &ia, 4);
-	} else {
-		memcpy(reinterpret_cast<BYTE *>(&addr) + 4, &ia, 4);
-	}
-	return addr;
-}
-
-#ifdef SIGNAL
-void test_lock(void *) {
-	pthread_mutex_lock(&global_mutex);
-}
-
-void test_unlock(void *) {
-	pthread_mutex_unlock(&global_mutex);
-}
-#endif
-
 void *formatted_message::operator new(size_t sz, int size) {
 	return ::operator new(sz + size - 1 + formatted_message_max_augment);
 }
@@ -2356,6 +2322,40 @@ int main(int argc, char *argv[]) {
 	PQfinish(conn);
 }
 
+static_assert(sizeof(in_addr) == sizeof(BYTE4), "sizeof(in_addr) != sizeof(BYTE4)");
+
+in_addr BYTE8_to_ia(BYTE8 addr) noexcept {
+	in_addr ia;
+
+	if (little_endian) {
+		memcpy_reverse(&ia, &addr, 4);
+	} else {
+		memcpy(&ia, reinterpret_cast<BYTE *>(&addr) + 4, 4);
+	}
+	return ia;
+}
+
+BYTE8 ia_to_BYTE8(in_addr ia) noexcept {
+	BYTE8 addr = 0x00000000'00000000;
+
+	if (little_endian) {
+		memcpy_reverse(&addr, &ia, 4);
+	} else {
+		memcpy(reinterpret_cast<BYTE *>(&addr) + 4, &ia, 4);
+	}
+	return addr;
+}
+
+#ifdef SIGNAL
+void test_lock(void *) {
+	pthread_mutex_lock(&global_mutex);
+}
+
+void test_unlock(void *) {
+	pthread_mutex_unlock(&global_mutex);
+}
+#endif
+
 template<typename type>
 void instantiate_protocol_if_enabled() {
 	PGresult *res = execcheckreturn("SELECT TRUE FROM protocols WHERE proto = \'"s
@@ -2523,6 +2523,10 @@ void destroy_vars() {
 			system_exception("cannot unlink refresh_next_timed_rule_time_mq"));
 	THR(mq_unlink("/update_ownerships") < 0,
 			system_exception("cannot unlink update_ownerships_mq"));
+	THR(mq_unlink("/refresh_adapters") < 0,
+			system_exception("cannot unlink refresh_adapters_mq"));
+	THR(mq_unlink("/refresh_protocols") < 0,
+			system_exception("cannot unlink refresh_protocols_mq"));
 	THR(mq_unlink("/manually_execute_timed_rule") < 0,
 			system_exception("cannot unlink manually_execute_timed_rule_mq"));
 
