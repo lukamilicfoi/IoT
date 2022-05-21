@@ -903,19 +903,6 @@ formatted_message &formatted_message::operator=(const formatted_message &fmsg) {
 	return *this;
 }
 
-void *send_inject_struct::operator new(size_t sz, int size) {
-	return ::operator new(sz + size - 1);
-}
-
-send_inject_struct::send_inject_struct(const send_inject_struct &sis) {
-	memcpy(this, &sis, sizeof(sis) - 1 + sis.message_length);
-}
-
-send_inject_struct &send_inject_struct::operator=(const send_inject_struct &sis) {
-	memcpy(this, &sis, sizeof(sis) - 1 + sis.message_length);
-	return *this;
-}
-
 void formatted_message::encrypt() {
 	EVP_PKEY *receivers_public_key = get_public_key(DST);
 	BYTE *ciphertext, *encrypted_key, *iv;
@@ -988,6 +975,19 @@ void formatted_message::verify() {
 	LEN = len;
 	delete[] signature;
 	EVP_PKEY_free(senders_public_key);
+}
+
+void *send_inject_struct::operator new(size_t sz, int size) {
+	return ::operator new(sz + size - 1);
+}
+
+send_inject_struct::send_inject_struct(const send_inject_struct &sis) {
+	memcpy(this, &sis, sizeof(sis) - 1 + sis.message_length);
+}
+
+send_inject_struct &send_inject_struct::operator=(const send_inject_struct &sis) {
+	memcpy(this, &sis, sizeof(sis) - 1 + sis.message_length);
+	return *this;
 }
 
 class ble : public protocol {
@@ -2132,9 +2132,9 @@ int main(int argc, char *argv[]) {
 	PQclear(res);
 
 	res = execcheckreturn("TABLE protocols");
+	protocols.push_back(new tcp);
+	protocols.push_back(new udp);
 	if (PQntuples(res) == 0) {
-		protocols.push_back(new tcp);
-		protocols.push_back(new udp);
 		PQclear(execcheckreturn("INSERT INTO protocols(proto, enabled) "
 				"VALUES('tcp', TRUE), ('udp', TRUE), ('ble', FALSE), ('_154', FALSE)"));
 	} else {
