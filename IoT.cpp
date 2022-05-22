@@ -949,10 +949,6 @@ void formatted_message::sign() {
 
 formatted_message::formatted_message(BYTE2 LEN) : CRC(), HD(), ID(), LEN(LEN), DST(), SRC() { }
 
-send_inject_struct::send_inject_struct(int message_length) : CCF(), ACF(), send(),
-		insecure_port(), secure_port(), broadcast(), override(),
-		message_length(message_length) { }
-
 void formatted_message::verify() {
 	EVP_PKEY *senders_public_key = get_public_key(DST);
 	BYTE *signature;
@@ -989,6 +985,10 @@ send_inject_struct &send_inject_struct::operator=(const send_inject_struct &sis)
 	memcpy(this, &sis, sizeof(sis) - 1 + sis.message_length);
 	return *this;
 }
+
+send_inject_struct::send_inject_struct(int message_length) : CCF(), ACF(), send(),
+		insecure_port(), secure_port(), broadcast(), override(),
+		message_length(message_length) { }
 
 class ble : public protocol {
 
@@ -2137,12 +2137,8 @@ int main(int argc, char *argv[]) {
 	if (PQntuples(res) == 0) {
 		PQclear(execcheckreturn("INSERT INTO protocols(proto, enabled) "
 				"VALUES('tcp', TRUE), ('udp', TRUE), ('ble', FALSE), ('_154', FALSE)"));
-	} else {
-		instantiate_protocol_if_enabled<tcp>();
-		instantiate_protocol_if_enabled<udp>();
-		instantiate_protocol_if_enabled<ble>();
-		instantiate_protocol_if_enabled<_154>();
 	}
+	protocols.push_back(new ble);protocols.push_back(new _154);//
 	PQclear(res);
 
 	PQclear(execcheckreturn("TRUNCATE TABLE message"));
