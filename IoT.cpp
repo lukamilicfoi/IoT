@@ -759,7 +759,7 @@ raw_message::~raw_message() {
 
 atomic_int protocol::highest_sock(0);
 
-protocol::protocol() : my_name(get_typename(typeid(*this))), my_mq(), recv_all_thread(nullptr), send_all_thread(), run(true) { }
+protocol::protocol() : my_name(typeid(*this).name()), my_mq(), recv_all_thread(nullptr), send_all_thread(), run(true) { }
 
 void protocol::start() {
 	mq_attr ma = { 0, 64, sizeof(raw_message *) };
@@ -2309,7 +2309,9 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("SELECT refresh_next_timed_rule_time(("
 			"SELECT MIN(next_run) FROM rules))"));
 	PQclear(execcheckreturn("CALL config()"));
+	config2();
 	PQclear(execcheckreturn("CALL update_ownerships()"));
+	update_ownerships2();
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
 
 	main_loop();
