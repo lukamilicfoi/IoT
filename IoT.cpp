@@ -759,7 +759,17 @@ raw_message::~raw_message() {
 
 atomic_int protocol::highest_sock(0);
 
-protocol::protocol() : my_name(typeid(*this).name()), my_mq(), recv_all_thread(nullptr), send_all_thread(), run(true) { }
+protocol::protocol() : my_name(typeid(*this).name()), my_mq(), recv_all_thread(nullptr), send_all_thread(), run(true) {
+#if (defined(__GLIBCXX__) || defined(__GLIBCPP__)) && !defined(__GABIXX_CXXABI_H_)
+	int status;
+
+	my_name = abi::__cxa_demangle(my_name.c_str(), nullptr, nullptr, &status);
+	THR(status != 0, system_exception("cannot demangle function"));
+
+
+#endif
+/*
+ */}
 
 void protocol::start() {
 	mq_attr ma = { 0, 64, sizeof(raw_message *) };
@@ -2308,9 +2318,7 @@ int main(int argc, char *argv[]) {
 
 	PQclear(execcheckreturn("SELECT refresh_next_timed_rule_time(("
 			"SELECT MIN(next_run) FROM rules))"));
-	PQclear(execcheckreturn("CALL config()"));
 	config2();
-	PQclear(execcheckreturn("CALL update_ownerships()"));
 	update_ownerships2();
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
 
