@@ -591,9 +591,6 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 
 BYTE8 c17charp_to_BYTE8(const char *eui);
 
-template<typename type>
-void instantiate_protocol_if_enabled();
-
 const char *get_typename(const type_info &type);
 
 ostream &operator<<(ostream &os, const raw_message &rmsg) noexcept;
@@ -2361,17 +2358,6 @@ void test_unlock(void *) {
 	pthread_mutex_unlock(&global_mutex);
 }
 #endif
-
-template<typename type>
-void instantiate_protocol_if_enabled() {
-	PGresult *res = execcheckreturn("SELECT TRUE FROM protocols WHERE proto = \'"s
-			+ get_typename(typeid(type)) + "\' AND enabled");
-
-	if (PQntuples(res) != 0) {
-		protocols.push_back(new type);
-	}
-	PQclear(res);
-}
 
 const char *get_typename(const type_info &type) {
 	const char *name = type.name();
