@@ -591,8 +591,6 @@ void apply_rule_end(PGresult *&res_rules, int current_id, int &i, int &j, int of
 
 BYTE8 c17charp_to_BYTE8(const char *eui);
 
-const char *get_typename(const type_info &type);
-
 ostream &operator<<(ostream &os, const raw_message &rmsg) noexcept;
 
 ostream &operator<<(ostream &os, const my_time_point &point) noexcept;
@@ -1060,7 +1058,7 @@ raw_message *ble::recv_once() {
 		me = reinterpret_cast<evt_le_meta_event *>(buf + 1 + HCI_EVENT_HDR_SIZE);
 				//unaligned pointer!
 		THR(me->subevent != EVT_LE_ADVERTISING_REPORT, message_exception("wrong subevent"));
-		lai = reinterpret_cast<le_advertising_info *>((me->data+1));
+		lai = reinterpret_cast<le_advertising_info *>((me->data + 1));
 	} while(lai->evt_type != 0x03);
 	THR(lai->evt_type != 0x03, message_exception("wrong event type"));
 
@@ -2359,17 +2357,6 @@ void test_unlock(void *) {
 }
 #endif
 
-const char *get_typename(const type_info &type) {
-	const char *name = type.name();
-#if (defined(__GLIBCXX__) || defined(__GLIBCPP__)) && !defined(__GABIXX_CXXABI_H_)
-	int status;
-
-	name = abi::__cxa_demangle(name, nullptr, nullptr, &status);
-	THR(status != 0, system_exception("cannot demangle function"));
-#endif
-	return name;
-}
-
 void refresh_adapters() {
 
 }
@@ -2978,7 +2965,7 @@ int find_next_lower_bluetooth(int sock, hci_dev_info &hdi, int &i) {
 
 protocol *find_protocol_by_name(const char *name) {
 	for (protocol *p : protocols) {
-		if (strcmp(get_typename(typeid(*p)), name) == 0) {
+		if (p->get_my_name() == name) {
 			return p;
 		}
 	}
