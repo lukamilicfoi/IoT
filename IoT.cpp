@@ -682,9 +682,9 @@ void create_table(string eui, vector<string> &columns, vector<string> &types);
 
 void alter_table(string eui, vector<string> &columns, const vector<string> &types);
 
-void refresh_adapters();
+void refresh_adapters2();
 
-void refresh_protocols();
+void refresh_protocols2();
 
 void initialize_vars();
 
@@ -2357,11 +2357,11 @@ void test_unlock(void *) {
 }
 #endif
 
-void refresh_adapters() {
+void refresh_adapters2() {
 
 }
 
-void refresh_protocols() {
+void refresh_protocols2() {
 
 }
 
