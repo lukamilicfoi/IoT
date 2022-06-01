@@ -754,17 +754,15 @@ raw_message::~raw_message() {
 
 atomic_int protocol::highest_sock(0);
 
-protocol::protocol() : my_name(typeid(*this).name()), my_mq(), recv_all_thread(nullptr), send_all_thread(), run(true) {
+protocol::protocol() : my_name(typeid(*this).name()), my_mq(), recv_all_thread(nullptr),
+		send_all_thread(), run(true) {
 #if (defined(__GLIBCXX__) || defined(__GLIBCPP__)) && !defined(__GABIXX_CXXABI_H_)
 	int status;
 
 	my_name = abi::__cxa_demangle(my_name.c_str(), nullptr, nullptr, &status);
 	THR(status != 0, system_exception("cannot demangle function"));
-
-
 #endif
-/*
- */}
+}
 
 void protocol::start() {
 	mq_attr ma = { 0, 64, sizeof(raw_message *) };
@@ -2143,7 +2141,8 @@ int main(int argc, char *argv[]) {
 		PQclear(execcheckreturn("INSERT INTO protocols(proto, enabled) "
 				"VALUES('tcp', TRUE), ('udp', TRUE), ('ble', FALSE), ('_154', FALSE)"));
 	}
-	protocols.push_back(new ble);protocols.push_back(new _154);//
+	protocols.push_back(new ble);
+	protocols.push_back(new _154);
 	PQclear(res);
 
 	PQclear(execcheckreturn("TRUNCATE TABLE message"));
@@ -4169,8 +4168,8 @@ ostream &operator<<(ostream &os, const raw_message &rmsg) noexcept {
 	print_message_c(os, rmsg.msg, rmsg.TML);
 	os << "\", relative time "
 			<< chrono::duration_cast<chrono::seconds>(rmsg.TWR - beginning).count()
-			<< " using protocol " << rmsg.proto->get_my_name() << " and insecure_port = " << rmsg.insecure_port
-			<< " and secure_port = " << rmsg.secure_port << " on a ";
+			<< " using protocol " << rmsg.proto->get_my_name() << " and insecure_port = "
+			<< rmsg.insecure_port << " and secure_port = " << rmsg.secure_port << " on a ";
 	if (!rmsg.CCF) {
 		os << "non-";
 	}
