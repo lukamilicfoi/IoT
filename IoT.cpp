@@ -340,7 +340,7 @@ struct refresh_next_timed_rule_time_struct {
 	time_t next_timed_rule;
 };
 
-struct update_ownerships_struct { };
+struct refresh_ownerships_struct { };
 
 struct manually_execute_timed_rule_struct {
 	char username[256];//username cannot exceed
@@ -480,7 +480,7 @@ my_time_point (* const my_now)() noexcept = chrono::system_clock::now;
 
 mqd_t main_mq;
 
-mqd_t update_ownerships_mq;
+mqd_t refresh_ownerships_mq;
 
 mqd_t ext_mq;
 
@@ -605,7 +605,7 @@ extern "C" { PG_FUNCTION_INFO_V1(config); }
 
 extern "C" { PG_FUNCTION_INFO_V1(refresh_next_timed_rule_time); }
 
-extern "C" { PG_FUNCTION_INFO_V1(update_ownerships); }
+extern "C" { PG_FUNCTION_INFO_V1(refresh_ownerships); }
 
 extern "C" { PG_FUNCTION_INFO_V1(manually_execute_timed_rule); }
 
@@ -623,7 +623,7 @@ void encode_message(formatted_message &fmsg, raw_message &rmsg);
 
 void refresh_next_timed_rule_time2(const refresh_next_timed_rule_time_struct &rntrts);
 
-void update_ownerships2();
+void refresh_ownerships2();
 
 void manually_execute_timed_rule2(const manually_execute_timed_rule_struct &metrs);
 
@@ -2313,7 +2313,7 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("SELECT refresh_next_timed_rule_time(("
 			"SELECT MIN(next_run) FROM rules))"));
 	config2();
-	update_ownerships2();
+	refresh_ownerships2();
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
 
 	main_loop();
@@ -2416,10 +2416,10 @@ void initialize_vars() {
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(refresh_next_timed_rule_time_mq < 0,
 			system_exception("cannot open refresh_next_timed_rule_time_mq"));
-	ma.mq_msgsize = sizeof(update_ownerships_struct);
-	update_ownerships_mq = mq_open("/update_ownerships",
+	ma.mq_msgsize = sizeof(refresh_ownerships_struct);
+	refresh_ownerships_mq = mq_open("/refresh_ownerships",
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
-	THR(update_ownerships_mq < 0, system_exception("cannot open update_ownerships_mq"));
+	THR(refresh_ownerships_mq < 0, system_exception("cannot open refresh_ownerships_mq"));
 	ma.mq_msgsize = sizeof(refresh_adapters_struct);
 	refresh_adapters_mq = mq_open("/refresh_adapters",
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
@@ -2499,8 +2499,8 @@ void destroy_vars() {
 	THR(mq_unlink("/config") < 0, system_exception("cannot unlink config_mq"));
 	THR(mq_unlink("/refresh_next_timed_rule_time") < 0,
 			system_exception("cannot unlink refresh_next_timed_rule_time_mq"));
-	THR(mq_unlink("/update_ownerships") < 0,
-			system_exception("cannot unlink update_ownerships_mq"));
+	THR(mq_unlink("/refresh_ownerships") < 0,
+			system_exception("cannot unlink refresh_ownerships_mq"));
 	THR(mq_unlink("/refresh_adapters") < 0,
 			system_exception("cannot unlink refresh_adapters_mq"));
 	THR(mq_unlink("/refresh_protocols") < 0,
@@ -3066,16 +3066,16 @@ extern "C" Datum refresh_next_timed_rule_time(PG_FUNCTION_ARGS) {
 }
 
 //this function is executed in another process!!!
-extern "C" Datum update_ownerships(PG_FUNCTION_ARGS) {
-	struct update_ownerships_struct uos;
-	mqd_t update_ownerships_mq = mq_open("/update_ownerships", O_WRONLY);
+extern "C" Datum refresh_ownerships(PG_FUNCTION_ARGS) {
+	struct refresh_ownerships_struct uos;
+	mqd_t refresh_ownerships_mq = mq_open("/refresh_ownerships", O_WRONLY);
 
-	THR(update_ownerships_mq < 0, system_exception("cannot open update_ownerships_mq"));
-	THR(mq_send(update_ownerships_mq, reinterpret_cast<char *>(&uos),
-			sizeof(update_ownerships_struct), 0) < 0,
-			system_exception("cannot send to update_ownerships_mq"));
-	THR(mq_close(update_ownerships_mq) < 0,
-			system_exception("cannot close update_ownerships_mq"));
+	THR(refresh_ownerships_mq < 0, system_exception("cannot open refresh_ownerships_mq"));
+	THR(mq_send(refresh_ownerships_mq, reinterpret_cast<char *>(&uos),
+			sizeof(refresh_ownerships_struct), 0) < 0,
+			system_exception("cannot send to refresh_ownerships_mq"));
+	THR(mq_close(refresh_ownerships_mq) < 0,
+			system_exception("cannot close refresh_ownerships_mq"));
 	PG_RETURN_VOID();
 }
 
@@ -3261,7 +3261,7 @@ void refresh_next_timed_rule_time2(const refresh_next_timed_rule_time_struct &rn
 	LOG_CPP("next timed rule " << next_timed_rule - time(nullptr) << " seconds from now" << endl);
 }
 
-void update_ownerships2() {
+void refresh_ownerships2() {
 	PGresult *res = execcheckreturn("TABLE table_owner ORDER BY tablename DESC");
 	int i = PQntuples(res);
 
@@ -3721,7 +3721,7 @@ raw_message *receive_raw_message() {
 	config_struct cs;
 	PGresult *res_rules;
 	stringstream ss(ss.in | ss.out | ss.ate);
-	update_ownerships_struct uos;
+	refresh_ownerships_struct ros;
 	manually_execute_timed_rule_struct metrs;
 	string current_username;
 
@@ -3788,12 +3788,12 @@ raw_message *receive_raw_message() {
 		} else {
 			refresh_next_timed_rule_time2(rntrts);
 		}
-		if (mq_receive(update_ownerships_mq, reinterpret_cast<char *>(&uos),
-				sizeof(uos), nullptr) < 0) {
+		if (mq_receive(refresh_ownerships_mq, reinterpret_cast<char *>(&ros),
+				sizeof(ros), nullptr) < 0) {
 			THR(errno != EAGAIN,
-					system_exception("cannot receive from update_ownerships_mq"));
+					system_exception("cannot receive from refresh_ownerships_mq"));
 		} else {
-			update_ownerships2();
+			refresh_ownerships2();
 		}
 		if (mq_receive(manually_execute_timed_rule_mq, reinterpret_cast<char *>(&metrs),
 				sizeof(metrs), nullptr) < 0) {
