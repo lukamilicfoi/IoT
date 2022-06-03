@@ -276,7 +276,7 @@ struct load_store_struct {
 
 struct load_ack_struct { };
 
-struct config_struct { };
+struct refresh_configuration_struct { };
 
 struct refresh_adapters_struct { };
 
@@ -494,7 +494,7 @@ mqd_t load_store_mq;
 
 mqd_t load_ack_mq;
 
-mqd_t config_mq;
+mqd_t refresh_configuration_mq;
 
 mqd_t refresh_next_timed_rule_time_mq;
 
@@ -601,7 +601,7 @@ void print_message_c(ostream &os, const BYTE *msg, size_t length) noexcept;
 
 extern "C" { PG_FUNCTION_INFO_V1(load_store); }
 
-extern "C" { PG_FUNCTION_INFO_V1(config); }
+extern "C" { PG_FUNCTION_INFO_V1(refresh_configuration); }
 
 extern "C" { PG_FUNCTION_INFO_V1(refresh_next_timed_rule_time); }
 
@@ -617,7 +617,7 @@ void load_store2_load();
 
 void load_store2_store();
 
-void config2();
+void refresh_configuration2();
 
 void encode_message(formatted_message &fmsg, raw_message &rmsg);
 
@@ -2312,7 +2312,7 @@ int main(int argc, char *argv[]) {
 
 	PQclear(execcheckreturn("SELECT refresh_next_timed_rule_time(("
 			"SELECT MIN(next_run) FROM rules))"));
-	config2();
+	refresh_configuration2();
 	refresh_ownerships2();
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
 
@@ -2408,9 +2408,9 @@ void initialize_vars() {
 	ma.mq_msgsize = sizeof(load_ack_struct);
 	load_ack_mq = mq_open("/load_ack", O_WRONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(load_ack_mq < 0, system_exception("cannot open load_ack_mq"));
-	ma.mq_msgsize = sizeof(config_struct);
-	config_mq = mq_open("/config", O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
-	THR(config_mq < 0, system_exception("cannot open config_mq"));
+	ma.mq_msgsize = sizeof(refresh_configuration_struct);
+	refresh_configuration_mq = mq_open("/refresh_configuration", O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
+	THR(refresh_configuration_mq < 0, system_exception("cannot open refresh_configuration_mq"));
 	ma.mq_msgsize = sizeof(refresh_next_timed_rule_time_struct);
 	refresh_next_timed_rule_time_mq = mq_open("/refresh_next_timed_rule_time",
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
@@ -2496,7 +2496,7 @@ void destroy_vars() {
 	THR(mq_unlink("/prlimit_ack") < 0, system_exception("cannot unlink prlimit_ack_mq"));
 	THR(mq_unlink("/load_store") < 0, system_exception("cannot unlink load_store_mq"));
 	THR(mq_unlink("/load_ack") < 0, system_exception("cannot unlink load_ack_mq"));
-	THR(mq_unlink("/config") < 0, system_exception("cannot unlink config_mq"));
+	THR(mq_unlink("/refresh_configuration") < 0, system_exception("cannot unlink refresh_configuration_mq"));
 	THR(mq_unlink("/refresh_next_timed_rule_time") < 0,
 			system_exception("cannot unlink refresh_next_timed_rule_time_mq"));
 	THR(mq_unlink("/refresh_ownerships") < 0,
@@ -3039,14 +3039,14 @@ extern "C" Datum load_store(PG_FUNCTION_ARGS) {
 }
 
 //this function is executed in another process!!!
-extern "C" Datum config(PG_FUNCTION_ARGS) {
-	config_struct cs;
-	mqd_t config_mq = mq_open("/config", O_WRONLY);
+extern "C" Datum refresh_configuration(PG_FUNCTION_ARGS) {
+	refresh_configuration_struct rcs;
+	mqd_t refresh_configuration_mq = mq_open("/refresh_configuration", O_WRONLY);
 
-	THR(config_mq < 0, system_exception("cannot open config_mq"));
-	THR(mq_send(config_mq, reinterpret_cast<char *>(&cs), sizeof(config_struct), 0) < 0,
-			system_exception("cannot send to config_mq"));
-	THR(mq_close(config_mq) < 0, system_exception("cannot close config_mq"));
+	THR(refresh_configuration_mq < 0, system_exception("cannot open refresh_configuration_mq"));
+	THR(mq_send(refresh_configuration_mq, reinterpret_cast<char *>(&rcs), sizeof(refresh_configuration_struct), 0) < 0,
+			system_exception("cannot send to refresh_configuration_mq"));
+	THR(mq_close(refresh_configuration_mq) < 0, system_exception("cannot close refresh_configuration_mq"));
 	PG_RETURN_VOID();
 }
 
@@ -3193,7 +3193,7 @@ void load_store2_store() {
 	PQclear(execcheckreturn("TRUNCATE TABLE src_oID CASCADE"));
 }
 
-void config2() {
+void refresh_configuration2() {
 	PGresult *res = execcheckreturn("TABLE configuration ORDER BY username DESC");
 	istringstream iss;
 	configuration *c;
@@ -3718,7 +3718,7 @@ raw_message *receive_raw_message() {
 	load_ack_struct las;
 	refresh_adapters_struct ras;
 	refresh_protocols_struct rps;
-	config_struct cs;
+	refresh_configuration_struct rcs;
 	PGresult *res_rules;
 	stringstream ss(ss.in | ss.out | ss.ate);
 	refresh_ownerships_struct ros;
@@ -3776,10 +3776,10 @@ raw_message *receive_raw_message() {
 		} else {
 			load_store2_store();
 		}
-		if (mq_receive(config_mq, reinterpret_cast<char *>(&cs), sizeof(cs), nullptr) < 0) {
-			THR(errno != EAGAIN, system_exception("cannot receive from config_mq"));
+		if (mq_receive(refresh_configuration_mq, reinterpret_cast<char *>(&rcs), sizeof(rcs), nullptr) < 0) {
+			THR(errno != EAGAIN, system_exception("cannot receive from refresh_configuration_mq"));
 		} else {
-			config2();
+			refresh_configuration2();
 		}
 		if (mq_receive(refresh_next_timed_rule_time_mq, reinterpret_cast<char *>(&rntrts),
 				sizeof(rntrts), nullptr) < 0) {
