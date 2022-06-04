@@ -2244,7 +2244,7 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS config()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS refresh_next_timed_rule_time("
 			"next_timed_rule BIGINT)"));
-	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS update_ownerships()"));
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_ownerships()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS manually_execute_timed_rule(username TEXT, "
 			"id INTEGER)"));
 	PQclear(execcheckreturn("CREATE PROCEDURE ext(eui_id TEXT) AS \'"s + cwd
@@ -2264,8 +2264,8 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_timed_rule_time(next_timed_rule BIGINT) "
 			"RETURNS void AS \'"s + cwd + "/libIoT\', \'refresh_next_timed_rule_time\' "
 			"LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE update_ownerships() AS \'"s + cwd
-			+ "/libIoT\', \'update_ownerships\' LANGUAGE C"));
+	PQclear(execcheckreturn("CREATE PROCEDURE refresh_ownerships() AS \'"s + cwd
+			+ "/libIoT\', \'refresh_ownerships\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE manually_execute_timed_rule(username TEXT, "
 			"id INTEGER) AS\'"s + cwd + "/libIoT\', \'manually_execute_timed_rule\' "
 			"LANGUAGE C"));
@@ -3076,6 +3076,19 @@ extern "C" Datum refresh_ownerships(PG_FUNCTION_ARGS) {
 			system_exception("cannot send to refresh_ownerships_mq"));
 	THR(mq_close(refresh_ownerships_mq) < 0,
 			system_exception("cannot close refresh_ownerships_mq"));
+	PG_RETURN_VOID();
+}
+
+extern "C" Datum refresh_adapters(PG_FUNCTION_ARGS) {
+	struct refresh_adapters_struct ras;
+	mqd_t refresh_adapters_mq = mq_open("/refresh_adapters", O_WRONLY);
+
+	THR(refresh_adapters_mq < 0, system_exception("cannot open refresh_adapters_mq"));
+	THR(mq_send(refresh_ownerships_mq, reinterpret_cast<char *>(&ras),
+			sizeof(refresh_adapters_struct), 0) < 0,
+			system_exception("cannot send to refresh_adapters_mq"));
+	THR(mq_close(refresh_adapters_mq) < 0,
+			system_exception("cannot close refresh_adapters_mq"));
 	PG_RETURN_VOID();
 }
 
