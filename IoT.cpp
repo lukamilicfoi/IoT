@@ -2241,7 +2241,7 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_adapters()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_protocols()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS load_store(load BOOLEAN)"));
-	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS config()"));
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_configuration()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS refresh_next_timed_rule_time("
 			"next_timed_rule BIGINT)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_ownerships()"));
@@ -2259,8 +2259,8 @@ int main(int argc, char *argv[]) {
 			+ "/libIoT\', \'refresh_protocols\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE load_store(load BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'load_store\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE config() AS \'"s + cwd
-			+ "/libIoT\', \'config\' LANGUAGE C"));
+	PQclear(execcheckreturn("CREATE PROCEDURE refresh_configuration() AS \'"s + cwd
+			+ "/libIoT\', \'refresh_configuration\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_timed_rule_time(next_timed_rule BIGINT) "
 			"RETURNS void AS \'"s + cwd + "/libIoT\', \'refresh_next_timed_rule_time\' "
 			"LANGUAGE C"));
@@ -3204,6 +3204,19 @@ void load_store2_store() {
 	}
 	PQclear(res);
 	PQclear(execcheckreturn("TRUNCATE TABLE src_oID CASCADE"));
+}
+
+extern "C" Datum refresh_protocols(PG_FUNCTION_ARGS) {
+	struct refresh_protocols_struct rps;
+	mqd_t refresh_protocols_mq = mq_open("/refresh_protocols", O_WRONLY);
+
+	THR(refresh_protocols_mq < 0, system_exception("cannot open refresh_protocols_mq"));
+	THR(mq_send(refresh_protocols_mq, reinterpret_cast<char *>(&rps),
+			sizeof(refresh_protocols_struct), 0) < 0,
+			system_exception("cannot send to refresh_protocols_mq"));
+	THR(mq_close(refresh_protocols_mq) < 0,
+			system_exception("cannot close refresh_protocols_mq"));
+	PG_RETURN_VOID();
 }
 
 void refresh_configuration2() {
