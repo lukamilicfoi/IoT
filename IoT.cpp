@@ -2361,7 +2361,51 @@ void refresh_adapters2() {
 }
 
 void refresh_protocols2() {
+	stringstream ss(ss.in | ss.out | ss.ate);
+	PGresult *res;
+	int i, sock = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+	ifreq ifr;
+	hci_dev_info hdi;
 
+	i = MAX_DEVICE_INDEX;
+	while (find_next_lower_device(sock, ifr, i) >= 0) {
+		THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
+		PQclear(res);
+		res = execcheckreturn("SELECT TRUE FROM adapters WHERE adapter = \'"s + ifr.ifr_name
+				+ "\' AND enabled");
+		if (PQntuples(res) == 0) {
+			if ((ifr.ifr_flags & IFF_UP) != 0) {
+				ifr.ifr_flags &= ~IFF_UP;
+				THR(ioctl(sock, SIOCSIFFLAGS, &ifr) < 0,
+						system_exception("cannot SIOCSIFFLAGS ioctl"));//privileged operation!!!
+				LOG_CPP("turned off device " << ifr.ifr_name << endl);
+			}
+		} else if ((ifr.ifr_flags & IFF_UP) == 0) {
+			ifr.ifr_flags |= IFF_UP;
+			THR(ioctl(sock, SIOCSIFFLAGS, &ifr) < 0,
+					system_exception("cannot SIOCSIFFLAGS ioctl"));//privileged operation!!!
+			LOG_CPP("turned on device " << ifr.ifr_name << endl);
+		}
+	}
+	PQclear(res);
+	close(sock);
+	sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	ss.str("SELECT TRUE FROM adapters WHERE adapter = \'");
+	hdi.dev_id = 0;
+	THR(ioctl(sock, HCIGETDEVINFO, &hdi) < 0, system_exception("cannot HCIGETDEVINFO ioctl"));
+	ss << hdi.name;
+	res = execcheckreturn(ss.str() + "\' AND enabled");
+	if (PQntuples(res) == 0) {
+		if (!hci_test_bit(HCI_UP, &hdi.flags)) {
+			THR(ioctl(sock, HCIDEVUP, &hdi) < 0, system_exception("cannot HCIDEVUP ioctl"));
+					//privileged operation!!!
+			LOG_CPP("turned on device " << hdi.name << endl);
+		}
+	} else if (hci_test_bit(HCI_UP, &hdi.flags)) {
+		THR(ioctl(sock, HCIDEVDOWN, 0) < 0, system_exception("cannot HCIDEVDOWN ioctl"));
+				//privileged operation!!!
+		LOG_CPP("turned off device " << hdi.name << endl);
+	}
 }
 
 void initialize_vars() {
@@ -3647,7 +3691,7 @@ raw_message *receive_raw_message() {
 		c17charp_to_BYTE8(TIMES8("ab")),
 		52,
 		my_now(),
-		protocols[3],
+		protocols[1],
 		0,
 		0,
 		false,
