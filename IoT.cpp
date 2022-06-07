@@ -2357,7 +2357,22 @@ void test_unlock(void *) {
 #endif
 
 void refresh_adapters2() {
+	PGresult *res;
 
+	for (protocol *p : protocols) {
+		res = execcheckreturn("SELECT TRUE FROM protocols WHERE proto = \'" + p->get_my_name()
+				+ "\' AND enabled");
+		if (PQntuples(res) == 0) {
+			if (!p->is_running()) {
+				p->start();
+				LOG_CPP("started " << p->get_my_name() << endl);
+			}
+		} else if (p->is_running()) {
+			p->stop();
+			LOG_CPP("stopped " << p->get_my_name() << endl);
+		}
+		PQclear(res);
+	}
 }
 
 void refresh_protocols2() {
@@ -3846,7 +3861,8 @@ raw_message *receive_raw_message() {
 		} else {
 			load_store2_store();
 		}
-		if (mq_receive(refresh_configuration_mq, reinterpret_cast<char *>(&rcs), sizeof(rcs), nullptr) < 0) {
+		if (mq_receive(refresh_configuration_mq, reinterpret_cast<char *>(&rcs),
+				sizeof(rcs), nullptr) < 0) {
 			THR(errno != EAGAIN, system_exception("cannot receive from refresh_configuration_mq"));
 		} else {
 			refresh_configuration2();
