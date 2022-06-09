@@ -460,7 +460,7 @@ PGconn *conn;
 
 bool little_endian = true;
 
-string local_FROM(" FROM t");
+string local_from(" FROM t");
 
 BYTE8 local_eui = 0xBABADEDA'DECACECA;
 
@@ -494,11 +494,11 @@ mqd_t load_store_mq;
 
 mqd_t load_ack_mq;
 
-mqd_t refresh_configuration_mq;
+mqd_t refresh_configurationss_mq;
 
 mqd_t refresh_next_rule_time_mq;
 
-mqd_t manually_execute_timed_rule_mq;
+mqd_t execute_timed_rule_mq;
 
 mqd_t refresh_adapters_mq;
 
@@ -2241,11 +2241,11 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_adapters()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_protocols()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS load_store(load BOOLEAN)"));
-	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_configuration()"));
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_configurationss()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS refresh_next_rule_time("
 			"next_timed_rule BIGINT)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_ownerships()"));
-	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS manually_execute_timed_rule(username TEXT, "
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS execute_timed_rule(username TEXT, "
 			"id INTEGER)"));
 	PQclear(execcheckreturn("CREATE PROCEDURE external_function(eui_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'external_function\' LANGUAGE C"));
@@ -2259,15 +2259,15 @@ int main(int argc, char *argv[]) {
 			+ "/libIoT\', \'refresh_protocols\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE load_store(load BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'load_store\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE refresh_configuration() AS \'"s + cwd
-			+ "/libIoT\', \'refresh_configuration\' LANGUAGE C"));
+	PQclear(execcheckreturn("CREATE PROCEDURE refresh_configurationss() AS \'"s + cwd
+			+ "/libIoT\', \'refresh_configurationss\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_rule_time(next_timed_rule BIGINT) "
 			"RETURNS void AS \'"s + cwd + "/libIoT\', \'refresh_next_rule_time\' "
 			"LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE refresh_ownerships() AS \'"s + cwd
 			+ "/libIoT\', \'refresh_ownerships\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE manually_execute_timed_rule(username TEXT, "
-			"id INTEGER) AS\'"s + cwd + "/libIoT\', \'manually_execute_timed_rule\' "
+	PQclear(execcheckreturn("CREATE PROCEDURE execute_timed_rule(username TEXT, "
+			"id INTEGER) AS\'"s + cwd + "/libIoT\', \'execute_timed_rule\' "
 			"LANGUAGE C"));
 
 	/*
@@ -2468,8 +2468,9 @@ void initialize_vars() {
 	load_ack_mq = mq_open("/load_ack", O_WRONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(load_ack_mq < 0, system_exception("cannot open load_ack_mq"));
 	ma.mq_msgsize = sizeof(refresh_configuration_struct);
-	refresh_configuration_mq = mq_open("/refresh_configuration", O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
-	THR(refresh_configuration_mq < 0, system_exception("cannot open refresh_configuration_mq"));
+	refresh_configurationss_mq = mq_open("/refresh_configurationss", O_RDONLY | O_CREAT | O_NONBLOCK,
+			0777, &ma);
+	THR(refresh_configurationss_mq < 0, system_exception("cannot open refresh_configurationss_mq"));
 	ma.mq_msgsize = sizeof(refresh_next_timed_rule_time_struct);
 	refresh_next_rule_time_mq = mq_open("/refresh_next_rule_time",
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
@@ -2488,10 +2489,10 @@ void initialize_vars() {
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(refresh_protocols_mq < 0, system_exception("cannot open refresh_protocols_mq"));
 	ma.mq_msgsize = sizeof(manually_execute_timed_rule_struct);
-	manually_execute_timed_rule_mq = mq_open("/manually_execute_timed_rule",
+	execute_timed_rule_mq = mq_open("/execute_timed_rule",
 			O_RDWR | O_CREAT | O_NONBLOCK, 0777, &ma);
-	THR(manually_execute_timed_rule_mq < 0,
-			system_exception("cannot open manually_execute_timed_rule_mq"));
+	THR(execute_timed_rule_mq < 0,
+			system_exception("cannot open execute_timed_rule_mq"));
 
 	cipherctx = EVP_CIPHER_CTX_new();
 	mdctx = EVP_MD_CTX_new();
@@ -2522,7 +2523,7 @@ void initialize_vars() {
 	beginning = my_now();
 	dre.seed(rd());
 	determine_local_eui();
-	local_FROM = local_FROM + BYTE8_to_c17charp(local_eui) + ' ';
+	local_from = local_from + BYTE8_to_c17charp(local_eui) + ' ';
 	local_public_key = X509_get_pubkey(PEM_read_X509(file, nullptr, nullptr, nullptr));
 	encrypted_key_max_length = EVP_PKEY_size(local_public_key);
 	formatted_message_max_augment = 6 + (encrypted_key_max_length << 1) + blocksizetimes2minus1
@@ -2555,7 +2556,8 @@ void destroy_vars() {
 	THR(mq_unlink("/prlimit_ack") < 0, system_exception("cannot unlink prlimit_ack_mq"));
 	THR(mq_unlink("/load_store") < 0, system_exception("cannot unlink load_store_mq"));
 	THR(mq_unlink("/load_ack") < 0, system_exception("cannot unlink load_ack_mq"));
-	THR(mq_unlink("/refresh_configuration") < 0, system_exception("cannot unlink refresh_configuration_mq"));
+	THR(mq_unlink("/refresh_configuration") < 0,
+			system_exception("cannot unlink refresh_configuration_mq"));
 	THR(mq_unlink("/refresh_next_rule_time") < 0,
 			system_exception("cannot unlink refresh_next_rule_time_mq"));
 	THR(mq_unlink("/refresh_ownerships") < 0,
@@ -3103,9 +3105,11 @@ extern "C" Datum refresh_configuration(PG_FUNCTION_ARGS) {
 	mqd_t refresh_configuration_mq = mq_open("/refresh_configuration", O_WRONLY);
 
 	THR(refresh_configuration_mq < 0, system_exception("cannot open refresh_configuration_mq"));
-	THR(mq_send(refresh_configuration_mq, reinterpret_cast<char *>(&rcs), sizeof(refresh_configuration_struct), 0) < 0,
+	THR(mq_send(refresh_configuration_mq, reinterpret_cast<char *>(&rcs),
+			sizeof(refresh_configuration_struct), 0) < 0,
 			system_exception("cannot send to refresh_configuration_mq"));
-	THR(mq_close(refresh_configuration_mq) < 0, system_exception("cannot close refresh_configuration_mq"));
+	THR(mq_close(refresh_configuration_mq) < 0,
+			system_exception("cannot close refresh_configuration_mq"));
 	PG_RETURN_VOID();
 }
 
@@ -3861,9 +3865,9 @@ raw_message *receive_raw_message() {
 		} else {
 			load_store2_store();
 		}
-		if (mq_receive(refresh_configuration_mq, reinterpret_cast<char *>(&rcs),
+		if (mq_receive(refresh_configurationss_mq, reinterpret_cast<char *>(&rcs),
 				sizeof(rcs), nullptr) < 0) {
-			THR(errno != EAGAIN, system_exception("cannot receive from refresh_configuration_mq"));
+			THR(errno != EAGAIN, system_exception("cannot receive from refresh_configurationss_mq"));
 		} else {
 			refresh_configuration2();
 		}
@@ -3881,10 +3885,10 @@ raw_message *receive_raw_message() {
 		} else {
 			refresh_ownerships2();
 		}
-		if (mq_receive(manually_execute_timed_rule_mq, reinterpret_cast<char *>(&metrs),
+		if (mq_receive(execute_timed_rule_mq, reinterpret_cast<char *>(&metrs),
 				sizeof(metrs), nullptr) < 0) {
 			THR(errno != EAGAIN,
-					system_exception("cannot receive from manually_execute_timed_rule_mq"));
+					system_exception("cannot receive from execute_timed_rule_mq"));
 		} else {
 			manually_execute_timed_rule2(metrs);
 		}
@@ -4631,7 +4635,7 @@ void convert_select(string &query, string remote_FROM) {
 						 * insert local FROM
 						 */
 						query.append(iter_search_from, iter_other->first);
-						query += local_FROM;
+						query += local_from;
 						LOG_CPP("local FROM inserted" << endl);
 						iter_search_from = iter_other->first;
 						search_select = true;
@@ -4653,7 +4657,7 @@ void convert_select(string &query, string remote_FROM) {
 				 * no FROM clause provided;
 				 * insert local FROM
 				 */
-				query += local_FROM;
+				query += local_from;
 				LOG_CPP("local FROM inserted" << endl);
 			}
 			break;
