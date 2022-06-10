@@ -266,7 +266,7 @@ struct raw_message {
 	~raw_message();
 };
 
-struct ext_struct {
+struct external_function_struct {
 	char eui_id[28];//strlen("4294967296")=27
 };
 
@@ -336,11 +336,11 @@ public:
 
 };
 
-struct refresh_next_timed_rule_time_struct {
-	time_t next_timed_rule;
+struct refresh_next_rule_time_struct {
+	time_t next_rule_time;
 };
 
-struct refresh_ownerships_struct { };
+struct refresh_owners_struct { };
 
 struct manually_execute_timed_rule_struct {
 	char username[256];//username cannot exceed
@@ -458,7 +458,7 @@ map<string, string> table_owner;
 
 PGconn *conn;
 
-bool little_endian = true;
+bool is_little_endian = true;
 
 string local_from(" FROM t");
 
@@ -480,7 +480,7 @@ my_time_point (* const my_now)() noexcept = chrono::system_clock::now;
 
 mqd_t main_mq;
 
-mqd_t refresh_ownerships_mq;
+mqd_t refresh_owners_mq;
 
 mqd_t external_function_mq;
 
@@ -506,7 +506,7 @@ mqd_t refresh_protocols_mq;
 
 vector<protocol *> protocols;
 
-time_t next_timed_rule = 0;
+time_t next_rule_time = 0;
 
 multimap<protocol *, BYTE8> local_proto_addr;
 
@@ -554,7 +554,7 @@ extern "C" { PG_FUNCTION_INFO_V1(external_function); }
 
 extern "C" { PG_FUNCTION_INFO_V1(send_inject); }
 
-void external_function2(const ext_struct &es);
+void external_function2(const external_function_struct &efs);
 
 void send_inject2(const send_inject_struct &sis);
 
@@ -605,9 +605,9 @@ extern "C" { PG_FUNCTION_INFO_V1(refresh_configuration); }
 
 extern "C" { PG_FUNCTION_INFO_V1(refresh_next_rule_time); }
 
-extern "C" { PG_FUNCTION_INFO_V1(refresh_ownerships); }
+extern "C" { PG_FUNCTION_INFO_V1(refresh_owners); }
 
-extern "C" { PG_FUNCTION_INFO_V1(manually_execute_timed_rule); }
+extern "C" { PG_FUNCTION_INFO_V1(manually__execute_timed_rule); }
 
 extern "C" { PG_FUNCTION_INFO_V1(refresh_adapters); }
 
@@ -621,9 +621,9 @@ void refresh_configuration2();
 
 void encode_message(formatted_message &fmsg, raw_message &rmsg);
 
-void refresh_next_rule_time2(const refresh_next_timed_rule_time_struct &rntrts);
+void refresh_next_rule_time2(const refresh_next_rule_time_struct &rnrts);
 
-void refresh_ownerships2();
+void refresh_owners2();
 
 void manually_execute_timed_rule2(const manually_execute_timed_rule_struct &metrs);
 
@@ -854,12 +854,12 @@ BYTE header::reverse_byte(BYTE B) noexcept {
 }
 
 BYTE header::get_as_byte() const noexcept {
-	return little_endian ? reverse_byte(*reinterpret_cast<const BYTE *>(this))
+	return is_little_endian ? reverse_byte(*reinterpret_cast<const BYTE *>(this))
 			: *reinterpret_cast<const BYTE *>(this);
 }
 
 void header::put_as_byte(BYTE B) noexcept {
-	*reinterpret_cast<BYTE *>(this) = little_endian ? reverse_byte(B) : B;
+	*reinterpret_cast<BYTE *>(this) = is_little_endian ? reverse_byte(B) : B;
 }
 
 static_assert(offsetof(formatted_message, DST) == 8, "offsetof(formatted_message, DST) != 8");
@@ -1065,7 +1065,7 @@ raw_message *ble::recv_once() {
 		lai->length -= 4;
 	}
 	rmsg = new raw_message(new BYTE[lai->length]);
-	if (little_endian) {
+	if (is_little_endian) {
 		memcpy_reverse(&temp, &lai->bdaddr, 6);
 	} else {
 		memcpy(reinterpret_cast<BYTE *>(&temp) + 2, &lai->bdaddr, 6);
@@ -2243,8 +2243,8 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS load_store(load BOOLEAN)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_configurationss()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS refresh_next_rule_time("
-			"next_timed_rule BIGINT)"));
-	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_ownerships()"));
+			"next_rule_time BIGINT)"));
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_owners()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS execute_timed_rule(username TEXT, "
 			"id INTEGER)"));
 	PQclear(execcheckreturn("CREATE PROCEDURE external_function(eui_id TEXT) AS \'"s + cwd
@@ -2261,11 +2261,11 @@ int main(int argc, char *argv[]) {
 			+ "/libIoT\', \'load_store\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE refresh_configurationss() AS \'"s + cwd
 			+ "/libIoT\', \'refresh_configurationss\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_rule_time(next_timed_rule BIGINT) "
+	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_rule_time(next_rule_time BIGINT) "
 			"RETURNS void AS \'"s + cwd + "/libIoT\', \'refresh_next_rule_time\' "
 			"LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE refresh_ownerships() AS \'"s + cwd
-			+ "/libIoT\', \'refresh_ownerships\' LANGUAGE C"));
+	PQclear(execcheckreturn("CREATE PROCEDURE refresh_owners() AS \'"s + cwd
+			+ "/libIoT\', \'refresh_owners\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE execute_timed_rule(username TEXT, "
 			"id INTEGER) AS\'"s + cwd + "/libIoT\', \'execute_timed_rule\' "
 			"LANGUAGE C"));
@@ -2313,7 +2313,7 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("SELECT refresh_next_rule_time(("
 			"SELECT MIN(next_run) FROM rules))"));
 	refresh_configuration2();
-	refresh_ownerships2();
+	refresh_owners2();
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
 
 	main_loop();
@@ -2327,7 +2327,7 @@ static_assert(sizeof(in_addr) == sizeof(BYTE4), "sizeof(in_addr) != sizeof(BYTE4
 in_addr BYTE8_to_ia(BYTE8 addr) noexcept {
 	in_addr ia;
 
-	if (little_endian) {
+	if (is_little_endian) {
 		memcpy_reverse(&ia, &addr, 4);
 	} else {
 		memcpy(&ia, reinterpret_cast<BYTE *>(&addr) + 4, 4);
@@ -2338,7 +2338,7 @@ in_addr BYTE8_to_ia(BYTE8 addr) noexcept {
 BYTE8 ia_to_BYTE8(in_addr ia) noexcept {
 	BYTE8 addr = 0x00000000'00000000;
 
-	if (little_endian) {
+	if (is_little_endian) {
 		memcpy_reverse(&addr, &ia, 4);
 	} else {
 		memcpy(reinterpret_cast<BYTE *>(&addr) + 4, &ia, 4);
@@ -2450,7 +2450,7 @@ void initialize_vars() {
 	umask(0000);
 	main_mq = mq_open("/main", O_RDWR | O_CREAT, 0777, &ma);
 	THR(main_mq < 0, system_exception("cannot open main_mq"));
-	ma.mq_msgsize = sizeof(ext_struct);
+	ma.mq_msgsize = sizeof(external_function_struct);
 	external_function_mq = mq_open("/external_function", O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(external_function_mq < 0, system_exception("cannot open external_function_mq"));
 	ma.mq_msgsize = sizeof(send_inject_struct) - 1 + msg_MAX;
@@ -2471,15 +2471,15 @@ void initialize_vars() {
 	refresh_configurationss_mq = mq_open("/refresh_configurationss", O_RDONLY | O_CREAT | O_NONBLOCK,
 			0777, &ma);
 	THR(refresh_configurationss_mq < 0, system_exception("cannot open refresh_configurationss_mq"));
-	ma.mq_msgsize = sizeof(refresh_next_timed_rule_time_struct);
+	ma.mq_msgsize = sizeof(refresh_next_rule_time_struct);
 	refresh_next_rule_time_mq = mq_open("/refresh_next_rule_time",
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(refresh_next_rule_time_mq < 0,
 			system_exception("cannot open refresh_next_rule_time_mq"));
-	ma.mq_msgsize = sizeof(refresh_ownerships_struct);
-	refresh_ownerships_mq = mq_open("/refresh_ownerships",
+	ma.mq_msgsize = sizeof(refresh_owners_struct);
+	refresh_owners_mq = mq_open("/refresh_owners",
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
-	THR(refresh_ownerships_mq < 0, system_exception("cannot open refresh_ownerships_mq"));
+	THR(refresh_owners_mq < 0, system_exception("cannot open refresh_ownerships_mq"));
 	ma.mq_msgsize = sizeof(refresh_adapters_struct);
 	refresh_adapters_mq = mq_open("/refresh_adapters",
 			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
@@ -2518,7 +2518,7 @@ void initialize_vars() {
 #endif
 
 	if (*reinterpret_cast<BYTE2 *>(test) != 1) {
-		little_endian = false;
+		is_little_endian = false;
 	}
 	beginning = my_now();
 	dre.seed(rd());
@@ -2560,8 +2560,8 @@ void destroy_vars() {
 			system_exception("cannot unlink refresh_configuration_mq"));
 	THR(mq_unlink("/refresh_next_rule_time") < 0,
 			system_exception("cannot unlink refresh_next_rule_time_mq"));
-	THR(mq_unlink("/refresh_ownerships") < 0,
-			system_exception("cannot unlink refresh_ownerships_mq"));
+	THR(mq_unlink("/refresh_owners") < 0,
+			system_exception("cannot unlink refresh_owners_mq"));
 	THR(mq_unlink("/refresh_adapters") < 0,
 			system_exception("cannot unlink refresh_adapters_mq"));
 	THR(mq_unlink("/refresh_protocols") < 0,
@@ -2639,7 +2639,7 @@ void determine_local_eui() {
 		THR(ioctl(sock, SIOCGIFHWADDR, &ifr) < 0,
 				system_exception("cannot SIOCGIFHWADDR ioctl"));//cannot cause EADDRNOTAVAIL
 		if (ifr.ifr_hwaddr.sa_family == ARPHRD_ETHER) {
-			if (little_endian) {
+			if (is_little_endian) {
 				memcpy_reverse(&local_eui, ifr.ifr_hwaddr.sa_data, 6);
 			} else {
 				memcpy(reinterpret_cast<BYTE *>(&local_eui) + 2, ifr.ifr_hwaddr.sa_data, 6);
@@ -2696,7 +2696,7 @@ void serialize_digital_envelope(const BYTE *ciphertext, int ciphertext_len,
 	THR(i > dst_len, message_exception("too big an envelope created"));
 	dst_len = i;
 	*dst = '@';
-	if (little_endian) {
+	if (is_little_endian) {
 		memcpy_reverse(dst + 1, &ciphertext_len, 2);
 		memcpy_reverse(dst + ciphertext_len + 3, &encrypted_key_len, 2);
 	} else {
@@ -2714,7 +2714,7 @@ void deserialize_digital_envelope(const BYTE *src, int src_len, BYTE *&ciphertex
 	THR(*src != '@', message_exception("envelope malformed"));
 	THR(3 < src_len, message_exception("3 < src_len"));
 
-	if (little_endian) {
+	if (is_little_endian) {
 		memcpy_reverse(&ciphertext_len, src + 1, 2);
 		THR(ciphertext_len + 5 < src_len, message_exception("ciphertext_len + 5 < src_len"));
 		memcpy_reverse(&encrypted_key_len, src + ciphertext_len + 3, 2);
@@ -2937,14 +2937,14 @@ extern "C" Datum manually_execute_timed_rule(PG_FUNCTION_ARGS) {
 extern "C" Datum external_function(PG_FUNCTION_ARGS) {
 	text *eui_id_sql = PG_GETARG_TEXT_PP(0);
 	int eui_id_len = VARSIZE_ANY_EXHDR(eui_id_sql);
-	ext_struct es = { { '\0' } };
-	mqd_t ext_mq = mq_open("/ext", O_WRONLY);
+	external_function_struct efs = { { '\0' } };
+	mqd_t external_function_mq = mq_open("/external_function", O_WRONLY);
 
-	THR(ext_mq < 0, system_exception("cannot open ext_mq"));
-	memcpy(es.eui_id, VARDATA_ANY(eui_id_sql), eui_id_len < 27 ? eui_id_len : 27);
-	THR(mq_send(ext_mq, reinterpret_cast<char *>(&es), sizeof(ext_struct), 0) < 0,
-			system_exception("cannot send to ext_mq"));
-	THR(mq_close(ext_mq) < 0, system_exception("cannot close ext_mq"));
+	THR(external_function_mq < 0, system_exception("cannot open external_function_mq"));
+	memcpy(efs.eui_id, VARDATA_ANY(eui_id_sql), eui_id_len < 27 ? eui_id_len : 27);
+	THR(mq_send(external_function_mq, reinterpret_cast<char *>(&efs), sizeof(external_function_struct), 0) < 0,
+			system_exception("cannot send to external_function_mq"));
+	THR(mq_close(external_function_mq) < 0, system_exception("cannot close external_function_mq"));
 	PG_RETURN_VOID();
 }
 
@@ -3004,10 +3004,10 @@ extern "C" Datum send_inject(PG_FUNCTION_ARGS) {
 
 #endif
 
-void external_function2(const ext_struct &es) {
-	const_cast<ext_struct &>(es).eui_id[16] = '\0';
-	PQclear(formatsendreturn(execcheckreturn("TABLE table_"s + es.eui_id),
-			c17charp_to_BYTE8(es.eui_id)));
+void external_function2(const external_function_struct &efs) {
+	const_cast<external_function_struct &>(efs).eui_id[16] = '\0';
+	PQclear(formatsendreturn(execcheckreturn("TABLE table_"s + efs.eui_id),
+			c17charp_to_BYTE8(efs.eui_id)));
 }
 
 int find_next_lower_bluetooth(int sock, hci_dev_info &hdi, int &i) {
@@ -3115,30 +3115,30 @@ extern "C" Datum refresh_configuration(PG_FUNCTION_ARGS) {
 
 //this function is executed in another process!!!
 extern "C" Datum refresh_next_rule_time(PG_FUNCTION_ARGS) {
-	refresh_next_timed_rule_time_struct rntrts = { PG_GETARG_INT64(0) };
-	mqd_t refresh_next_timed_rule_time_mq = mq_open("/refresh_next_timed_rule_time", O_WRONLY);
+	refresh_next_rule_time_struct rnrts = { PG_GETARG_INT64(0) };
+	mqd_t refresh_next_rule_time_mq = mq_open("/refresh_next_rule_time", O_WRONLY);
 
-	THR(refresh_next_timed_rule_time_mq < 0,
-			system_exception("cannot open refresh_next_timed_rule_time_mq"));
-	THR(mq_send(refresh_next_timed_rule_time_mq, reinterpret_cast<char *>(&rntrts),
-			sizeof(refresh_next_timed_rule_time_struct), 0) < 0,
-			system_exception("cannot send to refresh_next_timed_rule_time_mq"));
-	THR(mq_close(refresh_next_timed_rule_time_mq) < 0,
-			system_exception("cannot close refresh_next_timed_rule_time_mq"));
+	THR(refresh_next_rule_time_mq < 0,
+			system_exception("cannot open refresh_next_rule_time_mq"));
+	THR(mq_send(refresh_next_rule_time_mq, reinterpret_cast<char *>(&rnrts),
+			sizeof(refresh_next_rule_time_struct), 0) < 0,
+			system_exception("cannot send to refresh_next_rule_time_mq"));
+	THR(mq_close(refresh_next_rule_time_mq) < 0,
+			system_exception("cannot close refresh_next_rule_time_mq"));
 	PG_RETURN_VOID();
 }
 
 //this function is executed in another process!!!
-extern "C" Datum refresh_ownerships(PG_FUNCTION_ARGS) {
-	struct refresh_ownerships_struct uos;
-	mqd_t refresh_ownerships_mq = mq_open("/refresh_ownerships", O_WRONLY);
+extern "C" Datum refresh_owners(PG_FUNCTION_ARGS) {
+	struct refresh_owners_struct ros;
+	mqd_t refresh_owners_mq = mq_open("/refresh_owners", O_WRONLY);
 
-	THR(refresh_ownerships_mq < 0, system_exception("cannot open refresh_ownerships_mq"));
-	THR(mq_send(refresh_ownerships_mq, reinterpret_cast<char *>(&uos),
-			sizeof(refresh_ownerships_struct), 0) < 0,
-			system_exception("cannot send to refresh_ownerships_mq"));
-	THR(mq_close(refresh_ownerships_mq) < 0,
-			system_exception("cannot close refresh_ownerships_mq"));
+	THR(refresh_owners_mq < 0, system_exception("cannot open refresh_owners_mq"));
+	THR(mq_send(refresh_owners_mq, reinterpret_cast<char *>(&ros),
+			sizeof(refresh_owners_struct), 0) < 0,
+			system_exception("cannot send to refresh_owners_mq"));
+	THR(mq_close(refresh_owners_mq) < 0,
+			system_exception("cannot close refresh_owners_mq"));
 	PG_RETURN_VOID();
 }
 
@@ -3147,7 +3147,7 @@ extern "C" Datum refresh_adapters(PG_FUNCTION_ARGS) {
 	mqd_t refresh_adapters_mq = mq_open("/refresh_adapters", O_WRONLY);
 
 	THR(refresh_adapters_mq < 0, system_exception("cannot open refresh_adapters_mq"));
-	THR(mq_send(refresh_ownerships_mq, reinterpret_cast<char *>(&ras),
+	THR(mq_send(refresh_adapters_mq, reinterpret_cast<char *>(&ras),
 			sizeof(refresh_adapters_struct), 0) < 0,
 			system_exception("cannot send to refresh_adapters_mq"));
 	THR(mq_close(refresh_adapters_mq) < 0,
@@ -3345,12 +3345,12 @@ void encode_message(formatted_message &fmsg, raw_message &rmsg) {
 	}
 }
 
-void refresh_next_rule_time2(const refresh_next_timed_rule_time_struct &rntrts) {
-	next_timed_rule = rntrts.next_timed_rule;
-	LOG_CPP("next timed rule " << next_timed_rule - time(nullptr) << " seconds from now" << endl);
+void refresh_next_rule_time2(const refresh_next_rule_time_struct &rnrts) {
+	next_rule_time = rnrts.next_rule_time;
+	LOG_CPP("next rule time " << next_rule_time - time(nullptr) << " seconds from now" << endl);
 }
 
-void refresh_ownerships2() {
+void refresh_owners2() {
 	PGresult *res = execcheckreturn("TABLE table_owner ORDER BY tablename DESC");
 	int i = PQntuples(res);
 
@@ -3594,7 +3594,7 @@ void send_control(string payload, BYTE8 DST, BYTE8 SRC) {
 	fmsg->CRC = givecrc32c(reinterpret_cast<BYTE *>(fmsg.get()) + 4, LEN + fields_MAX);
 			//HD,ID,LEN,DST,SRC
 	fmsg->HD.put_as_byte(header::reverse_byte(fmsg->HD.get_as_byte()));
-	if (little_endian) {
+	if (is_little_endian) {
 		fmsg->LEN = LEN;
 		fmsg->DST = DST;
 		fmsg->SRC = SRC;
@@ -3793,10 +3793,10 @@ raw_message *receive_raw_message() {
 }
 #else
 raw_message *receive_raw_message() {
-	refresh_next_timed_rule_time_struct rntrts;
+	refresh_next_rule_time_struct rnrts;
 	string select;
 	int message_length, current_id, i, j;
-	ext_struct es;
+	external_function_struct efs;
 	send_inject_struct *sis;
 	timespec ts;
 	raw_message *rmsg;
@@ -3810,16 +3810,16 @@ raw_message *receive_raw_message() {
 	refresh_configuration_struct rcs;
 	PGresult *res_rules;
 	stringstream ss(ss.in | ss.out | ss.ate);
-	refresh_ownerships_struct ros;
+	refresh_owners_struct ros;
 	manually_execute_timed_rule_struct metrs;
 	string current_username;
 
 	clock_gettime(CLOCK_REALTIME, &ts);
 	do {
-		if (mq_receive(external_function_mq, reinterpret_cast<char *>(&es), sizeof(ext_struct), nullptr) < 0) {
+		if (mq_receive(external_function_mq, reinterpret_cast<char *>(&efs), sizeof(external_function_struct), nullptr) < 0) {
 			THR(errno != EAGAIN, system_exception("cannot receive from external_function_mq"));
 		} else {
-			external_function2(es);
+			external_function2(efs);
 		}
 		do {
 			if (mq_receive(prlimit_pid_mq, reinterpret_cast<char *>(&pid), sizeof(pid), nullptr)
@@ -3871,19 +3871,19 @@ raw_message *receive_raw_message() {
 		} else {
 			refresh_configuration2();
 		}
-		if (mq_receive(refresh_next_rule_time_mq, reinterpret_cast<char *>(&rntrts),
-				sizeof(rntrts), nullptr) < 0) {
+		if (mq_receive(refresh_next_rule_time_mq, reinterpret_cast<char *>(&rnrts),
+				sizeof(rnrts), nullptr) < 0) {
 			THR(errno != EAGAIN,
 					system_exception("cannot receive from refresh_next_rule_time_mq"));
 		} else {
-			refresh_next_rule_time2(rntrts);
+			refresh_next_rule_time2(rnrts);
 		}
-		if (mq_receive(refresh_ownerships_mq, reinterpret_cast<char *>(&ros),
+		if (mq_receive(refresh_owners_mq, reinterpret_cast<char *>(&ros),
 				sizeof(ros), nullptr) < 0) {
 			THR(errno != EAGAIN,
-					system_exception("cannot receive from refresh_ownerships_mq"));
+					system_exception("cannot receive from refresh_owners_mq"));
 		} else {
-			refresh_ownerships2();
+			refresh_owners2();
 		}
 		if (mq_receive(execute_timed_rule_mq, reinterpret_cast<char *>(&metrs),
 				sizeof(metrs), nullptr) < 0) {
@@ -3892,14 +3892,14 @@ raw_message *receive_raw_message() {
 		} else {
 			manually_execute_timed_rule2(metrs);
 		}
-		if (next_timed_rule <= ts.tv_sec++ && next_timed_rule > 0) {
+		if (next_rule_time <= ts.tv_sec++ && next_rule_time > 0) {
 			LOG_CPP("checking for rules" << endl);
 			ss.str("SELECT username, id, query_command_nothing, query_command_1, "
 					"send_inject_query_command_nothing, query_command_2, proto, addr, "
 					"insecure_port, secure_port, CCF, ACF, broadcast, override, activate, "
 					"deactivate, FROM rules WHERE is_active AND next_run <= ");
 			ss.clear();
-			ss << next_timed_rule;
+			ss << next_rule_time;
 			select = ss.str();
 			res_rules = execcheckreturn(select + " ORDER BY username ASC, id ASC");
 			for (i = 0, j = PQntuples(res_rules); i < j; i++) {
@@ -3915,8 +3915,8 @@ raw_message *receive_raw_message() {
 			res_rules = execcheckreturn("SELECT MIN(next_run) FROM rules");
 			ss.str(PQgetvalue(res_rules, 0, 0));
 			ss.clear();
-			ss >> next_timed_rule;
-			LOG_CPP("next timed rule " << next_timed_rule - time(nullptr) << " seconds from now"
+			ss >> next_rule_time;
+			LOG_CPP("next timed rule " << next_rule_time - time(nullptr) << " seconds from now"
 					<< endl);
 			PQclear(res_rules);
 		}
@@ -4342,7 +4342,7 @@ void print_message_c(ostream &os, const BYTE *msg, size_t length) noexcept {
 }
 
 void *memcpy_endian(void *dst, const void *src, size_t size) noexcept {
-	return little_endian ? memcpy_reverse(dst, src, size) : memcpy(dst, src, size);
+	return is_little_endian ? memcpy_reverse(dst, src, size) : memcpy(dst, src, size);
 }
 
 void *memcpy_reverse(void *dst, const void *src, size_t size) noexcept {
@@ -4359,7 +4359,7 @@ BYTE4 givecrc32c(const BYTE *msg, BYTE2 len) noexcept {
 	BYTE4 *temp = new BYTE4[lenB4], ret;
 	BYTE8 polynome = 0x00000001'1EDC6F41;//0x1EDC6F41 = 0b0001'1110'1101'1100'0110'1111'0100'0001
 
-	if (little_endian) {
+	if (is_little_endian) {
 		msB4 = lenB4;
 		temp[maxB4] = 0x00000000;
 		//current memory layout (example): msg = B9 B8 B7 B6 B5 B4 B3 B2 B1 B0
@@ -4893,7 +4893,7 @@ PGresult *formatsendreturn(PGresult *res, BYTE8 DST) {
 	fmsg->CRC = givecrc32c(reinterpret_cast<BYTE *>(fmsg.get()) + 4, LEN + fields_MAX);
 			//HD,ID,LEN,DST,SRC
 	fmsg->HD.put_as_byte(header::reverse_byte(fmsg->HD.get_as_byte()));
-	if (little_endian) {
+	if (is_little_endian) {
 		fmsg->LEN = LEN;
 		fmsg->DST = DST;
 		fmsg->SRC = my_eui;
