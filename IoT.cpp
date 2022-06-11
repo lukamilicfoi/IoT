@@ -276,7 +276,7 @@ struct load_store_struct {
 
 struct load_ack_struct { };
 
-struct refresh_configuration_struct { };
+struct refresh_configurations_struct { };
 
 struct refresh_adapters_struct { };
 
@@ -342,7 +342,7 @@ struct refresh_next_rule_time_struct {
 
 struct refresh_owners_struct { };
 
-struct manually_execute_timed_rule_struct {
+struct execute_rule_struct {
 	char username[256];//username cannot exceed
 	int id;
 };
@@ -494,11 +494,11 @@ mqd_t load_store_mq;
 
 mqd_t load_ack_mq;
 
-mqd_t refresh_configurationss_mq;
+mqd_t refresh_configurations_mq;
 
 mqd_t refresh_next_rule_time_mq;
 
-mqd_t execute_timed_rule_mq;
+mqd_t execute_rule_mq;
 
 mqd_t refresh_adapters_mq;
 
@@ -601,13 +601,13 @@ void print_message_c(ostream &os, const BYTE *msg, size_t length) noexcept;
 
 extern "C" { PG_FUNCTION_INFO_V1(load_store); }
 
-extern "C" { PG_FUNCTION_INFO_V1(refresh_configuration); }
+extern "C" { PG_FUNCTION_INFO_V1(refresh_configurations); }
 
 extern "C" { PG_FUNCTION_INFO_V1(refresh_next_rule_time); }
 
 extern "C" { PG_FUNCTION_INFO_V1(refresh_owners); }
 
-extern "C" { PG_FUNCTION_INFO_V1(manually__execute_timed_rule); }
+extern "C" { PG_FUNCTION_INFO_V1(execute_rule); }
 
 extern "C" { PG_FUNCTION_INFO_V1(refresh_adapters); }
 
@@ -617,7 +617,7 @@ void load_store2_load();
 
 void load_store2_store();
 
-void refresh_configuration2();
+void refresh_configurations2();
 
 void encode_message(formatted_message &fmsg, raw_message &rmsg);
 
@@ -625,7 +625,7 @@ void refresh_next_rule_time2(const refresh_next_rule_time_struct &rnrts);
 
 void refresh_owners2();
 
-void manually_execute_timed_rule2(const manually_execute_timed_rule_struct &metrs);
+void execute_rule2(const execute_rule_struct &ers);
 
 void decode_message(raw_message &rmsg, formatted_message &fmsg);
 
@@ -2241,12 +2241,11 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_adapters()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_protocols()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS load_store(load BOOLEAN)"));
-	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_configurationss()"));
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_configurations()"));
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS refresh_next_rule_time("
 			"next_rule_time BIGINT)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_owners()"));
-	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS execute_timed_rule(username TEXT, "
-			"id INTEGER)"));
+	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS execute_rule(username TEXT, id INTEGER)"));
 	PQclear(execcheckreturn("CREATE PROCEDURE external_function(eui_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'external_function\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE send_inject(send BOOLEAN, message BYTEA, "
@@ -2259,16 +2258,14 @@ int main(int argc, char *argv[]) {
 			+ "/libIoT\', \'refresh_protocols\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE load_store(load BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'load_store\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE refresh_configurationss() AS \'"s + cwd
-			+ "/libIoT\', \'refresh_configurationss\' LANGUAGE C"));
+	PQclear(execcheckreturn("CREATE PROCEDURE refresh_configurations() AS \'"s + cwd
+			+ "/libIoT\', \'refresh_configurations\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE FUNCTION refresh_next_rule_time(next_rule_time BIGINT) "
-			"RETURNS void AS \'"s + cwd + "/libIoT\', \'refresh_next_rule_time\' "
-			"LANGUAGE C"));
+			"RETURNS void AS \'"s + cwd + "/libIoT\', \'refresh_next_rule_time\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE refresh_owners() AS \'"s + cwd
 			+ "/libIoT\', \'refresh_owners\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE execute_timed_rule(username TEXT, "
-			"id INTEGER) AS\'"s + cwd + "/libIoT\', \'execute_timed_rule\' "
-			"LANGUAGE C"));
+	PQclear(execcheckreturn("CREATE PROCEDURE execute_rule(username TEXT, id INTEGER) AS\'"s
+			+ cwd + "/libIoT\', \'execute_rule\' LANGUAGE C"));
 
 	/*
 	 * in SQL standard only RETURNS NULL ON NULL INPUT function specifier exists
@@ -2312,7 +2309,7 @@ int main(int argc, char *argv[]) {
 
 	PQclear(execcheckreturn("SELECT refresh_next_rule_time(("
 			"SELECT MIN(next_run) FROM rules))"));
-	refresh_configuration2();
+	refresh_configurations2();
 	refresh_owners2();
 	PQclear(execcheckreturn("SET intervalstyle TO sql_standard"));
 
@@ -2451,7 +2448,8 @@ void initialize_vars() {
 	main_mq = mq_open("/main", O_RDWR | O_CREAT, 0777, &ma);
 	THR(main_mq < 0, system_exception("cannot open main_mq"));
 	ma.mq_msgsize = sizeof(external_function_struct);
-	external_function_mq = mq_open("/external_function", O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
+	external_function_mq = mq_open("/external_function", O_RDONLY | O_CREAT | O_NONBLOCK, 0777,
+			&ma);
 	THR(external_function_mq < 0, system_exception("cannot open external_function_mq"));
 	ma.mq_msgsize = sizeof(send_inject_struct) - 1 + msg_MAX;
 	send_inject_mq = mq_open("/send_inject", O_RDWR | O_CREAT | O_NONBLOCK, 0777, &ma);
@@ -2467,32 +2465,27 @@ void initialize_vars() {
 	ma.mq_msgsize = sizeof(load_ack_struct);
 	load_ack_mq = mq_open("/load_ack", O_WRONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(load_ack_mq < 0, system_exception("cannot open load_ack_mq"));
-	ma.mq_msgsize = sizeof(refresh_configuration_struct);
-	refresh_configurationss_mq = mq_open("/refresh_configurationss", O_RDONLY | O_CREAT | O_NONBLOCK,
+	ma.mq_msgsize = sizeof(refresh_configurations_struct);
+	refresh_configurations_mq = mq_open("/refresh_configurations", O_RDONLY | O_CREAT | O_NONBLOCK,
 			0777, &ma);
-	THR(refresh_configurationss_mq < 0, system_exception("cannot open refresh_configurationss_mq"));
+	THR(refresh_configurations_mq < 0, system_exception("cannot open refresh_configurations_mq"));
 	ma.mq_msgsize = sizeof(refresh_next_rule_time_struct);
-	refresh_next_rule_time_mq = mq_open("/refresh_next_rule_time",
-			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
-	THR(refresh_next_rule_time_mq < 0,
-			system_exception("cannot open refresh_next_rule_time_mq"));
+	refresh_next_rule_time_mq = mq_open("/refresh_next_rule_time", O_RDONLY | O_CREAT | O_NONBLOCK,
+			0777, &ma);
+	THR(refresh_next_rule_time_mq < 0, system_exception("cannot open refresh_next_rule_time_mq"));
 	ma.mq_msgsize = sizeof(refresh_owners_struct);
-	refresh_owners_mq = mq_open("/refresh_owners",
-			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
+	refresh_owners_mq = mq_open("/refresh_owners", O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(refresh_owners_mq < 0, system_exception("cannot open refresh_ownerships_mq"));
 	ma.mq_msgsize = sizeof(refresh_adapters_struct);
-	refresh_adapters_mq = mq_open("/refresh_adapters",
-			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
+	refresh_adapters_mq = mq_open("/refresh_adapters", O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(refresh_adapters_mq < 0, system_exception("cannot open refresh_adapters_mq"));
 	ma.mq_msgsize = sizeof(refresh_protocols_struct);
-	refresh_protocols_mq = mq_open("/refresh_protocols",
-			O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
+	refresh_protocols_mq = mq_open("/refresh_protocols", O_RDONLY | O_CREAT | O_NONBLOCK, 0777,
+			&ma);
 	THR(refresh_protocols_mq < 0, system_exception("cannot open refresh_protocols_mq"));
-	ma.mq_msgsize = sizeof(manually_execute_timed_rule_struct);
-	execute_timed_rule_mq = mq_open("/execute_timed_rule",
-			O_RDWR | O_CREAT | O_NONBLOCK, 0777, &ma);
-	THR(execute_timed_rule_mq < 0,
-			system_exception("cannot open execute_timed_rule_mq"));
+	ma.mq_msgsize = sizeof(execute_rule_struct);
+	execute_rule_mq = mq_open("/execute_rule", O_RDWR | O_CREAT | O_NONBLOCK, 0777, &ma);
+	THR(execute_rule_mq < 0, system_exception("cannot open execute_rule_mq"));
 
 	cipherctx = EVP_CIPHER_CTX_new();
 	mdctx = EVP_MD_CTX_new();
@@ -2550,24 +2543,22 @@ void destroy_vars() {
 	}
 
 	THR(mq_unlink("/main") < 0, system_exception("cannot unlink main_mq"));
-	THR(mq_unlink("/external_function") < 0, system_exception("cannot unlink external_function_mq"));
+	THR(mq_unlink("/external_function") < 0,
+			system_exception("cannot unlink external_function_mq"));
 	THR(mq_unlink("/send_inject") < 0, system_exception("cannot unlink send_inject_mq"));
 	THR(mq_unlink("/prlimit_pid") < 0, system_exception("cannot unlink prlimit_pid_mq"));
 	THR(mq_unlink("/prlimit_ack") < 0, system_exception("cannot unlink prlimit_ack_mq"));
 	THR(mq_unlink("/load_store") < 0, system_exception("cannot unlink load_store_mq"));
 	THR(mq_unlink("/load_ack") < 0, system_exception("cannot unlink load_ack_mq"));
-	THR(mq_unlink("/refresh_configuration") < 0,
-			system_exception("cannot unlink refresh_configuration_mq"));
+	THR(mq_unlink("/refresh_configurations") < 0,
+			system_exception("cannot unlink refresh_configurations_mq"));
 	THR(mq_unlink("/refresh_next_rule_time") < 0,
 			system_exception("cannot unlink refresh_next_rule_time_mq"));
-	THR(mq_unlink("/refresh_owners") < 0,
-			system_exception("cannot unlink refresh_owners_mq"));
-	THR(mq_unlink("/refresh_adapters") < 0,
-			system_exception("cannot unlink refresh_adapters_mq"));
+	THR(mq_unlink("/refresh_owners") < 0, system_exception("cannot unlink refresh_owners_mq"));
+	THR(mq_unlink("/refresh_adapters") < 0, system_exception("cannot unlink refresh_adapters_mq"));
 	THR(mq_unlink("/refresh_protocols") < 0,
 			system_exception("cannot unlink refresh_protocols_mq"));
-	THR(mq_unlink("/manually_execute_timed_rule") < 0,
-			system_exception("cannot unlink manually_execute_timed_rule_mq"));
+	THR(mq_unlink("/execute_rule") < 0, system_exception("cannot unlink execute_rule_mq"));
 
 	EVP_CIPHER_CTX_free(cipherctx);
 	EVP_MD_CTX_free(mdctx);
@@ -2915,21 +2906,18 @@ PGresult *execcheckreturn(string query) {
 #if __PIC__ == 1
 
 //this function is executed in another process!!!
-extern "C" Datum manually_execute_timed_rule(PG_FUNCTION_ARGS) {
+extern "C" Datum execute_rule(PG_FUNCTION_ARGS) {
 	text *username_sql = PG_GETARG_TEXT_PP(0);
 	int username_len = VARSIZE_ANY_EXHDR(username_sql);
 	int id = PG_GETARG_INT32(1);
-	manually_execute_timed_rule_struct metrs = { "", id };
-	mqd_t manually_execute_timed_rule_mq = mq_open("/manually_execute_timed_rule", O_WRONLY);
+	execute_rule_struct ers = { "", id };
+	mqd_t execute_rule_mq = mq_open("/execute_rule", O_WRONLY);
 
-	THR(manually_execute_timed_rule_mq < 0,
-			system_exception("cannot open manually_execute_timed_rule_mq"));
-	memcpy(metrs.username, VARDATA_ANY(username_sql), username_len < 256 ? username_len : 256);
-	THR(mq_send(manually_execute_timed_rule_mq, reinterpret_cast<char *>(&metrs),
-			sizeof(manually_execute_timed_rule_struct), 0) < 0,
-			system_exception("cannot send to manually_execute_timed_rule_mq"));
-	THR(mq_close(manually_execute_timed_rule_mq) < 0,
-			system_exception("cannot close manually_execute_timed_rule_mq"));
+	THR(execute_rule_mq < 0, system_exception("cannot open execute_rule_mq"));
+	memcpy(ers.username, VARDATA_ANY(username_sql), username_len < 256 ? username_len : 256);
+	THR(mq_send(execute_rule_mq, reinterpret_cast<char *>(&ers), sizeof(execute_rule_struct), 0)
+			< 0, system_exception("cannot send to execute_rule_mq"));
+	THR(mq_close(execute_rule_mq) < 0, system_exception("cannot close execute_rule_mq"));
 	PG_RETURN_VOID();
 }
 
@@ -2942,7 +2930,8 @@ extern "C" Datum external_function(PG_FUNCTION_ARGS) {
 
 	THR(external_function_mq < 0, system_exception("cannot open external_function_mq"));
 	memcpy(efs.eui_id, VARDATA_ANY(eui_id_sql), eui_id_len < 27 ? eui_id_len : 27);
-	THR(mq_send(external_function_mq, reinterpret_cast<char *>(&efs), sizeof(external_function_struct), 0) < 0,
+	THR(mq_send(external_function_mq, reinterpret_cast<char *>(&efs),
+			sizeof(external_function_struct), 0) < 0,
 			system_exception("cannot send to external_function_mq"));
 	THR(mq_close(external_function_mq) < 0, system_exception("cannot close external_function_mq"));
 	PG_RETURN_VOID();
@@ -3100,16 +3089,16 @@ extern "C" Datum load_store(PG_FUNCTION_ARGS) {
 }
 
 //this function is executed in another process!!!
-extern "C" Datum refresh_configuration(PG_FUNCTION_ARGS) {
-	refresh_configuration_struct rcs;
-	mqd_t refresh_configuration_mq = mq_open("/refresh_configuration", O_WRONLY);
+extern "C" Datum refresh_configurations(PG_FUNCTION_ARGS) {
+	refresh_configurations_struct rcs;
+	mqd_t refresh_configurations_mq = mq_open("/refresh_configurations", O_WRONLY);
 
-	THR(refresh_configuration_mq < 0, system_exception("cannot open refresh_configuration_mq"));
-	THR(mq_send(refresh_configuration_mq, reinterpret_cast<char *>(&rcs),
-			sizeof(refresh_configuration_struct), 0) < 0,
-			system_exception("cannot send to refresh_configuration_mq"));
-	THR(mq_close(refresh_configuration_mq) < 0,
-			system_exception("cannot close refresh_configuration_mq"));
+	THR(refresh_configurations_mq < 0, system_exception("cannot open refresh_configurations_mq"));
+	THR(mq_send(refresh_configurations_mq, reinterpret_cast<char *>(&rcs),
+			sizeof(refresh_configurations_struct), 0) < 0,
+			system_exception("cannot send to refresh_configurations_mq"));
+	THR(mq_close(refresh_configurations_mq) < 0,
+			system_exception("cannot close refresh_configurations_mq"));
 	PG_RETURN_VOID();
 }
 
@@ -3118,8 +3107,7 @@ extern "C" Datum refresh_next_rule_time(PG_FUNCTION_ARGS) {
 	refresh_next_rule_time_struct rnrts = { PG_GETARG_INT64(0) };
 	mqd_t refresh_next_rule_time_mq = mq_open("/refresh_next_rule_time", O_WRONLY);
 
-	THR(refresh_next_rule_time_mq < 0,
-			system_exception("cannot open refresh_next_rule_time_mq"));
+	THR(refresh_next_rule_time_mq < 0, system_exception("cannot open refresh_next_rule_time_mq"));
 	THR(mq_send(refresh_next_rule_time_mq, reinterpret_cast<char *>(&rnrts),
 			sizeof(refresh_next_rule_time_struct), 0) < 0,
 			system_exception("cannot send to refresh_next_rule_time_mq"));
@@ -3134,11 +3122,9 @@ extern "C" Datum refresh_owners(PG_FUNCTION_ARGS) {
 	mqd_t refresh_owners_mq = mq_open("/refresh_owners", O_WRONLY);
 
 	THR(refresh_owners_mq < 0, system_exception("cannot open refresh_owners_mq"));
-	THR(mq_send(refresh_owners_mq, reinterpret_cast<char *>(&ros),
-			sizeof(refresh_owners_struct), 0) < 0,
-			system_exception("cannot send to refresh_owners_mq"));
-	THR(mq_close(refresh_owners_mq) < 0,
-			system_exception("cannot close refresh_owners_mq"));
+	THR(mq_send(refresh_owners_mq, reinterpret_cast<char *>(&ros), sizeof(refresh_owners_struct), 0)
+			< 0, system_exception("cannot send to refresh_owners_mq"));
+	THR(mq_close(refresh_owners_mq) < 0, system_exception("cannot close refresh_owners_mq"));
 	PG_RETURN_VOID();
 }
 
@@ -3147,11 +3133,9 @@ extern "C" Datum refresh_adapters(PG_FUNCTION_ARGS) {
 	mqd_t refresh_adapters_mq = mq_open("/refresh_adapters", O_WRONLY);
 
 	THR(refresh_adapters_mq < 0, system_exception("cannot open refresh_adapters_mq"));
-	THR(mq_send(refresh_adapters_mq, reinterpret_cast<char *>(&ras),
-			sizeof(refresh_adapters_struct), 0) < 0,
-			system_exception("cannot send to refresh_adapters_mq"));
-	THR(mq_close(refresh_adapters_mq) < 0,
-			system_exception("cannot close refresh_adapters_mq"));
+	THR(mq_send(refresh_adapters_mq, reinterpret_cast<char *>(&ras), sizeof(refresh_adapters_struct),
+			0) < 0, system_exception("cannot send to refresh_adapters_mq"));
+	THR(mq_close(refresh_adapters_mq) < 0, system_exception("cannot close refresh_adapters_mq"));
 	PG_RETURN_VOID();
 }
 
@@ -3277,12 +3261,11 @@ extern "C" Datum refresh_protocols(PG_FUNCTION_ARGS) {
 	THR(mq_send(refresh_protocols_mq, reinterpret_cast<char *>(&rps),
 			sizeof(refresh_protocols_struct), 0) < 0,
 			system_exception("cannot send to refresh_protocols_mq"));
-	THR(mq_close(refresh_protocols_mq) < 0,
-			system_exception("cannot close refresh_protocols_mq"));
+	THR(mq_close(refresh_protocols_mq) < 0, system_exception("cannot close refresh_protocols_mq"));
 	PG_RETURN_VOID();
 }
 
-void refresh_configuration2() {
+void refresh_configurations2() {
 	PGresult *res = execcheckreturn("TABLE configuration ORDER BY username DESC");
 	istringstream iss;
 	configuration *c;
@@ -3807,16 +3790,17 @@ raw_message *receive_raw_message() {
 	load_ack_struct las;
 	refresh_adapters_struct ras;
 	refresh_protocols_struct rps;
-	refresh_configuration_struct rcs;
+	refresh_configurations_struct rcs;
 	PGresult *res_rules;
 	stringstream ss(ss.in | ss.out | ss.ate);
 	refresh_owners_struct ros;
-	manually_execute_timed_rule_struct metrs;
+	execute_rule_struct ers;
 	string current_username;
 
 	clock_gettime(CLOCK_REALTIME, &ts);
 	do {
-		if (mq_receive(external_function_mq, reinterpret_cast<char *>(&efs), sizeof(external_function_struct), nullptr) < 0) {
+		if (mq_receive(external_function_mq, reinterpret_cast<char *>(&efs),
+				sizeof(external_function_struct), nullptr) < 0) {
 			THR(errno != EAGAIN, system_exception("cannot receive from external_function_mq"));
 		} else {
 			external_function2(efs);
@@ -3865,32 +3849,28 @@ raw_message *receive_raw_message() {
 		} else {
 			load_store2_store();
 		}
-		if (mq_receive(refresh_configurationss_mq, reinterpret_cast<char *>(&rcs),
+		if (mq_receive(refresh_configurations_mq, reinterpret_cast<char *>(&rcs),
 				sizeof(rcs), nullptr) < 0) {
-			THR(errno != EAGAIN, system_exception("cannot receive from refresh_configurationss_mq"));
+			THR(errno != EAGAIN, system_exception("cannot receive from refresh_configurations_mq"));
 		} else {
-			refresh_configuration2();
+			refresh_configurations2();
 		}
 		if (mq_receive(refresh_next_rule_time_mq, reinterpret_cast<char *>(&rnrts),
 				sizeof(rnrts), nullptr) < 0) {
-			THR(errno != EAGAIN,
-					system_exception("cannot receive from refresh_next_rule_time_mq"));
+			THR(errno != EAGAIN, system_exception("cannot receive from refresh_next_rule_time_mq"));
 		} else {
 			refresh_next_rule_time2(rnrts);
 		}
 		if (mq_receive(refresh_owners_mq, reinterpret_cast<char *>(&ros),
 				sizeof(ros), nullptr) < 0) {
-			THR(errno != EAGAIN,
-					system_exception("cannot receive from refresh_owners_mq"));
+			THR(errno != EAGAIN, system_exception("cannot receive from refresh_owners_mq"));
 		} else {
 			refresh_owners2();
 		}
-		if (mq_receive(execute_timed_rule_mq, reinterpret_cast<char *>(&metrs),
-				sizeof(metrs), nullptr) < 0) {
-			THR(errno != EAGAIN,
-					system_exception("cannot receive from execute_timed_rule_mq"));
+		if (mq_receive(execute_rule_mq, reinterpret_cast<char *>(&ers), sizeof(ers), nullptr) < 0) {
+			THR(errno != EAGAIN, system_exception("cannot receive from execute_rule_mq"));
 		} else {
-			manually_execute_timed_rule2(metrs);
+			execute_rule2(ers);
 		}
 		if (next_rule_time <= ts.tv_sec++ && next_rule_time > 0) {
 			LOG_CPP("checking for rules" << endl);
@@ -4271,21 +4251,21 @@ ostream &operator<<(ostream &os, const raw_message &rmsg) noexcept {
 			<< ", override = " << BOOLALPHA_UPPERCASE(rmsg.override);
 }
 
-void manually_execute_timed_rule2(const manually_execute_timed_rule_struct &metrs) {
+void execute_rule2(const execute_rule_struct &ers) {
 	ostringstream oss("SELECT username, id, query_command_nothing, query_command_1, "
 			"send_inject_query_command_nothing, query_command_2, proto, addr, "
 			"insecure_port, secure_port, CCF, ACF, broadcast, override, activate, deactivate, "
 			"is_active FROM rules WHERE id = ", oss.out | oss.ate);
 	PGresult *res_rules;
-	string select, current_username(PQescapeString3(metrs.username));
+	string select, current_username(PQescapeString3(ers.username));
 	int i, j = 1;
 
-	oss << metrs.id << " AND username = \'" << current_username << '\'';
+	oss << ers.id << " AND username = \'" << current_username << '\'';
 	select = oss.str();
 	res_rules = execcheckreturn(select);
 	apply_rule_beginning(res_rules, i, 0, "timed", current_username);
 	i = 0;
-	apply_rule_end(res_rules, metrs.id, i, j, 0, select, current_username);
+	apply_rule_end(res_rules, ers.id, i, j, 0, select, current_username);
 	PQclear(res_rules);
 }
 
