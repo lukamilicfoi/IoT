@@ -2355,18 +2355,20 @@ void test_unlock(void *) {
 
 void refresh_adapters2() {
 	PGresult *res;
+	string name;
 
 	for (protocol *p : protocols) {
-		res = execcheckreturn("SELECT TRUE FROM protocols WHERE proto = \'" + p->get_my_name()
+		name = p->get_my_name();
+		res = execcheckreturn("SELECT TRUE FROM protocols WHERE proto = \'" + name
 				+ "\' AND enabled");
 		if (PQntuples(res) == 0) {
 			if (!p->is_running()) {
 				p->start();
-				LOG_CPP("started " << p->get_my_name() << endl);
+				LOG_CPP("started " << name << endl);
 			}
 		} else if (p->is_running()) {
 			p->stop();
-			LOG_CPP("stopped " << p->get_my_name() << endl);
+			LOG_CPP("stopped " << name << endl);
 		}
 		PQclear(res);
 	}
@@ -3848,6 +3850,12 @@ raw_message *receive_raw_message() {
 					system_exception("cannot send to load_ack_mq"));
 		} else {
 			load_store2_store();
+		}
+		if (mq_receive(refresh_protocols_mq, reinterpret_cast<char *>(&rps), sizeof(rps), nullptr)
+				< 0) {
+			THR(errno != EAGAIN, system_exception("cannot receive from refresh_protocols_mq"));
+		} else {
+			refresh_protocols2();
 		}
 		if (mq_receive(refresh_configurations_mq, reinterpret_cast<char *>(&rcs),
 				sizeof(rcs), nullptr) < 0) {
