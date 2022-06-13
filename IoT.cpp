@@ -2375,7 +2375,6 @@ void refresh_adapters2() {
 }
 
 void refresh_protocols2() {
-	stringstream ss(ss.in | ss.out | ss.ate);
 	PGresult *res;
 	int i, sock = socket(AF_UNIX, SOCK_SEQPACKET, 0);
 	ifreq ifr;
@@ -2384,7 +2383,6 @@ void refresh_protocols2() {
 	i = MAX_DEVICE_INDEX;
 	while (find_next_lower_device(sock, ifr, i) >= 0) {
 		THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
-		PQclear(res);
 		res = execcheckreturn("SELECT TRUE FROM adapters WHERE adapter = \'"s + ifr.ifr_name
 				+ "\' AND enabled");
 		if (PQntuples(res) == 0) {
@@ -2400,15 +2398,13 @@ void refresh_protocols2() {
 					system_exception("cannot SIOCSIFFLAGS ioctl"));//privileged operation!!!
 			LOG_CPP("turned on device " << ifr.ifr_name << endl);
 		}
+		PQclear(res);
 	}
-	PQclear(res);
 	close(sock);
 	sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-	ss.str("SELECT TRUE FROM adapters WHERE adapter = \'");
 	hdi.dev_id = 0;
 	THR(ioctl(sock, HCIGETDEVINFO, &hdi) < 0, system_exception("cannot HCIGETDEVINFO ioctl"));
-	ss << hdi.name;
-	res = execcheckreturn(ss.str() + "\' AND enabled");
+	res = execcheckreturn("SELECT TRUE FROM adapters WHERE adapter = \'"s + hdi.name + "\' AND enabled");
 	if (PQntuples(res) == 0) {
 		if (!hci_test_bit(HCI_UP, &hdi.flags)) {
 			THR(ioctl(sock, HCIDEVUP, &hdi) < 0, system_exception("cannot HCIDEVUP ioctl"));
@@ -2420,6 +2416,8 @@ void refresh_protocols2() {
 				//privileged operation!!!
 		LOG_CPP("turned off device " << hdi.name << endl);
 	}
+	PQclear(res);
+	close(sock);
 }
 
 void initialize_vars() {
@@ -3868,6 +3866,12 @@ raw_message *receive_raw_message() {
 			THR(errno != EAGAIN, system_exception("cannot receive from refresh_next_rule_time_mq"));
 		} else {
 			refresh_next_rule_time2(rnrts);
+		}
+		if (mq_receive(refresh_adapters_mq, reinterpret_cast<char *>(&ras), sizeof(ras), nullptr)
+				< 0) {
+			THR(errno != EAGAIN, system_exception("cannot receive from refresh_adapters_mq"));
+		} else {
+			refresh_adapters2();
 		}
 		if (mq_receive(refresh_owners_mq, reinterpret_cast<char *>(&ros),
 				sizeof(ros), nullptr) < 0) {
