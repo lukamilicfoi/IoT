@@ -2186,45 +2186,7 @@ int main(int argc, char *argv[]) {
 		ss.seekp(-3, ss.end) << '\0';
 		PQclear(execcheckreturn(ss.str()));
 	} else {
-		i = MAX_DEVICE_INDEX;
-		while (find_next_lower_device(sock, ifr, i) >= 0) {
-			THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
-			PQclear(res);
-			res = execcheckreturn("SELECT TRUE FROM adapters WHERE adapter = \'"s + ifr.ifr_name
-					+ "\' AND enabled");
-			if (PQntuples(res) == 0) {
-				if ((ifr.ifr_flags & IFF_UP) != 0) {
-					ifr.ifr_flags &= ~IFF_UP;
-					THR(ioctl(sock, SIOCSIFFLAGS, &ifr) < 0,
-							system_exception("cannot SIOCSIFFLAGS ioctl"));//privileged operation!!!
-					LOG_CPP("turned off device " << ifr.ifr_name << endl);
-				}
-			} else if ((ifr.ifr_flags & IFF_UP) == 0) {
-				ifr.ifr_flags |= IFF_UP;
-				THR(ioctl(sock, SIOCSIFFLAGS, &ifr) < 0,
-						system_exception("cannot SIOCSIFFLAGS ioctl"));//privileged operation!!!
-				LOG_CPP("turned on device " << ifr.ifr_name << endl);
-			}
-		}
-		PQclear(res);
-		close(sock);
-		sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-		ss.str("SELECT TRUE FROM adapters WHERE adapter = \'");
-		hdi.dev_id = 0;
-		THR(ioctl(sock, HCIGETDEVINFO, &hdi) < 0, system_exception("cannot HCIGETDEVINFO ioctl"));
-		ss << hdi.name;
-		res = execcheckreturn(ss.str() + "\' AND enabled");
-		if (PQntuples(res) == 0) {
-			if (!hci_test_bit(HCI_UP, &hdi.flags)) {
-				THR(ioctl(sock, HCIDEVUP, 0) < 0, system_exception("cannot HCIDEVUP ioctl"));
-						//privileged operation!!!
-				LOG_CPP("turned on device " << hdi.name << endl);
-			}
-		} else if (hci_test_bit(HCI_UP, &hdi.flags)) {
-			THR(ioctl(sock, HCIDEVDOWN, 0) < 0, system_exception("cannot HCIDEVDOWN ioctl"));
-					//privileged operation!!!
-			LOG_CPP("turned off device " << hdi.name << endl);
-		}
+		refresh_adapters2();
 	}
 	for (protocol *p : protocols) {
 		p->start();
@@ -3300,10 +3262,9 @@ void refresh_configurations2() {
 }
 
 void encode_message(formatted_message &fmsg, raw_message &rmsg) {
-	int i;
+	int i = 1;
 
 	*rmsg.msg = fmsg.HD.get_as_byte();
-	i = 1;
 	if (fmsg.HD.I) {
 		rmsg.msg[1] = fmsg.ID;
 		i = 2;
