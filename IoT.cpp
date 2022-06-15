@@ -2188,9 +2188,7 @@ int main(int argc, char *argv[]) {
 	} else {
 		refresh_adapters2();
 	}
-	for (protocol *p : protocols) {
-		p->start();
-	}
+	refresh_protocols2();
 	PQclear(res);
 	close(sock);
 
@@ -3306,7 +3304,7 @@ void refresh_owners2() {
 }
 
 void decode_message(raw_message &rmsg, formatted_message &fmsg) {
-	int i;
+	int i = 0;
 	BYTE4 CRC;
 
 	if (rmsg.TML > 1) {
@@ -3314,7 +3312,6 @@ void decode_message(raw_message &rmsg, formatted_message &fmsg) {
 		i = 1;
 	} else {
 		fmsg.HD.put_as_byte(0b00000000);
-		i = 0;
 	}
 	if (fmsg.HD.I) {
 		THR(1 >= rmsg.TML, message_exception("ID absent"));
