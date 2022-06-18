@@ -682,9 +682,9 @@ void create_table(string eui, vector<string> &columns, vector<string> &types);
 
 void alter_table(string eui, vector<string> &columns, const vector<string> &types);
 
-void refresh_adapters2();
-
 void refresh_protocols2();
+
+void refresh_adapters2();
 
 void initialize_vars();
 
@@ -2364,7 +2364,8 @@ void refresh_protocols2() {
 	sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	hdi.dev_id = 0;
 	THR(ioctl(sock, HCIGETDEVINFO, &hdi) < 0, system_exception("cannot HCIGETDEVINFO ioctl"));
-	res = execcheckreturn("SELECT TRUE FROM adapters WHERE adapter = \'"s + hdi.name + "\' AND enabled");
+	res = execcheckreturn("SELECT TRUE FROM adapters WHERE adapter = \'"s + hdi.name
+			+ "\' AND enabled");
 	if (PQntuples(res) == 0) {
 		if (!hci_test_bit(HCI_UP, &hdi.flags)) {
 			THR(ioctl(sock, HCIDEVUP, &hdi) < 0, system_exception("cannot HCIDEVUP ioctl"));
