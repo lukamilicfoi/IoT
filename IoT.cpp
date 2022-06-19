@@ -2313,7 +2313,7 @@ void test_unlock(void *) {
 }
 #endif
 
-void refresh_adapters2() {
+void refresh_protocols2() {
 	PGresult *res;
 	string name;
 
@@ -2334,7 +2334,7 @@ void refresh_adapters2() {
 	}
 }
 
-void refresh_protocols2() {
+void refresh_adapters2() {
 	PGresult *res;
 	int i, sock = socket(AF_UNIX, SOCK_SEQPACKET, 0);
 	ifreq ifr;
@@ -4678,8 +4678,9 @@ void sub(string query, string _id, BYTE8 eui) {
 		PQclear(execcheckreturn("CREATE FUNCTION function_" + eui_id
 				+ "() RETURNS trigger AS \'BEGIN IF EXISTS(TABLE view_" + eui_id
 				+ " EXCEPT ALL TABLE table_" + eui_id + ") THEN TRUNCATE table_" + eui_id
-				+ "; INSERT INTO table_" + eui_id + " TABLE view_" + eui_id + "; PERFORM external_function(\'\'"
-				+ eui_id + "\'\'); END IF; RETURN NULL; END;\' LANGUAGE PLPGSQL"));
+				+ "; INSERT INTO table_" + eui_id + " TABLE view_" + eui_id
+				+ "; PERFORM external_function(\'\'" + eui_id
+				+ "\'\'); END IF; RETURN NULL; END;\' LANGUAGE PLPGSQL"));
 
 		do {
 			/*
