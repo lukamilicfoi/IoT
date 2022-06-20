@@ -2185,12 +2185,12 @@ int main(int argc, char *argv[]) {
 		ss << '\'' << hdi.name << "\', TRUE), (";
 		ss.seekp(-3, ss.end) << '\0';
 		PQclear(execcheckreturn(ss.str()));
+		close(sock);
 	} else {
 		refresh_adapters2();
 	}
 	refresh_protocols2();
 	PQclear(res);
-	close(sock);
 
 	populate_local_proto_addr();
 
@@ -2231,7 +2231,7 @@ int main(int argc, char *argv[]) {
 	 * in SQL standard only RETURNS NULL ON NULL INPUT function specifier exists
 	 *
 	 * also, other function specifiers exist in standard SQL
-	 */
+	 **/
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS insert_timer() CASCADE"));
 	PQclear(execcheckreturn("CREATE FUNCTION insert_timer() RETURNS trigger AS \'DECLARE "
 			"lastrun TIMESTAMP(0) WITH TIME ZONE; runperiod INTERVAL SECOND(0); BEGIN "
@@ -2436,7 +2436,7 @@ void initialize_vars() {
 	THR(refresh_next_rule_time_mq < 0, system_exception("cannot open refresh_next_rule_time_mq"));
 	ma.mq_msgsize = sizeof(refresh_owners_struct);
 	refresh_owners_mq = mq_open("/refresh_owners", O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
-	THR(refresh_owners_mq < 0, system_exception("cannot open refresh_ownerships_mq"));
+	THR(refresh_owners_mq < 0, system_exception("cannot open refresh_owners_mq"));
 	ma.mq_msgsize = sizeof(refresh_adapters_struct);
 	refresh_adapters_mq = mq_open("/refresh_adapters", O_RDONLY | O_CREAT | O_NONBLOCK, 0777, &ma);
 	THR(refresh_adapters_mq < 0, system_exception("cannot open refresh_adapters_mq"));
@@ -3342,8 +3342,7 @@ void decode_message(raw_message &rmsg, formatted_message &fmsg) {
 		memcpy_endian(&fmsg.CRC, rmsg.msg + rmsg.TML - 4, 4);
 		CRC = givecrc32c(rmsg.msg, rmsg.TML - 4);
 		if (fmsg.CRC != CRC) {
-			LOG_CPP("received CRC " << HEX(fmsg.CRC, 8)
-					<< " != calculated CRC " << HEX(CRC, 8) << endl);
+			LOG_CPP("received CRC " << HEX(fmsg.CRC, 8)<< " != calculated CRC " << HEX(CRC, 8) << endl);
 			throw message_exception("wrong CRC");
 		}
 		i += 4;
