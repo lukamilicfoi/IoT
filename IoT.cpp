@@ -2206,6 +2206,11 @@ int main(int argc, char *argv[]) {
 			"next_rule_time BIGINT)"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS refresh_owners()"));
 	PQclear(execcheckreturn("DROP PROCEDURE IF EXISTS execute_rule(username TEXT, id INTEGER)"));
+	/*
+	 * in SQL standard only RETURNS NULL ON NULL INPUT function specifier exists
+	 *
+	 * also, other function specifiers exist in standard SQL
+	 */
 	PQclear(execcheckreturn("CREATE PROCEDURE external_function(eui_id TEXT) AS \'"s + cwd
 			+ "/libIoT\', \'external_function\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE send_inject(send BOOLEAN, message BYTEA, "
@@ -2227,11 +2232,6 @@ int main(int argc, char *argv[]) {
 	PQclear(execcheckreturn("CREATE PROCEDURE execute_rule(username TEXT, id INTEGER) AS\'"s
 			+ cwd + "/libIoT\', \'execute_rule\' LANGUAGE C"));
 
-	/*
-	 * in SQL standard only RETURNS NULL ON NULL INPUT function specifier exists
-	 *
-	 * also, other function specifiers exist in standard SQL
-	 **/
 	PQclear(execcheckreturn("DROP FUNCTION IF EXISTS insert_timer() CASCADE"));
 	PQclear(execcheckreturn("CREATE FUNCTION insert_timer() RETURNS trigger AS \'DECLARE "
 			"lastrun TIMESTAMP(0) WITH TIME ZONE; runperiod INTERVAL SECOND(0); BEGIN "
@@ -3342,7 +3342,8 @@ void decode_message(raw_message &rmsg, formatted_message &fmsg) {
 		memcpy_endian(&fmsg.CRC, rmsg.msg + rmsg.TML - 4, 4);
 		CRC = givecrc32c(rmsg.msg, rmsg.TML - 4);
 		if (fmsg.CRC != CRC) {
-			LOG_CPP("received CRC " << HEX(fmsg.CRC, 8)<< " != calculated CRC " << HEX(CRC, 8) << endl);
+			LOG_CPP("received CRC " << HEX(fmsg.CRC, 8) << " != calculated CRC " << HEX(CRC, 8)
+					<< endl);
 			throw message_exception("wrong CRC");
 		}
 		i += 4;
@@ -3355,8 +3356,8 @@ void decode_message(raw_message &rmsg, formatted_message &fmsg) {
 	if (!fmsg.HD.L) {
 		fmsg.LEN = rmsg.TML - i;
 	} else if (fmsg.LEN != rmsg.TML - i) {
-		LOG_CPP("received LEN " << fmsg.LEN
-				<< " != calculated LEN " << rmsg.TML - i << endl);
+		LOG_CPP("received LEN " << fmsg.LEN << " != calculated LEN " << rmsg.TML - i
+				<< endl);
 		throw message_exception("wrong LEN");
 	}
 	if (!fmsg.HD.D) {
