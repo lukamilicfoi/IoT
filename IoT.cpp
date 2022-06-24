@@ -2217,7 +2217,7 @@ int main(int argc, char *argv[]) {
 			"proto TEXT, addr BYTEA, insecure_port INTEGER, secure_port INTEGER, "
 			"CCF BOOLEAN, ACF BOOLEAN, broadcast BOOLEAN, override BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'send_inject\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE refresh_adapters AS \'"s + cwd
+	PQclear(execcheckreturn("CREATE PROCEDURE refresh_adapters() AS \'"s + cwd
 			+ "/libIoT\', \'refresh_adapters\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE refresh_protocols AS \'"s + cwd
 			+ "/libIoT\', \'refresh_protocols\' LANGUAGE C"));
@@ -2321,7 +2321,7 @@ void refresh_protocols2() {
 		name = p->get_my_name();
 		res = execcheckreturn("SELECT TRUE FROM protocols WHERE proto = \'" + name
 				+ "\' AND enabled");
-		if (PQntuples(res) == 0) {
+		if (PQntuples(res) != 0) {
 			if (!p->is_running()) {
 				p->start();
 				LOG_CPP("started " << name << endl);
