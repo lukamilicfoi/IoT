@@ -2219,7 +2219,7 @@ int main(int argc, char *argv[]) {
 			+ "/libIoT\', \'send_inject\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE refresh_adapters() AS \'"s + cwd
 			+ "/libIoT\', \'refresh_adapters\' LANGUAGE C"));
-	PQclear(execcheckreturn("CREATE PROCEDURE refresh_protocols AS \'"s + cwd
+	PQclear(execcheckreturn("CREATE PROCEDURE refresh_protocols() AS \'"s + cwd
 			+ "/libIoT\', \'refresh_protocols\' LANGUAGE C"));
 	PQclear(execcheckreturn("CREATE PROCEDURE load_store(load BOOLEAN) AS \'"s + cwd
 			+ "/libIoT\', \'load_store\' LANGUAGE C"));
@@ -2345,7 +2345,7 @@ void refresh_adapters2() {
 		THR(ioctl(sock, SIOCGIFFLAGS, &ifr) < 0, system_exception("cannot SIOCGIFFLAGS ioctl"));
 		res = execcheckreturn("SELECT TRUE FROM adapters WHERE adapter = \'"s + ifr.ifr_name
 				+ "\' AND enabled");
-		if (PQntuples(res) == 0) {
+		if (PQntuples(res) != 0) {
 			if ((ifr.ifr_flags & IFF_UP) != 0) {
 				ifr.ifr_flags &= ~IFF_UP;
 				THR(ioctl(sock, SIOCSIFFLAGS, &ifr) < 0,
