@@ -643,7 +643,7 @@ void security_check_for_receiving(raw_message &rmsg, formatted_message &fmsg);
 
 ostream &operator<<(ostream &os, const header &HD) noexcept;
 
-void convert_select(string &query, string remote_FROM);
+void convert_select(string &query, string remote_);
 
 void print_message_cpp(ostream &os, string msg) noexcept;
 
@@ -2366,7 +2366,7 @@ void refresh_adapters2() {
 	THR(ioctl(sock, HCIGETDEVINFO, &hdi) < 0, system_exception("cannot HCIGETDEVINFO ioctl"));
 	res = execcheckreturn("SELECT TRUE FROM adapters WHERE adapter = \'"s + hdi.name
 			+ "\' AND enabled");
-	if (PQntuples(res) == 0) {
+	if (PQntuples(res) != 0) {
 		if (!hci_test_bit(HCI_UP, &hdi.flags)) {
 			THR(ioctl(sock, HCIDEVUP, &hdi) < 0, system_exception("cannot HCIDEVUP ioctl"));
 					//privileged operation!!!
@@ -4384,7 +4384,7 @@ ostream &operator<<(ostream &os, const header &HD) noexcept {
 			<< (HD.K ? 'K' : 'k') << (HD.C ? 'C' : 'c') << (HD.A ? 'A' : 'a') << ')';
 }
 
-void convert_select(string &query, string remote_FROM) {
+void convert_select(string &query, string remote_) {
 	const char *table[128] = {
 			//0x80-0x87:
 			" <= ", " >= ", " <> ", " || ",
@@ -4572,7 +4572,7 @@ void convert_select(string &query, string remote_FROM) {
 						if (iter_search_from == iter_search_to || *iter_search_from == ')'
 								|| isupper(*iter_search_from)) {
 							/* FROM clause ended abruptly and no table name provided */
-							query += remote_FROM;
+							query += remote_;
 							LOG_CPP("remote FROM inserted" << endl);
 						}
 						search_select = true;
