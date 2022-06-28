@@ -280,7 +280,7 @@ if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
 		$id = intval($_GET['id']);
 		if ($_GET['username'] == $_SESSION['username'] || $_SESSION['is_administrator']
 				&& !is_administrator($s_username) || $_SESSION['is_root']) {
-			pgquery("CALL manually_execute_timed_rule($s_username, $id);");
+			pgquery("CALL execute_timed_rule($s_username, $id);");
 		}
 		echo "For username $h_username timed rule $id manually executed.<br/>\n";
 	}

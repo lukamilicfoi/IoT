@@ -20,7 +20,7 @@ if ($can_edit_configuration && !empty($_GET['username']) && isset($_GET['update'
 				. formescapebool($_GET['trust_receiving']) . ', '
 		   		. formescapebytea($_GET['default_gateway']) . ', '
 				. formescapebytea($_GET['my_eui']) . ") WHERE username = $s_username;");
-		pgquery('CALL config();');
+		pgquery('CALL refresh_config();');
 		echo "Configuration updated for username $h_username.<br/>\n";
 	}
 }
