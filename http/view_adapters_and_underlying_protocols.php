@@ -73,8 +73,10 @@ if ($can_view) {
 ?>
 						<td>
 <?php
-							echo "<input form=$form type=\"submit\" name=\"", $row[1] == 't'
-									? 'disable' : 'enable', "\" value=\"toggle\"/>\n";
+							echo "";
+								echo "<input form=$form type=\"submit\" name=\"", $row[1] == 't'
+										? 'disable' : 'enable', "\" value=\"toggle\"/>\n";
+							echo "</form>\n";
 ?>
 						</td>
 <?php
@@ -123,8 +125,10 @@ if ($can_view) {
 ?>
 						<td>
 <?php
-							echo "<input form=$form type=\"submit\" name=\"", $row[1] == 't'
-									? 'disable' : 'enable', "\" value=\"toggle\"/>\n";
+							echo "";
+								echo "<input form=$form type=\"submit\" name=\"", $row[1] == 't'
+										? 'disable' : 'enable', "\" value=\"toggle\"/>\n";
+							echo "</form>\n";
 ?>
 						</td>
 <?php

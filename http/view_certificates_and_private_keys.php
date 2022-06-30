@@ -74,7 +74,7 @@ if ($can_view) {
 		if ($eui_owner == $_SESSION['username'] || ($eui_owner == 'public'
 				|| $_SESSION['is_administrator'] && !is_administrator(pg_escape_literal($eui_owner))
 				&& $_SESSION['can_edit_as_others'] || $_SESSION['is_root']
-				&& isset($_GET['view']) && file_exists($p_eui)) {
+				&& isset($_GET['view']) && file_exists($p_eui)))) {
 			readfile($eui);
 			exit(0);
 		}
@@ -215,7 +215,7 @@ if ($can_view) {
 			</tr>
 <?php
 			$last = '';
-			for ($row = pg_fetch_row($result, 0); $row; $row = pg_fetch_row($result)) {
+			for ($row = pg_fetch_row($result, pg_num_rows($result) == 0 ? null : <0); $row; $row = pg_fetch_row($result)) {
 				if ($row[0] != $last) {
 ?>
 					<tr>
