@@ -73,7 +73,7 @@ if ($can_view) {
 ?>
 						<td>
 <?php
-							echo "";
+							echo "<form id=$form action=\"\" method=\"GET\">\n";
 								echo "<input form=$form type=\"submit\" name=\"", $row[1] == 't'
 										? 'disable' : 'enable', "\" value=\"toggle\"/>\n";
 							echo "</form>\n";
@@ -125,7 +125,7 @@ if ($can_view) {
 ?>
 						<td>
 <?php
-							echo "";
+							echo "<form id=$form action=\"\" method=\"GET\">\n";
 								echo "<input form=$form type=\"submit\" name=\"", $row[1] == 't'
 										? 'disable' : 'enable', "\" value=\"toggle\"/>\n";
 							echo "</form>\n";
