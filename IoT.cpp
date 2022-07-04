@@ -316,7 +316,7 @@ protected:
 
 public:
 
-	string get_my_name() const noexcept { return my_name; }
+	string get_my_name();
 
 	mqd_t get_my_mq() const noexcept { return my_mq; }
 
@@ -780,6 +780,18 @@ protocol::~protocol() {
 	try {
 		stop();
 	} catch (...) { }
+}
+
+string protocol::get_my_name() {
+	if (my_name.empty()) {
+		my_name = typeid(*this).name();
+#if (defined(__GLIBCXX__) || defined(__GLIBCPP__)) && ! defined(__GABIXX_CXXABI_H_)
+		int status;
+		my_name = abi::__cxa_demangle(my_name.c_str(), nullptr, nullptr, &status);
+		THR(status != 0, system_exception("cannot demangle function"));
+#endif
+	}
+	return my_name;
 }
 
 void protocol::stop() {
