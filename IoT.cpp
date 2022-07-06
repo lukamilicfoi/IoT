@@ -775,7 +775,7 @@ protocol::~protocol() {
 string protocol::get_my_name() {
 	if (my_name.empty()) {
 		my_name = typeid(*this).name();
-#if (defined(__GLIBCXX__) || defined(__GLIBCPP__)) && ! defined(__GABIXX_CXXABI_H_)
+#if (defined(__GLIBCXX__) || defined(__GLIBCPP__)) && !  defined(__GABIXX_CXXABI_H_)
 		int status;
 		my_name = abi::__cxa_demangle(my_name.c_str(), nullptr, nullptr, &status);
 		THR(status != 0, system_exception("cannot demangle function"));
@@ -1073,7 +1073,7 @@ raw_message *ble::recv_once() {
 		memcpy(reinterpret_cast<BYTE *>(&temp) + 2, &lai->bdaddr, 6);
 	}
 	rmsg->addr = EUI48_to_EUI64(temp);
-	memcpy(rmsg->msg, gatt ? lai->data+4 : lai->data, lai->length);
+	memcpy(rmsg->msg, gatt ? lai->data +4 : lai->data, lai->length);
 	rmsg->CCF = false;
 	rmsg->proto = this;
 	rmsg->ACF = false;
