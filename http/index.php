@@ -119,7 +119,7 @@ if (check_authorization('can_send_messages', 'send messages to nodes')) {
 		$h_msgtosend = 'X&apos;' . htmlspecialchars($_GET['msgtosend']) . '&apos;';
 		$proto = pg_escape_literal($_GET['proto']);
 		$dst = pgescapebytea($_GET['dst']);
-		pgquery("CALL send_inject(TRUE, $s_msgtosend, $proto_name, $dst, "
+		pgquery("CALL send_inject(TRUE, $s_msgtosend, $proto, $dst, "
 				. formescapeinteger($_GET['insecure_port']) . ', '
 				. formescapeinteger($_GET['secure_port']) . ', ' . formescapebool($_GET['CCF'])
 				. ', ' . formescapebool($_GET['ACF']) . ', ' . formescapebool($_GET['broadcast'])
