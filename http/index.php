@@ -159,7 +159,7 @@ if (check_authorization('can_inject_messages', 'inject messages from nodes')) {
 		$h_msgtoinject = 'X&apos;' . htmlspecialchars($_GET['msgtoinject']) . '&apos;';
 		$proto = pg_escape_literal($_GET['proto']);
 		$src = pgescapebytea($_GET['src']);
-		pgquery("CALL send_inject(FALSE, $s_msgtoinject, $proto_name, $src, "
+		pgquery("CALL send_inject(FALSE, $s_msgtoinject, $proto, $src, "
 				. formescapeinteger($_GET['insecure_port']) . ', '
 				. formescapeinteger($_GET['secure_port']) . ', ' . formescapebool($_GET['CCF'])
 				. ', ' . formescapebool($_GET['ACF']) . ', ' . formescapebool($_GET['broadcast'])

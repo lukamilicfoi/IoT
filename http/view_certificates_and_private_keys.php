@@ -264,7 +264,8 @@ if ($can_view) {
 									echo "<input form=$form2 type=\"submit\" name=\"insert\"
 											value=\"INSERT\"/>\n";
 								}
-								echo "<form id=$form2 action=\"?\" method=\"POST\"></form>\n";
+								echo "<form id=$form2 action=\"?\" method=\"POST\"
+										enctype=\"multipart/form-data\"></form>\n";
 ?>
 							</td>
 <?php
