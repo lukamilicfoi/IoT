@@ -23,7 +23,7 @@ if ($can_edit) {
 	} elseif (!vacuous($_POST['eui']) && !vacuous($_POST['type'])) {
 		$type = $_POST['type'] == 'certificate' ? 'certificate' : 'privateKey';
 		$h_eui = 'X&apos;' . htmlspecialchars($_POST['eui']) . '&apos;';
-		$p_eui = "/home/luka/{$type}s/" . str_replace('/', '\\/') . '.pem';
+		$p_eui = "/home/luka/{$type}s/" . str_replace('/', '\\/', $_POST['eui']) . '.pem';
 		$eui_owner = find_owner(pg_escape_literal('t' . $_POST['eui']));
 		$eui_owner_is_administrator = is_administrator(pg_escape_literal($eui_owner));
 		if ($eui_owner == $_SESSION['username'] || ($eui_owner == 'public'
@@ -43,7 +43,7 @@ if ($can_edit) {
 	} elseif (!vacuous($_GET['eui']) && !vacuous($_GET['type'])) {
 		$type = $_GET['type'] == 'certificate' ? 'certificate' : 'privateKey';
 		$h_eui = 'X&apos;' . htmlspecialchars($_GET['eui']) . '&apos;';
-		$p_eui = "/home/luka/{$type}s/" . str_replace('/', '\\/') . '.pem';
+		$p_eui = "/home/luka/{$type}s/" . str_replace('/', '\\/', $_GET['eui']) . '.pem';
 		$u_eui = urlencode($_GET['eui']);
 		$eui_owner = find_owner(pg_escape_literal('t' . $_GET['eui']));
 		if ($eui_owner == $_SESSION['username'] || ($eui_owner == 'public'
@@ -151,7 +151,7 @@ if ($can_view) {
 							echo "<input form=$form2 type=\"hidden\" name=\"eui\"
 									value=\"$h_eui\"/>\n";
 							echo "<input form=$form2 type=\"hidden\" name=\"type\"
-									value=\"\"/>\n";
+									value=\"certificate\"/>\n";
 ?>
 						</td>
 						<td>

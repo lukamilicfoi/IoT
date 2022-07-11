@@ -256,7 +256,7 @@ if (check_authorization('can_send_queries', 'send queries to database')) {
 <?php
 	} else {
 		echo 'You are authorized to send queries to read', $can_edit_tables ? ' (write)' : '',
-				"   username-{$_SESSION['h2username']}-readable", $can_edit_tables ? ' (-owned)' : '',
+				" username-{$_SESSION['h2username']}-readable", $can_edit_tables ? ' (-owned)' : '',
 				$_SESSION['can_view_as_others'] ? ' or public-user-readable' : '',
 				$_SESSION['can_edit_as_others'] && $can_edit_tables ? ' (-owned)' : '',
 				" tables.\n";
@@ -296,7 +296,7 @@ if (check_authorization('can_execute_rules', 'manually execute timed rules')) {
 		You are authorized to execute rules for public user.
 <?php
 	} else {
-		echo "You are authorized to execute rules for username   {$_SESSION['husername']}
+		echo "You are authorized to execute rules for username {$_SESSION['h2username']}
 				or public user.\n";
 	}
 ?>
