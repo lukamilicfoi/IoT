@@ -1,0 +1,12 @@
+--scenario1ble & scen1
+--INSERT INTO rules VALUES('root', 0, 1, 'SRC = ''\\xE0E2E6FFFEB1E4EA'' AND LEN = 0', 2, NULL, 2, NULL, 0, 'SELECT ''\0door=''''opened'''';''', 'udp', '\x00000000C0A80010', NULL, NULL, FALSE, FALSE, FALSE, FALSE, NULL, NULL, TRUE, NULL, NULL, NULL);
+--scenario2ble
+--INSERT INTO rules VALUES('root', 0, 1, 'SRC = ''\\xE0E2E6FFFEB1E4EA'' AND LEN = 0', 2, NULL, 2, NULL, 0, 'SELECT ''\0high_temperature_alert=TRUE;''', 'udp', '\x00000000C0A80010', NULL, NULL, FALSE, FALSE, FALSE, FALSE, NULL, NULL, TRUE, NULL, NULL, NULL);
+--scenario3ble
+--INSERT INTO rules VALUES('root', 0, 1, 'SRC = ''\\xE0E2E6FFFEB1E4EA'' AND LEN = 1 AND CAST(PL AS INTEGER) > (SELECT temperature FROM parameters)', 2, NULL, 2, NULL, 0, '\0SELECT ''alert=1;''', 'udp', '\x00000000C0A80010', NULL, NULL, FALSE, FALSE, FALSE, FALSE, NULL, NULL, TRUE, NULL, NULL);
+--scenario4ble
+--INSERT INTO rules VALUES('root', 0, 1, 'SRC = ''\\xE0E2E6FFFEB1E4EA''', 2, NULL, 2, NULL, 2, 'SELECT ''\0temperature='' || (CAST(CAST((SELECT PL FROM message) AS INTEGER) AS REAL) / 4) || '';''', 'udp', '\x00000000C0A80010', NULL, NULL, FALSE, FALSE, FALSE, FALSE, NULL, NULL, TRUE, NULL, NULL);
+--scenario5ble, scenario6ble, scenario7ble
+--INSERT INTO rules VALUES('root', 0, 1, 'SRC = ''\\xE0E2E6FFFEB1E4EA''', 2, NULL, 2, NULL, 2, 'SELECT ''\0user_id='' || SUBSTRING((SELECT PL FROM message) FROM 3) || '';''', 'udp', '\x00000000C0A80010', NULL, NULL, FALSE, FALSE, FALSE, FALSE, NULL, NULL, TRUE, NULL, NULL);
+--scenario8ble & scenario9ble
+--INSERT INTO rules VALUES('root', 0, 1, 'SRC = ''\\xE0E2E6FFFEB1E4EA''', 2, NULL, 1, 'recognize_person.sh', 4, NULL, NULL, NULL, NULL, NULL, FALSE, FALSE, FALSE, FALSE, NULL, NULL, TRUE, NULL, NULL);

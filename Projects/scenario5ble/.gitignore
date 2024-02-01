@@ -1,0 +1,7 @@
+.pio
+.vscode
+components
+include/README
+lib
+test
+*.old

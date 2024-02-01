@@ -1,0 +1,79 @@
+scenario1ble----
+
+enable bluetooth, disable host
+
+scenario2ble----
+
+enable bluetooth, disable host
+
+scenario3ble----
+
+enable bluetooth, disable host
+
+scenario4ble----
+
+enable bluetooth, disable host
+
+scenario5ble----
+
+enable bluetooth, disable host
+
+scenario6ble----
+
+enable bluetooth, disable host
+
+scenario7ble----
+
+set flash to 8 MB, enable bluetooth, enable 5.0, disable 4.2, enable host ext adv
+
+scenario8ble----
+
+set flash to 8 MB, enable bluetooth, set host to nimble, set l2cap coc to 1
+
+l2cap_server----
+
+set flash to 8 MB, enable bluetooth, set host to nimble, set l2cap coc to 1
+
+camera_lesser----
+
+copy .pio/libdeps/esp32cam/esp32-camera/Kconfig to Kconfig.projbuild
+
+scenario9ble----
+
+set flash to 8 MB, enable bluetooth, set host to nimble, set msys 1 block count to 96, set msys 2 block count to 96
+
+gatt_server----
+
+set flash to 8 MB, enable bluetooth, set host to nimble
+
+camera_greater----
+
+copy .pio/libdeps/esp32cam/esp32-camera/Kconfig to Kconfig.projbuild
+
+scen1----
+
+set flash to 8 MB, set partition table to partitions.csv, enable bluetooth, enable 5.0, disable 4.2, enable host ext adv, enable mqtt 5, disable mqtt 3.1.1, enable openthread, set type to mtd, enable coap client, enable zigbee, set type to zed
+
+ble4_scanner----
+
+nothing
+
+ble5_scanner----
+
+set flash to 8 MB, enable bluetooth, enable 5.0, disable 4.2, enable host ext adv
+
+zb_server----
+
+set flash to 8 MB, set partition table to partitions.csv, enable zigbee
+
+ot_server----
+
+set flash to 8 MB, set partition table to partitions.csv, enable openthread
+
+nfc_read----
+
+nothing
+
+nfc_rwr----
+
+nothing
